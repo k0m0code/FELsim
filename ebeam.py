@@ -1,4 +1,4 @@
-#   Authors:
+#   Authors: Niels Bidault, Christian Komo
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -80,15 +80,18 @@ class beam:
         newMatrix = [row1,row2,row3,row4,row5,row6]
         return newMatrix
     
+    # Can length variable be negative?
     def DriftTransform(self, x_pos: list[int], y_pos: list[int], phase_x: list[int], phase_y: list[int], length = -1, plot = True):
-        if length != -1:
+        if length == -1:
             length = self.length
         x_transform = []
         y_transform = []
+
         for i in range(len(x_pos)):
             x_transform.append(x_pos[i]+length*phase_x[i])
         for i in range(len(y_pos)):
             y_transform.append(y_pos[i] + length*phase_y[i])
+
         if plot:
             fig, ax = plt.subplots()
             ax.scatter(x_pos,y_pos, c = 'blue', s=15, alpha=0.7)
@@ -98,6 +101,7 @@ class beam:
             plt.legend(loc = 'upper right')
             plt.tight_layout()
             plt.show()
+
         return x_transform, y_transform
 
     '''
@@ -107,34 +111,42 @@ class beam:
     beamSegmeents: list[str][float]
     2d numpy array or 2D list containing 1. the type of "medium" beam passes through 2. the length of each medium matching with its index
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval):
         x_pos = matrixVariables[:, 0]
         y_pos = matrixVariables[:, 2]
         phase_x = matrixVariables[:, 1]
         phase_y = matrixVariables[:, 3]
         xUpdated = [np.std(x_pos)]
         yUpdated = [np.std(y_pos)]
+        x_axis = [0]
 
         for i in range(len(beamSegments[0])):
             if beamSegments[0][i] == "drift":
-                xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length= beamSegments[1][i],plot = False)
+                intTrack = beamSegments[1][i]
+                while intTrack > interval:
+                    xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length = interval,plot = False)
+                    xUpdated.append(np.std(xtrans))
+                    yUpdated.append(np.std(ytrans))
+                    x_pos = xtrans
+                    y_pos = ytrans
+                    intTrack = intTrack - interval
+                    x_axis.append(x_axis[len(x_axis)-1]+interval)
+                xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length = intTrack,plot = False)
                 xUpdated.append(np.std(xtrans))
                 yUpdated.append(np.std(ytrans))
                 x_pos = xtrans
                 y_pos = ytrans
+                x_axis.append(x_axis[len(x_axis)-1]+intTrack)
+            #Add more matrix multiplcation down here
         
-        x_axis = [0]
-        sum = 0
-        for i in beamSegments[1]:
-            x_axis.append(sum + i)
-            sum = sum + i
         fig, ax = plt.subplots()
         plt.plot(x_axis, xUpdated)
         plt.plot(x_axis, yUpdated)
         ax.set_xticks(x_axis)
         plt.xlim(0,x_axis[len(x_axis)-1] + x_axis[len(x_axis)-1]*0.10)
-        # ax.set_xticklabels([])
-        # plt.xticks()
-
+        ax.set_xticklabels(x_axis,rotation=45,ha='right')
+        plt.tick_params(labelsize = 9)
+        plt.xlabel("Distance from start of beam (mm??)")    # Change the units of xlabel?
+        plt.ylabel("Standard deviation (mm??)") # Change the units of ylabel?
         plt.show()        
 
