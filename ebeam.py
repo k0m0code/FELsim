@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchaning with tuples, more efficient for calculations
 #GetDriftMatrice should handle looping through all the diff values in the variable list of each point
+#Add legend for graphs like plotBeamPositionTransform
 
 class beam:
     def __init__(self, length: float):
@@ -118,6 +119,8 @@ class beam:
         phase_y = matrixVariables[:, 3]
         xUpdated = [np.std(x_pos)]
         yUpdated = [np.std(y_pos)]
+        xMean = [np.mean(x_pos)]
+        yMean = [np.mean(y_pos)]
         x_axis = [0]
 
         for i in range(len(beamSegments[0])):
@@ -127,6 +130,8 @@ class beam:
                     xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length = interval,plot = False)
                     xUpdated.append(np.std(xtrans))
                     yUpdated.append(np.std(ytrans))
+                    xMean.append(np.mean(xtrans))
+                    yMean.append(np.mean(ytrans))
                     x_pos = xtrans
                     y_pos = ytrans
                     intTrack = intTrack - interval
@@ -134,14 +139,20 @@ class beam:
                 xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length = intTrack,plot = False)
                 xUpdated.append(np.std(xtrans))
                 yUpdated.append(np.std(ytrans))
+                xMean.append(np.mean(xtrans))
+                yMean.append(np.mean(ytrans))
                 x_pos = xtrans
                 y_pos = ytrans
                 x_axis.append(x_axis[len(x_axis)-1]+intTrack)
             #Add more matrix multiplcation down here
         
+        # print(xUpdated) #Testing
+        # print(yUpdated) #Testing
         fig, ax = plt.subplots()
         plt.plot(x_axis, xUpdated)
         plt.plot(x_axis, yUpdated)
+        plt.plot(x_axis, xMean, color = 'red')
+        plt.plot(x_axis, yMean, color = 'blue')
         ax.set_xticks(x_axis)
         plt.xlim(0,x_axis[len(x_axis)-1] + x_axis[len(x_axis)-1]*0.10)
         ax.set_xticklabels(x_axis,rotation=45,ha='right')
