@@ -4,14 +4,20 @@ import matplotlib.pyplot as plt
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchaning with tuples, more efficient for calculations
+#For functions like drifttransform, paramter should only be a single 2d array with all 6 initial variables
 #GetDriftMatrice should handle looping through all the diff values in the variable list of each point
 #Add legend for graphs like plotBeamPositionTransform
-
+#Replace manual multiplecation with matrice multiplcation
+#Use getDriftMatrice instead of drifttransform in plotbeampoisitiontransform
+#Same total pipe length but different interval should end with the same standard deviation
 class beam:
-    def __init__(self, length: float):
+    def __init__(self, driftLength: float = 0, qpfLength: float = 0.0889, current: float = 0):
         self.E = 35  # Kinetic energy (MeV/c^2)
-        self.E0 = 0.510999
-        self.length = length
+        self.E0 = 0.51099
+        self.current = current
+        self.driftLength = driftLength
+        self.qpfLength = qpfLength
+
 
     # Ensure ellipse_polar has 'self' as the first parameter
     def ellipse_polar(self, t, a, b):
@@ -65,26 +71,53 @@ class beam:
         plt.tight_layout()
         plt.show()
 
-    #Matrix multiplecation, values is a 1 dimensional numPy array or normal list 6 units long
-    #values = [x, x', y, y', z, z']
-    def getDriftMatrice(self, values: list[int], length = -1):
+    #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
+    #values = np.array([[x, x', y, y', z, z'],...])
+    def getDriftMatrice(self, values, length = -1):
         if length != -1:
-            length = self.length
+            length = self.driftLength
         gamma = (1 + (self.E/self.E0))
 
-        row1 = values[0] + values[1]*self.length
-        row2 = values[1]
-        row3 = values[2] + values[3]*self.length
-        row4 = values[3]
-        row5 = values[4] + (values[5]*(self.length/(gamma**2)))
-        row6 = values[5]
-        newMatrix = [row1,row2,row3,row4,row5,row6]
-        return newMatrix
+        driftMatrice = np.array([[1,length,0,0,0,0],
+                                 [0,1,0,0,0,0],
+                                 [0,0,1,length,0,0],
+                                 [0,0,0,1,0,0],
+                                 [0,0,0,0,1,(length/(gamma**2))],
+                                 [0,0,0,0,0,1]])
+        newMatrix = []
+        for array in values:
+            array = array.reshape((6,1))
+            newMatrix.append(np.matmul(driftMatrice, array).tolist())
+        return newMatrix #  return 2d list
     
-    # Can length variable be negative?
-    def DriftTransform(self, x_pos: list[int], y_pos: list[int], phase_x: list[int], phase_y: list[int], length = -1, plot = True):
+    '''
+    performs a single transformation to a 1x6 variable matrice
+
+    variables: np.array(list[int])
+    '''
+    def getQPFmatrice(self, variables, length = -1, current = -1):
         if length == -1:
-            length = self.length
+            length = self.qpfLength
+        if current == -1:
+            current = self.current
+        theta = np.sqrt(current)*length
+        gamma = (1 + (self.E/self.E0))
+
+        qpfMatrice = np.array([[np.cos(theta),(np.sin(theta)/np.sqrt(current)),0,0,0,0],
+                               [(-(np.sqrt(current)))*(np.sin(theta)),np.cos(theta),0,0,0,0],
+                               [0,0,np.cosh(theta),(np.cosh(theta))/(np.sqrt(current)),0,0],
+                               [0,0,np.sqrt(current)*np.sinh(theta),np.cosh(theta),0,0],
+                               [0,0,0,0,1,length/(gamma**2)],
+                               [0,0,0,0,0,1]])
+        variables = variables.reshape((6,1))
+        transArr = np.matmul(qpfMatrice, variables)
+        return transArr
+    
+    #integrate getDriftMatrice within this function or get rid of getDriftMatrice altogether
+    # Can length variable be negative?
+    def driftTransformScatter(self, x_pos: list[int], y_pos: list[int], phase_x: list[int], phase_y: list[int], length = -1, plot = True):
+        if length == -1:
+            length = self.driftLength
         x_transform = []
         y_transform = []
 
@@ -105,6 +138,7 @@ class beam:
 
         return x_transform, y_transform
 
+
     '''
     matrixvairables: list[float][float]
     2d numpy array containing initial condiitons
@@ -112,7 +146,7 @@ class beam:
     beamSegmeents: list[str][float]
     2d numpy array or 2D list containing 1. the type of "medium" beam passes through 2. the length of each medium matching with its index
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1):
         x_pos = matrixVariables[:, 0]
         y_pos = matrixVariables[:, 2]
         phase_x = matrixVariables[:, 1]
@@ -127,27 +161,45 @@ class beam:
             if beamSegments[0][i] == "drift":
                 intTrack = beamSegments[1][i]
                 while intTrack > interval:
-                    xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length = interval,plot = False)
-                    xUpdated.append(np.std(xtrans))
-                    yUpdated.append(np.std(ytrans))
-                    xMean.append(np.mean(xtrans))
-                    yMean.append(np.mean(ytrans))
-                    x_pos = xtrans
-                    y_pos = ytrans
+                    matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = interval))
+                    xUpdated.append(np.std(matrixVariables[:,0]))
+                    yUpdated.append(np.std(matrixVariables[:,2]))
+                    xMean.append(np.mean(matrixVariables[:,0]))
+                    yMean.append(np.mean(matrixVariables[:,2]))
                     intTrack = intTrack - interval
                     x_axis.append(x_axis[len(x_axis)-1]+interval)
-                xtrans, ytrans = self.DriftTransform(x_pos,y_pos,phase_x,phase_y, length = intTrack,plot = False)
-                xUpdated.append(np.std(xtrans))
-                yUpdated.append(np.std(ytrans))
-                xMean.append(np.mean(xtrans))
-                yMean.append(np.mean(ytrans))
-                x_pos = xtrans
-                y_pos = ytrans
+                    # xtrans, ytrans = self.driftTransformScatter(x_pos,y_pos,phase_x,phase_y, length = interval,plot = False)
+                    # xUpdated.append(np.std(xtrans))
+                    # yUpdated.append(np.std(ytrans))
+                    # xMean.append(np.mean(xtrans))
+                    # yMean.append(np.mean(ytrans))
+                    # x_pos = xtrans
+                    # y_pos = ytrans
+                    # intTrack = intTrack - interval
+                    # x_axis.append(x_axis[len(x_axis)-1]+interval)
+                # xtrans, ytrans = self.driftTransformScatter(x_pos,y_pos,phase_x,phase_y, length = intTrack,plot = False)
+                # xUpdated.append(np.std(xtrans))
+                # yUpdated.append(np.std(ytrans))
+                # xMean.append(np.mean(xtrans))
+                # yMean.append(np.mean(ytrans))
+                # x_pos = xtrans
+                # y_pos = ytrans
+                # x_axis.append(x_axis[len(x_axis)-1]+intTrack)
+                matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = intTrack))
+                xUpdated.append(np.std(matrixVariables[:,0]))
+                yUpdated.append(np.std(matrixVariables[:,2]))
+                xMean.append(np.mean(matrixVariables[:,0]))
+                yMean.append(np.mean(matrixVariables[:,2]))
                 x_axis.append(x_axis[len(x_axis)-1]+intTrack)
+
             #Add more matrix multiplcation down here
+            # if beamSegments[0][i] == 'QPF':
+            #     qpfMatrice = self.getQPFmatrice()
+
         
-        # print(xUpdated) #Testing
-        # print(yUpdated) #Testing
+        print(xUpdated) #Testing
+        print(yUpdated) #Testing
+        print(x_axis) #Testing
         fig, ax = plt.subplots()
         plt.plot(x_axis, xUpdated)
         plt.plot(x_axis, yUpdated)
