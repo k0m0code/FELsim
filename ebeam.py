@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
-#Replace list variables that are unchaning with tuples, more efficient for calculations
+#Replace list variables that are unchanging with tuples, more efficient for calculations
 #For functions like drifttransform, paramter should only be a single 2d array with all 6 initial variables
 #GetDriftMatrice should handle looping through all the diff values in the variable list of each point
 #Add legend for graphs like plotBeamPositionTransform
@@ -73,21 +73,23 @@ class beam:
 
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
     #values = np.array([[x, x', y, y', z, z'],...])
+    #Note: 1x6 array is multiplied correctly with 6x6 array
     def getDriftMatrice(self, values, length = -1):
-        if length != -1:
+        if length == -1:
             length = self.driftLength
         gamma = (1 + (self.E/self.E0))
 
-        driftMatrice = np.array([[1,length,0,0,0,0],
-                                 [0,1,0,0,0,0],
-                                 [0,0,1,length,0,0],
-                                 [0,0,0,1,0,0],
-                                 [0,0,0,0,1,(length/(gamma**2))],
-                                 [0,0,0,0,0,1]])
+        driftMatrice = (np.array([[1, length, 0, 0, 0, 0],
+                                 [0, 1, 0, 0, 0, 0],
+                                 [0, 0, 1, length, 0, 0],
+                                 [0, 0, 0, 1, 0, 0],
+                                 [0, 0, 0, 0, 1, (length/(gamma**2))],
+                                 [0, 0, 0, 0, 0, 1]]))
+
         newMatrix = []
         for array in values:
-            array = array.reshape((6,1))
-            newMatrix.append(np.matmul(driftMatrice, array).tolist())
+            tempArry = np.matmul(driftMatrice, array)
+            newMatrix.append(tempArry.tolist())
         return newMatrix #  return 2d list
     
     '''
@@ -109,7 +111,6 @@ class beam:
                                [0,0,np.sqrt(current)*np.sinh(theta),np.cosh(theta),0,0],
                                [0,0,0,0,1,length/(gamma**2)],
                                [0,0,0,0,0,1]])
-        variables = variables.reshape((6,1))
         transArr = np.matmul(qpfMatrice, variables)
         return transArr
     
@@ -147,66 +148,45 @@ class beam:
     2d numpy array or 2D list containing 1. the type of "medium" beam passes through 2. the length of each medium matching with its index
     '''
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1):
-        x_pos = matrixVariables[:, 0]
-        y_pos = matrixVariables[:, 2]
-        phase_x = matrixVariables[:, 1]
-        phase_y = matrixVariables[:, 3]
-        xUpdated = [np.std(x_pos)]
-        yUpdated = [np.std(y_pos)]
-        xMean = [np.mean(x_pos)]
-        yMean = [np.mean(y_pos)]
+        xUpdated = [np.std(matrixVariables[:, 0])]
+        yUpdated = [np.std(matrixVariables[:, 2])]
+        xMean = [np.mean(matrixVariables[:, 0])]
+        yMean = [np.mean(matrixVariables[:, 2])]
         x_axis = [0]
 
         for i in range(len(beamSegments[0])):
             if beamSegments[0][i] == "drift":
                 intTrack = beamSegments[1][i]
-                while intTrack > interval:
+                while intTrack >= interval:
                     matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = interval))
                     xUpdated.append(np.std(matrixVariables[:,0]))
                     yUpdated.append(np.std(matrixVariables[:,2]))
                     xMean.append(np.mean(matrixVariables[:,0]))
                     yMean.append(np.mean(matrixVariables[:,2]))
-                    intTrack = intTrack - interval
-                    x_axis.append(x_axis[len(x_axis)-1]+interval)
-                    # xtrans, ytrans = self.driftTransformScatter(x_pos,y_pos,phase_x,phase_y, length = interval,plot = False)
-                    # xUpdated.append(np.std(xtrans))
-                    # yUpdated.append(np.std(ytrans))
-                    # xMean.append(np.mean(xtrans))
-                    # yMean.append(np.mean(ytrans))
-                    # x_pos = xtrans
-                    # y_pos = ytrans
-                    # intTrack = intTrack - interval
-                    # x_axis.append(x_axis[len(x_axis)-1]+interval)
-                # xtrans, ytrans = self.driftTransformScatter(x_pos,y_pos,phase_x,phase_y, length = intTrack,plot = False)
-                # xUpdated.append(np.std(xtrans))
-                # yUpdated.append(np.std(ytrans))
-                # xMean.append(np.mean(xtrans))
-                # yMean.append(np.mean(ytrans))
-                # x_pos = xtrans
-                # y_pos = ytrans
-                # x_axis.append(x_axis[len(x_axis)-1]+intTrack)
-                matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = intTrack))
-                xUpdated.append(np.std(matrixVariables[:,0]))
-                yUpdated.append(np.std(matrixVariables[:,2]))
-                xMean.append(np.mean(matrixVariables[:,0]))
-                yMean.append(np.mean(matrixVariables[:,2]))
-                x_axis.append(x_axis[len(x_axis)-1]+intTrack)
-
+                    intTrack -= interval
+                    x_axis.append(x_axis[-1]+interval)
+                if intTrack > 0:
+                    matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = intTrack))
+                    xUpdated.append(np.std(matrixVariables[:,0]))
+                    yUpdated.append(np.std(matrixVariables[:,2]))
+                    xMean.append(np.mean(matrixVariables[:,0]))
+                    yMean.append(np.mean(matrixVariables[:,2]))
+                    x_axis.append(x_axis[-1]+intTrack)
             #Add more matrix multiplcation down here
             # if beamSegments[0][i] == 'QPF':
             #     qpfMatrice = self.getQPFmatrice()
 
         
-        print(xUpdated) #Testing
-        print(yUpdated) #Testing
-        print(x_axis) #Testing
+        # print(xUpdated) #Testing
+        # print(yUpdated) #Testing
+        # print(x_axis) #Testing
         fig, ax = plt.subplots()
         plt.plot(x_axis, xUpdated)
         plt.plot(x_axis, yUpdated)
         plt.plot(x_axis, xMean, color = 'red')
         plt.plot(x_axis, yMean, color = 'blue')
         ax.set_xticks(x_axis)
-        plt.xlim(0,x_axis[len(x_axis)-1] + x_axis[len(x_axis)-1]*0.10)
+        plt.xlim(0,x_axis[-1] + x_axis[-1]*0.10)
         ax.set_xticklabels(x_axis,rotation=45,ha='right')
         plt.tick_params(labelsize = 9)
         plt.xlabel("Distance from start of beam (mm??)")    # Change the units of xlabel?
