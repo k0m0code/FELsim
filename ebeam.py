@@ -1,6 +1,7 @@
 #   Authors: Niels Bidault, Christian Komo
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchanging with tuples, more efficient for calculations
@@ -10,6 +11,8 @@ import matplotlib.pyplot as plt
 #Replace manual multiplecation with matrice multiplcation
 #Use getDriftMatrice instead of drifttransform in plotbeampoisitiontransform
 #Same total pipe length but different interval should end with the same standard deviation
+#EACH BEAM OBJECT SHOULD REPRESENT A DIFFERENT SECTION OF THE BEAM??
+#add scrolling for less crowded graph
 class beam:
     def __init__(self, driftLength: float = 0, qpfLength: float = 0.0889, current: float = 0):
         self.E = 35  # Kinetic energy (MeV/c^2)
@@ -88,16 +91,16 @@ class beam:
 
         newMatrix = []
         for array in values:
-            tempArry = np.matmul(driftMatrice, array)
-            newMatrix.append(tempArry.tolist())
+            tempArray = np.matmul(driftMatrice, array)
+            newMatrix.append(tempArray.tolist())
         return newMatrix #  return 2d list
     
     '''
-    performs a single transformation to a 1x6 variable matrice
+    performs a transformation to a 2d np array made of 1x6 variable matrices
 
-    variables: np.array(list[int])
+    values: np.array([list[int],...])
     '''
-    def getQPFmatrice(self, variables, length = -1, current = -1):
+    def getQPFmatrice(self, values, length = -1, current = -1):
         if length == -1:
             length = self.qpfLength
         if current == -1:
@@ -107,12 +110,16 @@ class beam:
 
         qpfMatrice = np.array([[np.cos(theta),(np.sin(theta)/np.sqrt(current)),0,0,0,0],
                                [(-(np.sqrt(current)))*(np.sin(theta)),np.cos(theta),0,0,0,0],
-                               [0,0,np.cosh(theta),(np.cosh(theta))/(np.sqrt(current)),0,0],
+                               [0,0,np.cosh(theta),(np.sinh(theta))/(np.sqrt(current)),0,0],
                                [0,0,np.sqrt(current)*np.sinh(theta),np.cosh(theta),0,0],
                                [0,0,0,0,1,length/(gamma**2)],
                                [0,0,0,0,0,1]])
-        transArr = np.matmul(qpfMatrice, variables)
-        return transArr
+        
+        newMatrix = []
+        for array in values:
+            tempArray = np.matmul(qpfMatrice, array)
+            newMatrix.append(tempArray.tolist())
+        return newMatrix
     
     #integrate getDriftMatrice within this function or get rid of getDriftMatrice altogether
     # Can length variable be negative?
@@ -155,8 +162,8 @@ class beam:
         x_axis = [0]
 
         for i in range(len(beamSegments[0])):
+            intTrack = beamSegments[1][i]
             if beamSegments[0][i] == "drift":
-                intTrack = beamSegments[1][i]
                 while intTrack >= interval:
                     matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = interval))
                     xUpdated.append(np.std(matrixVariables[:,0]))
@@ -172,11 +179,23 @@ class beam:
                     xMean.append(np.mean(matrixVariables[:,0]))
                     yMean.append(np.mean(matrixVariables[:,2]))
                     x_axis.append(x_axis[-1]+intTrack)
-            #Add more matrix multiplcation down here
-            # if beamSegments[0][i] == 'QPF':
-            #     qpfMatrice = self.getQPFmatrice()
-
-        
+            if beamSegments[0][i] == 'QPF':
+                while intTrack >= interval:
+                    matrixVariables = np.array(self.getQPFmatrice(matrixVariables, length = interval, current = 10)) #test current value
+                    xUpdated.append(np.std(matrixVariables[:,0]))
+                    yUpdated.append(np.std(matrixVariables[:,2]))
+                    xMean.append(np.mean(matrixVariables[:,0]))
+                    yMean.append(np.mean(matrixVariables[:,2]))
+                    intTrack -= interval
+                    x_axis.append(x_axis[-1]+interval)
+                if intTrack > 0:
+                    matrixVariables = np.array(self.getQPFmatrice(matrixVariables, length = intTrack, current = 10)) #test current value
+                    xUpdated.append(np.std(matrixVariables[:,0]))
+                    yUpdated.append(np.std(matrixVariables[:,2]))
+                    xMean.append(np.mean(matrixVariables[:,0]))
+                    yMean.append(np.mean(matrixVariables[:,2]))
+                    x_axis.append(x_axis[-1]+intTrack)
+            # Add more matrix multiplcation below
         # print(xUpdated) #Testing
         # print(yUpdated) #Testing
         # print(x_axis) #Testing
@@ -192,4 +211,3 @@ class beam:
         plt.xlabel("Distance from start of beam (mm??)")    # Change the units of xlabel?
         plt.ylabel("Standard deviation (mm??)") # Change the units of ylabel?
         plt.show()        
-
