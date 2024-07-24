@@ -2,6 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
+import csv
+import datetime
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchanging with tuples, more efficient for calculations
@@ -11,16 +13,24 @@ from matplotlib.widgets import Slider
 #Replace manual multiplecation with matrice multiplcation
 #Use getDriftMatrice instead of drifttransform in plotbeampoisitiontransform
 #Same total pipe length but different interval should end with the same standard deviation
-#EACH BEAM OBJECT SHOULD REPRESENT A DIFFERENT SECTION OF THE BEAM??
-#add scrolling for less crowded graph
+#EACH BEAMLINE OBJECT SHOULD REPRESENT A DIFFERENT SECTION OF THE BEAM??
+
+
+
 class beam:
-    def __init__(self, driftLength: float = 0, qpfLength: float = 0.0889, current: float = 0):
+    def __init__(self, driftLength: float = 0, qpfLength: float = 88.9, current: float = 0):
         self.E = 35  # Kinetic energy (MeV/c^2)
         self.E0 = 0.51099
         self.current = current
         self.driftLength = driftLength
         self.qpfLength = qpfLength
 
+    def csvWriteData(self, name, distance, std_x, std_y, mean_x, mean_y):
+        with open(name, 'a', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            if csvfile.tell() == 0:
+                csvwriter.writerow(['distance (mm)','x position standard deviaton (mm)', 'y position standard deviation (mm)', 'x position mean (mm)', 'y position mean (mm)'])
+            csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
 
     # Ensure ellipse_polar has 'self' as the first parameter
     def ellipse_polar(self, t, a, b):
@@ -146,7 +156,6 @@ class beam:
 
         return x_transform, y_transform
 
-
     '''
     matrixvairables: list[float][float]
     2d numpy array containing initial condiitons
@@ -154,12 +163,13 @@ class beam:
     beamSegmeents: list[str][float]
     2d numpy array or 2D list containing 1. the type of "medium" beam passes through 2. the length of each medium matching with its index
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1, saveData = False):
         xUpdated = [np.std(matrixVariables[:, 0])]
         yUpdated = [np.std(matrixVariables[:, 2])]
         xMean = [np.mean(matrixVariables[:, 0])]
         yMean = [np.mean(matrixVariables[:, 2])]
         x_axis = [0]
+        xaxisMax = sum(beamSegments[1])
 
         for i in range(len(beamSegments[0])):
             intTrack = beamSegments[1][i]
@@ -171,43 +181,59 @@ class beam:
                     xMean.append(np.mean(matrixVariables[:,0]))
                     yMean.append(np.mean(matrixVariables[:,2]))
                     intTrack -= interval
-                    x_axis.append(x_axis[-1]+interval)
+                    x_axis.append(round(x_axis[-1]+interval, 3))
                 if intTrack > 0:
                     matrixVariables = np.array(self.getDriftMatrice(matrixVariables, length = intTrack))
                     xUpdated.append(np.std(matrixVariables[:,0]))
                     yUpdated.append(np.std(matrixVariables[:,2]))
                     xMean.append(np.mean(matrixVariables[:,0]))
                     yMean.append(np.mean(matrixVariables[:,2]))
-                    x_axis.append(x_axis[-1]+intTrack)
+                    x_axis.append(round(x_axis[-1]+intTrack, 3))
             if beamSegments[0][i] == 'QPF':
                 while intTrack >= interval:
-                    matrixVariables = np.array(self.getQPFmatrice(matrixVariables, length = interval, current = 10)) #test current value
+                    matrixVariables = np.array(self.getQPFmatrice(matrixVariables, length = interval, current = 0.0001)) #test current value
                     xUpdated.append(np.std(matrixVariables[:,0]))
                     yUpdated.append(np.std(matrixVariables[:,2]))
                     xMean.append(np.mean(matrixVariables[:,0]))
                     yMean.append(np.mean(matrixVariables[:,2]))
                     intTrack -= interval
-                    x_axis.append(x_axis[-1]+interval)
+                    x_axis.append(round(x_axis[-1]+interval, 3))
                 if intTrack > 0:
-                    matrixVariables = np.array(self.getQPFmatrice(matrixVariables, length = intTrack, current = 10)) #test current value
+                    matrixVariables = np.array(self.getQPFmatrice(matrixVariables, length = intTrack, current = 0.0001)) #test current value
                     xUpdated.append(np.std(matrixVariables[:,0]))
                     yUpdated.append(np.std(matrixVariables[:,2]))
                     xMean.append(np.mean(matrixVariables[:,0]))
                     yMean.append(np.mean(matrixVariables[:,2]))
-                    x_axis.append(x_axis[-1]+intTrack)
+                    x_axis.append(round(x_axis[-1]+intTrack, 3))
             # Add more matrix multiplcation below
-        # print(xUpdated) #Testing
-        # print(yUpdated) #Testing
-        # print(x_axis) #Testing
+
+        if saveData:
+            name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
+            for i in range(len(x_axis)):
+                self.csvWriteData(name, x_axis[i], xUpdated[i], yUpdated[i], xMean[i], yMean[i])
+
         fig, ax = plt.subplots()
         plt.plot(x_axis, xUpdated)
         plt.plot(x_axis, yUpdated)
         plt.plot(x_axis, xMean, color = 'red')
         plt.plot(x_axis, yMean, color = 'blue')
+        plt.subplots_adjust(bottom=0.25)
         ax.set_xticks(x_axis)
         plt.xlim(0,x_axis[-1] + x_axis[-1]*0.10)
         ax.set_xticklabels(x_axis,rotation=45,ha='right')
         plt.tick_params(labelsize = 9)
-        plt.xlabel("Distance from start of beam (mm??)")    # Change the units of xlabel?
-        plt.ylabel("Standard deviation (mm??)") # Change the units of ylabel?
-        plt.show()        
+        plt.xlabel("Distance from start of beam (mm)")
+        plt.ylabel("Standard deviation (mm)")
+        plt.xlim(0, xaxisMax*0.2)
+        scrollax = plt.axes([0.1,0.02,0.8,0.06], facecolor = 'lightgoldenrodyellow')
+        scrollbar = Slider(scrollax, 'scroll', 0, 100, valinit = 0, valstep=1)
+
+        def update_scroll(val):
+            pos = scrollbar.val
+            ax.set_xlim((pos/125)*xaxisMax, (pos/125)*xaxisMax + xaxisMax*(0.2))
+            fig.canvas.draw_idle()
+
+        scrollbar.on_changed(update_scroll)
+        
+        plt.tight_layout()
+        plt.show()
