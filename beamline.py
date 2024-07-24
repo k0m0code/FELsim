@@ -1,3 +1,5 @@
+#   Authors: Christian Komo, Niels Bidault
+
 import pandas as pd
 import numpy as np
 
@@ -13,7 +15,13 @@ class lattice:
         self.E = 35  # Kinetic energy (MeV/c^2)
         self.E0 = 0.51099
         self.length = length
+        self.QE = 1.60217663e-19  #C
+        self.ME = 9.1093837e-31  #kg
+        self.C = 299792458  #m/s
+        self.G = 0.02694  #Quadruple focusing strength (T/A)
+
         self.gamma = (1 + (self.E/self.E0))
+        self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
     
     def get_matrix(self, identifier):
@@ -96,9 +104,10 @@ class driftLattice(lattice):
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
     #values = np.array([[x, x', y, y', z, z'],...])
     #Note: 1x6 array is multiplied correctly with 6x6 array
-    def getDriftMatrice(self, values, length = -1):
+    def useDriftMatrice(self, values, length = -1):
         if length == -1:
             length = self.length
+
 
         matrice = (np.array([[1, length, 0, 0, 0, 0],
                                  [0, 1, 0, 0, 0, 0],
@@ -106,6 +115,7 @@ class driftLattice(lattice):
                                  [0, 0, 0, 1, 0, 0],
                                  [0, 0, 0, 0, 1, (length/((self.gamma)**2))],
                                  [0, 0, 0, 0, 0, 1]]))
+        
         newMatrix = []
         for array in values:
             tempArray = np.matmul(matrice, array)
@@ -115,33 +125,29 @@ class driftLattice(lattice):
 
 
 
-
-
 class qpfLattice(lattice):
     def __init__(self, length: float = -1, current: float = 0):
-        self.current = current
-        self.theta = np.sqrt(self.current)*length
         if length == -1:
             super().__init__(length = 88.9)
         else:
             super().__init__(length = length)
-
+        self.k = 1e-6*((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma))
+        self.theta = np.sqrt(self.k)*self.length
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
     values: np.array([list[int],...])
     '''
-    def getQPFmatrice(self, values, length = -1):
+    def useQPFmatrice(self, values, length = -1):
         if length == -1:
             length = self.length
         
-        matrice = (np.array([[np.cos(self.theta),(np.sin(self.theta)/np.sqrt(self.current)),0,0,0,0],
-                               [(-(np.sqrt(self.current)))*(np.sin(self.theta)),np.cos(self.theta),0,0,0,0],
-                               [0,0,np.cosh(self.theta),(np.sinh(self.theta))/(np.sqrt(self.current)),0,0],
-                               [0,0,np.sqrt(self.current)*np.sinh(self.theta),np.cosh(self.theta),0,0],
+        matrice = (np.array([[np.cos(self.theta),(np.sin(self.theta)/np.sqrt(self.k)),0,0,0,0],
+                               [(-(np.sqrt(self.k)))*(np.sin(self.theta)),np.cos(self.theta),0,0,0,0],
+                               [0,0,np.cosh(self.theta),(np.sinh(self.theta))/(np.sqrt(self.k)),0,0],
+                               [0,0,np.sqrt(self.k)*np.sinh(self.theta),np.cosh(self.theta),0,0],
                                [0,0,0,0,1,length/((self.gamma)**2)],
                                [0,0,0,0,0,1]]))
-        
         newMatrix = []
         for array in values:
             tempArray = np.matmul(matrice, array)
