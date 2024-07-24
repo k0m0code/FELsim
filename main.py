@@ -23,6 +23,6 @@ ebeam = beam()
 # print(driftMatrice)
 # print(np.matmul(driftMatrice,list1))
 
-list = ebeam.gen_6d_gaussian(0,random.randint(1,30), 100)
-beamline = [["drift","drift",'drift','drift'],[1,1,3,5]]
+list = ebeam.gen_6d_gaussian(0,random.randint(1,30), 1000)
+beamline = [["drift","QPF",'drift'],[5,0.0899, 2]]
 ebeam.plotBeamPositionTransform(list,beamline)
