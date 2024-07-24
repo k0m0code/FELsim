@@ -21,6 +21,12 @@ class beam:
     def __init__(self, driftLength: float = 0, qpfLength: float = 88.9, current: float = 0):
         self.E = 35  # Kinetic energy (MeV/c^2)
         self.E0 = 0.51099
+
+        self.QE = 1.60217663e-19  #C
+        self.ME = 9.1093837e-31  #kg
+        self.C = 299792458  #m/s
+        self.G = 0.02694  #Quadruple focusing strength (T/A)
+
         self.current = current
         self.driftLength = driftLength
         self.qpfLength = qpfLength
@@ -212,6 +218,12 @@ class beam:
             for i in range(len(x_axis)):
                 self.csvWriteData(name, x_axis[i], xUpdated[i], yUpdated[i], xMean[i], yMean[i])
 
+
+        print(x_axis)
+        print(xUpdated)
+        print(yUpdated)
+
+        
         fig, ax = plt.subplots()
         plt.plot(x_axis, xUpdated)
         plt.plot(x_axis, yUpdated)
