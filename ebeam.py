@@ -30,8 +30,14 @@ class beam:
         return tuple(std_devs)
 
     # Add 'self' to the method and use self.ellipse_polar to access the ellipse_polar method
-    def plot_6d(self, position_x_values: list[int], position_y_values: list[int], phase_x_values: list[int], phase_y_values: list[int],
-                energy_values: list[int], time_values: list[int]):
+    def plot_6d(self, values):
+        
+        position_x_values = values[:, 0]
+        phase_x_values = values[:, 1]
+        position_y_values = values[:, 2]
+        phase_y_values = values[:, 3]
+        energy_values = values[:, 4]
+        time_values = values[:, 5]
         
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
@@ -67,3 +73,4 @@ class beam:
 
         plt.tight_layout()
         plt.show()
+    
