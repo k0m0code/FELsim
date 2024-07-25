@@ -6,6 +6,7 @@ import matplotlib.patches as patches
 import csv
 import numpy as np
 from beamline import *
+from ebeam import beam
 import datetime
 from matplotlib.widgets import Slider
 
@@ -21,7 +22,6 @@ class draw_beamline:
         self.element_color = 'blue'
 
 
-
     def csvWriteData(self, name, distance, std_x, std_y, mean_x, mean_y):
         with open(name, 'a', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
@@ -29,7 +29,13 @@ class draw_beamline:
                 csvwriter.writerow(['distance (mm)','x position standard deviaton (mm)', 'y position standard deviation (mm)', 'x position mean (mm)', 'y position mean (mm)'])
             csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
 
-
+    def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
+        xStd.append(np.std(matrixVariables[:,0]))
+        yStd.append(np.std(matrixVariables[:,2]))
+        xMean.append(np.mean(matrixVariables[:,0]))
+        yMean.append(np.mean(matrixVariables[:,2]))
+        x_axis.append(round(x_axis[-1]+interval, 3))
+        return xStd, yStd, xMean, yMean, x_axis, matrixVariables
     '''
     matrixvairables: list[float][float]
     2d numpy array containing initial condiitons
@@ -37,9 +43,9 @@ class draw_beamline:
     beamSegmeents: list[beamline]
     numpy array/list containing beamline objects which make up the beam
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1, saveData = False):
-        xUpdated = [np.std(matrixVariables[:, 0])]
-        yUpdated = [np.std(matrixVariables[:, 2])]
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1, saveData = False, plot_z = None):
+        xStd = [np.std(matrixVariables[:, 0])]
+        yStd = [np.std(matrixVariables[:, 2])]
         xMean = [np.mean(matrixVariables[:, 0])]
         yMean = [np.mean(matrixVariables[:, 2])]
         x_axis = [0]
@@ -48,54 +54,43 @@ class draw_beamline:
         for i in range(len(beamSegments)):
             intTrack = beamSegments[i].length
             xaxisMax += intTrack
-            if isinstance(beamSegments[i], driftLattice):
-                while intTrack >= interval:
-                    matrixVariables = np.array(beamSegments[i].useDriftMatrice(matrixVariables, length = interval))
-                    xUpdated.append(np.std(matrixVariables[:,0]))
-                    yUpdated.append(np.std(matrixVariables[:,2]))
-                    xMean.append(np.mean(matrixVariables[:,0]))
-                    yMean.append(np.mean(matrixVariables[:,2]))
-                    intTrack -= interval
-                    x_axis.append(round(x_axis[-1]+interval, 3))
-                if intTrack > 0:
-                    matrixVariables = np.array(beamSegments[i].useDriftMatrice(matrixVariables, length = intTrack))
-                    xUpdated.append(np.std(matrixVariables[:,0]))
-                    yUpdated.append(np.std(matrixVariables[:,2]))
-                    xMean.append(np.mean(matrixVariables[:,0]))
-                    yMean.append(np.mean(matrixVariables[:,2]))
-                    x_axis.append(round(x_axis[-1]+intTrack, 3))
 
-            if isinstance(beamSegments[i], qpfLattice):
+            if (not((xaxisMax - intTrack) < plot_z < xaxisMax)):
                 while intTrack >= interval:
-                    matrixVariables = np.array(beamSegments[i].useQPFmatrice(matrixVariables, length = interval))
-                    xUpdated.append(np.std(matrixVariables[:,0]))
-                    yUpdated.append(np.std(matrixVariables[:,2]))
-                    xMean.append(np.mean(matrixVariables[:,0]))
-                    yMean.append(np.mean(matrixVariables[:,2]))
+                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
+                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
                     intTrack -= interval
-                    x_axis.append(round(x_axis[-1]+interval, 3))
                 if intTrack > 0:
-                    matrixVariables = np.array(beamSegments[i].useQPFmatrice(matrixVariables, length = intTrack))
-                    xUpdated.append(np.std(matrixVariables[:,0]))
-                    yUpdated.append(np.std(matrixVariables[:,2]))
-                    xMean.append(np.mean(matrixVariables[:,0]))
-                    yMean.append(np.mean(matrixVariables[:,2]))
-                    x_axis.append(round(x_axis[-1]+intTrack, 3))
-            # Add more matrix multiplcation below
+                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
+                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
+            else:
+                sixDarry = np.array(beamSegments[i].useMatrice(matrixVariables, length = (plot_z-(xaxisMax-intTrack))))
+                ebeam = beam()
+                ebeam.plot_6d(sixDarry)
+
+                while intTrack >= interval:
+                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
+                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
+                    intTrack -= interval
+                if intTrack > 0:
+                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
+                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
 
         if saveData:
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
             for i in range(len(x_axis)):
-                self.csvWriteData(name, x_axis[i], xUpdated[i], yUpdated[i], xMean[i], yMean[i])
+                self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
 
         # print(x_axis)
-        # print(xUpdated)
-        # print(yUpdated)
+        # print(xStd)
+        # print yStd)
+
         fig, ax = plt.subplots()
-        plt.plot(x_axis, xUpdated)
-        plt.plot(x_axis, yUpdated)
-        plt.plot(x_axis, xMean, color = 'red')
-        plt.plot(x_axis, yMean, color = 'blue')
+        plt.plot(x_axis, xStd, label = 'x position std')
+        plt.plot(x_axis, yStd, label = "y position std")
+        plt.plot(x_axis, xMean, color = 'red', label = 'x position mean')
+        plt.plot(x_axis, yMean, color = 'blue', label = 'y position mean')
+
         plt.subplots_adjust(bottom=0.25)
         ax.set_xticks(x_axis)
         plt.xlim(0,x_axis[-1] + x_axis[-1]*0.10)
@@ -104,19 +99,21 @@ class draw_beamline:
         plt.xlabel("Distance from start of beam (mm)")
         plt.ylabel("Standard deviation (mm)")
         plt.xlim(0, xaxisMax*0.2)
+        plt.legend()
+
         scrollax = plt.axes([0.1,0.02,0.8,0.06], facecolor = 'lightgoldenrodyellow')
         scrollbar = Slider(scrollax, 'scroll', 0, 100, valinit = 0, valstep=1)
-
         def update_scroll(val):
             pos = scrollbar.val
             ax.set_xlim((pos/125)*xaxisMax, (pos/125)*xaxisMax + xaxisMax*(0.2))
             fig.canvas.draw_idle()
-
         scrollbar.on_changed(update_scroll)
         
         plt.tight_layout()
         plt.show()
 
+
+    
 
 
 
