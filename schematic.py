@@ -1,4 +1,3 @@
-#   chematic.py
 #   Authors: Christian Komo, Niels Bidault
 
 import matplotlib.pyplot as plt
@@ -29,21 +28,36 @@ class draw_beamline:
                 csvwriter.writerow(['distance (mm)','x position standard deviaton (mm)', 'y position standard deviation (mm)', 'x position mean (mm)', 'y position mean (mm)'])
             csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
 
+
+    '''
+    Class function to append updated values to five different arrays
+    '''
     def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
         xStd.append(np.std(matrixVariables[:,0]))
         yStd.append(np.std(matrixVariables[:,2]))
         xMean.append(np.mean(matrixVariables[:,0]))
         yMean.append(np.mean(matrixVariables[:,2]))
         x_axis.append(round(x_axis[-1]+interval, 3))
-        return xStd, yStd, xMean, yMean, x_axis, matrixVariables
+        return xStd, yStd, xMean, yMean, x_axis
+
     '''
-    matrixvairables: list[float][float]
-    2d numpy array containing initial condiitons
+    matrixvairables: np.array(list[float][float])
+    A 6r x 10c 2d numpy array containing initial values of each electron's measurements
 
     beamSegmeents: list[beamline]
-    numpy array/list containing beamline objects which make up the beam
+    numpy array/list containing beamline objects which represent the beam
+
+    interval: float
+    arbitrary number specifying interval for graph to take measurements at
+
+    plot_z: float
+    arbitrary number specifying point in beamline to plot values in 6D
+
+    saveData: boolean
+    boolean value specifying whether to save data into a csv file or not
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1, saveData = False, plot_z = None):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, plot_z = -1, saveData = False):
+        #  Initialize values
         xStd = [np.std(matrixVariables[:, 0])]
         yStd = [np.std(matrixVariables[:, 2])]
         xMean = [np.mean(matrixVariables[:, 0])]
@@ -51,39 +65,34 @@ class draw_beamline:
         x_axis = [0]
         xaxisMax = 0
 
+        #  Loop through each beamline object in beamSegments array
         for i in range(len(beamSegments)):
             intTrack = beamSegments[i].length
             xaxisMax += intTrack
 
-            if (not((xaxisMax - intTrack) < plot_z < xaxisMax)):
-                while intTrack >= interval:
-                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
-                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
-                    intTrack -= interval
-                if intTrack > 0:
-                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
-                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
-            else:
+            #  Check if our z point is within the interval of our beamline object
+            if ((xaxisMax - intTrack) < plot_z <= xaxisMax):
                 sixDarry = np.array(beamSegments[i].useMatrice(matrixVariables, length = (plot_z-(xaxisMax-intTrack))))
                 ebeam = beam()
                 ebeam.plot_6d(sixDarry)
 
-                while intTrack >= interval:
-                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
-                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
-                    intTrack -= interval
-                if intTrack > 0:
-                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
-                    xStd, yStd, xMean, yMean, x_axis, matrixVariables = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
+            #  Make calculations to plot later on
+            while intTrack >= interval:
+                matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
+                xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
+                intTrack -= interval
+            if intTrack > 0:
+                matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
+                xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
 
         if saveData:
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
             for i in range(len(x_axis)):
                 self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
 
-        # print(x_axis)
-        # print(xStd)
-        # print yStd)
+        # print("x: \n" + str(x_axis))
+        # print("xstd: \n" + str(xStd))
+        # print ("ystd: \n" + str(yStd))
 
         fig, ax = plt.subplots()
         plt.plot(x_axis, xStd, label = 'x position std')
@@ -98,7 +107,7 @@ class draw_beamline:
         plt.tick_params(labelsize = 9)
         plt.xlabel("Distance from start of beam (mm)")
         plt.ylabel("Standard deviation (mm)")
-        plt.xlim(0, xaxisMax*0.2)
+        plt.xlim(0, xaxisMax*0.20)
         plt.legend()
 
         scrollax = plt.axes([0.1,0.02,0.8,0.06], facecolor = 'lightgoldenrodyellow')
