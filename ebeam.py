@@ -30,7 +30,7 @@ class beam:
         return tuple(std_devs)
 
     # Add 'self' to the method and use self.ellipse_polar to access the ellipse_polar method
-    def plot_6d(self, values):
+    def plot_6d(self, values, title):
         
         position_x_values = values[:, 0]
         phase_x_values = values[:, 1]
@@ -71,6 +71,7 @@ class beam:
             ax.set_ylabel(ylabel)
             ax.grid(True)
 
+        plt.suptitle(title)
         plt.tight_layout()
         plt.show()
     
