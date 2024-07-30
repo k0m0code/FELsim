@@ -8,8 +8,8 @@ from beamline import *
 from ebeam import beam
 import datetime
 from matplotlib.widgets import Slider
+from scipy.stats import norm
 
-#Add legend for graphs 
 #Same total pipe length but different interval should end with the same standard deviation
 
 class draw_beamline:
@@ -50,13 +50,13 @@ class draw_beamline:
     interval: float
     arbitrary number specifying interval for graph to take measurements at
 
-    plot_z: float
-    arbitrary number specifying point in beamline to plot values in 6D
+    plot_z: tuple(float)
+    tuple of numbered points in the beam on where to plot 6D
 
     saveData: boolean
     boolean value specifying whether to save data into a csv file or not
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, plot_z = -1, saveData = False):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, plot_z = (), saveData = False):
         #  Initialize values
         xStd = [np.std(matrixVariables[:, 0])]
         yStd = [np.std(matrixVariables[:, 2])]
@@ -71,10 +71,11 @@ class draw_beamline:
             xaxisMax += intTrack
 
             #  Check if our z point is within the interval of our beamline object
-            if ((xaxisMax - intTrack) < plot_z <= xaxisMax):
-                sixDarry = np.array(beamSegments[i].useMatrice(matrixVariables, length = (plot_z-(xaxisMax-intTrack))))
-                ebeam = beam()
-                ebeam.plot_6d(sixDarry)
+            for ii in plot_z:
+                if ((xaxisMax - intTrack) < ii <= xaxisMax):
+                    sixDarry = np.array(beamSegments[i].useMatrice(matrixVariables, length = (ii-(xaxisMax-intTrack))))
+                    ebeam = beam()
+                    ebeam.plot_6d(sixDarry, "6D plot of beam at " + str(ii) + " mm")
 
             #  Make calculations to plot later on
             while intTrack >= interval:
@@ -118,6 +119,7 @@ class draw_beamline:
             fig.canvas.draw_idle()
         scrollbar.on_changed(update_scroll)
         
+        plt.suptitle("Beamline Simulation")
         plt.tight_layout()
         plt.show()
 
@@ -157,9 +159,13 @@ class draw_beamline:
 
 
 
-    #integrate getDriftMatrice within this function or get rid of getDriftMatrice altogether
     # Can length variable be negative?
-    def driftTransformScatter(self, x_pos: list[int], y_pos: list[int], phase_x: list[int], phase_y: list[int], length, plot = True):
+    def driftTransformScatter(self, values, length, plot = True):
+
+        x_pos = values[:, 0]
+        phase_x = values[:, 1]
+        y_pos = values[:, 2]
+        phase_y = values[:, 3]
         x_transform = []
         y_transform = []
 
@@ -170,11 +176,12 @@ class draw_beamline:
 
         if plot:
             fig, ax = plt.subplots()
-            ax.scatter(x_pos,y_pos, c = 'blue', s=15, alpha=0.7)
-            ax.scatter(x_transform, y_transform, c = 'green', s=15, alpha=0.7)
+            ax.scatter(x_pos,y_pos, c = 'blue', s=15, alpha=0.7, label = "Initial values")
+            ax.scatter(x_transform, y_transform, c = 'green', s=15, alpha=0.7, label = "Transformed values")
             ax.set_xlabel('Position x (mm)')
             ax.set_ylabel('Position y (mm)')
             plt.legend(loc = 'upper right')
+            plt.suptitle("Drift Transformation over " + str(length) + " mm")
             plt.tight_layout()
             plt.show()
 
