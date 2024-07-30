@@ -10,7 +10,7 @@ import datetime
 from matplotlib.widgets import Slider
 from scipy.stats import norm
 
-#Same total pipe length but different interval should end with the same standard deviation
+#Same total pipe length but different interval should end with the same standard deviation (PROBLEMS WITH QPF AND QPD FUNC)
 
 class draw_beamline:
     def __init__(self):
