@@ -13,15 +13,13 @@ class lattice:
         self.positions = pd.DataFrame()  # DataFrame for numerical columns
         self.descriptions = []  # List of descriptions from the sixth column
         self.ch = []  # List (array) of channel numbers from the last column
-
         self.E = E  # Kinetic energy (MeV/c^2)
         self.E0 = 0.51099
-        self.length = length
         self.QE = 1.60217663e-19  #C
         self.ME = 9.1093837e-31  #kg
         self.C = 299792458  #m/s
         self.G = 0.02694  #Quadruple focusing strength (T/A)
-
+        self.length = length
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
@@ -30,18 +28,14 @@ class lattice:
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
-
     def useMatrice(self, values, matrice, length = -1):
         if length == -1:
             length = self.length
-
         newMatrix = []
         for array in values:
             tempArray = np.matmul(matrice, array)
             newMatrix.append(tempArray.tolist())
         return newMatrix #  return 2d list
-
-
 
     def get_matrix(self, identifier):
         # Split the identifier by dots and extract the middle part
@@ -126,29 +120,12 @@ class driftLattice(lattice):
     #values = np.array([[x, x', y, y', z, z'],...])
     #Note: 1x6 array is multiplied correctly with 6x6 array
     def useMatrice(self, values, length = -1):
-        super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
+        return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
                                  [0, 1, 0, 0, 0, 0],
                                  [0, 0, 1, length, 0, 0],
                                  [0, 0, 0, 1, 0, 0],
                                  [0, 0, 0, 0, 1, (length/((self.gamma)**2))],
                                  [0, 0, 0, 0, 0, 1]])), length)
-
-        # if length == -1:
-        #     length = self.length
-
-
-        # matrice = (np.array([[1, length, 0, 0, 0, 0],
-        #                          [0, 1, 0, 0, 0, 0],
-        #                          [0, 0, 1, length, 0, 0],
-        #                          [0, 0, 0, 1, 0, 0],
-        #                          [0, 0, 0, 0, 1, (length/((self.gamma)**2))],
-        #                          [0, 0, 0, 0, 0, 1]]))
-        
-        # newMatrix = []
-        # for array in values:
-        #     tempArray = np.matmul(matrice, array)
-        #     newMatrix.append(tempArray.tolist())
-        # return newMatrix #  return 2d list
 
     def __str__(self):
         return f"Drift beamline segment {self.length} mm long"
@@ -164,35 +141,21 @@ class qpfLattice(lattice):
     values: np.array([list[int],...])
     '''
     def useMatrice(self, values, length = -1):
-        
-        # if length == -1:
-        #     length = self.length
-        
         self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(length*self.ME*self.C*self.beta*self.gamma)))
         self.theta = np.sqrt(self.k)*length
 
-        super().useMatrice(values,(np.array([  [np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0, 0, 0],
+        return super().useMatrice(values,(np.array([  [np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0, 0, 0],
                                [(-(np.sqrt(self.k)))*(np.sin(self.theta)), np.cos(self.theta), 0, 0, 0, 0],
                                [0, 0, np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0],
                                [0, 0, np.sqrt(self.k)*np.sinh(self.theta), np.cosh(self.theta), 0, 0],
                                [0, 0, 0, 0, 1, length/((self.gamma)**2)],
                                [0, 0, 0, 0, 0, 1]])), length)
-
-        # matrice = (np.array([  [np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0, 0, 0],
-        #                        [(-(np.sqrt(self.k)))*(np.sin(self.theta)), np.cos(self.theta), 0, 0, 0, 0],
-        #                        [0, 0, np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0],
-        #                        [0, 0, np.sqrt(self.k)*np.sinh(self.theta), np.cosh(self.theta), 0, 0],
-        #                        [0, 0, 0, 0, 1, length/((self.gamma)**2)],
-        #                        [0, 0, 0, 0, 0, 1]]))
-        # newMatrix = []
-        # for array in values:
-        #     tempArray = np.matmul(matrice, array)
-        #     newMatrix.append(tempArray.tolist())
-        # return newMatrix
     
     def __str__(self):
         return f"QPF beamline segment {self.length} mm long"
     
+
+
 
 class qpdLattice(lattice):
     def __init__(self, length: float = 88.9, current: float = 0):
@@ -200,30 +163,15 @@ class qpdLattice(lattice):
         self.current = current # Amps
 
     def useMatrice(self, values, length = -1):
-        # if length == -1:
-        #     length = self.length
-        
         self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(length*self.ME*self.C*self.beta*self.gamma)))
         self.theta = np.sqrt(self.k)*length
 
-        super().useMatrice(values, (np.array([  [np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0, 0, 0],
+        return super().useMatrice(values, (np.array([  [np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0, 0, 0],
                                [np.sqrt(self.k)*np.sinh(self.theta), np.cosh(self.theta), 0, 0, 0, 0],
                                [0, 0, np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0],
                                [0, 0, (-(np.sqrt(self.k)))*(np.sin(self.theta)), np.cos(self.theta), 0, 0],
                                [0, 0, 0, 0, 1, length/((self.gamma)**2)],
                                [0, 0, 0, 0, 0, 1]])), length)
 
-        # matrice = (np.array([  [np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0, 0, 0],
-        #                        [np.sqrt(self.k)*np.sinh(self.theta), np.cosh(self.theta), 0, 0, 0, 0],
-        #                        [0, 0, np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0],
-        #                        [0, 0, (-(np.sqrt(self.k)))*(np.sin(self.theta)), np.cos(self.theta), 0, 0],
-        #                        [0, 0, 0, 0, 1, length/((self.gamma)**2)],
-        #                        [0, 0, 0, 0, 0, 1]]))
-        # newMatrix = []
-        # for array in values:
-        #     tempArray = np.matmul(matrice, array)
-        #     newMatrix.append(tempArray.tolist())
-        # return newMatrix
-    
     def __str__(self):
         return f"QPD beamline segment {self.length} mm long"
