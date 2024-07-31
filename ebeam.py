@@ -22,12 +22,23 @@ class beam:
 
     x_sym, y_sym = sp.symbols('x_sym y_sym')
 
-    def ellipse_sym(self, x_sym, y_sym, xc, yc, twiss_axis):
-        emittance = twiss_axis[r"$\epsilon$ ($\pi$.mm.mrad)"]
+    def ellipse_sym(self, xc, yc, twiss_axis, n=1, num_pts=40):
+        emittance = n * twiss_axis[r"$\epsilon$ ($\pi$.mm.mrad)"]
         alpha = twiss_axis[r"$\alpha$"]
         beta = twiss_axis[r"$\beta$ (m)"]
         gamma = twiss_axis[r"$\gamma$ (rad/m)"]
-        return gamma * (x_sym - xc)** 2 + 2 * alpha * (x_sym - xc) * (y_sym - yc) + beta * (y_sym - yc) ** 2 - emittance
+
+        x_max = xc + np.sqrt(emittance / (gamma - alpha ** 2 / beta))
+        x_min = xc - np.sqrt(emittance / (gamma - alpha ** 2 / beta))
+        y_max = yc + np.sqrt(emittance / (beta - alpha ** 2 / gamma))
+        y_min = yc - np.sqrt(emittance / (beta - alpha ** 2 / gamma))
+
+        x_vals = np.linspace(x_min, x_max, num_pts)
+        y_vals = np.linspace(y_min, y_max, num_pts)
+        X, Y = np.meshgrid(x_vals, y_vals)
+        Z = gamma * (X - xc)** 2 + 2 * alpha * (X - xc) * (Y - yc) + beta * (Y - yc) ** 2 - emittance
+
+        return X, Y, Z
 
     def particles_in_ellipse(self):
         return
@@ -36,7 +47,7 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", "Phi (deg)"]
+        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", "$\phi$ (deg)"]
         label_axes =["x", "y", "z"]
         twiss = pd.DataFrame(columns=label_twiss)
         for i in range(3):
@@ -44,7 +55,7 @@ class beam:
             alpha = - dist_cov[2 * i, 2 * i + 1] / emittance
             beta = dist_cov[2 * i, 2 * i] / emittance
             gamma = dist_cov[2 * i + 1, 2 * i + 1] / emittance
-            phi = 180 / np.pi * np.arctan2(2 * alpha, gamma - beta) / 2
+            phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi
             tmp = pd.DataFrame([[emittance, alpha, beta, gamma, phi]], columns=label_twiss, index=[label_axes[i]])
             twiss = pd.concat([twiss, tmp])
         return dist_avg, dist_cov, twiss
@@ -58,7 +69,7 @@ class beam:
         import sympy as sp
         import numpy as np
 
-        num_pts = 40  # Used for implicit plot of the ellipse
+        num_pts = 60  # Used for implicit plot of the ellipse
         ddof = 1  # Unbiased Bessel correction for standard deviation calculation
 
         dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=ddof)
@@ -76,32 +87,13 @@ class beam:
             # Access Twiss parameters for the current axis
             twiss_axis = twiss.loc[axis]
 
-            # Define the ellipse equation using SymPy
-            ellipse_eq = self.ellipse_sym(x_sym, y_sym, dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis)
-
-            # Create a lambda function from the SymPy expression
-            ellipse_func = sp.lambdify((x_sym, y_sym), ellipse_eq, modules='numpy')
-
-            # Generate a grid of points
-            emittance = twiss_axis[r"$\epsilon$ ($\pi$.mm.mrad)"]
-            alpha = twiss_axis[r"$\alpha$"]
-            beta = twiss_axis[r"$\beta$ (m)"]
-            gamma = twiss_axis[r"$\gamma$ (rad/m)"]
-
-            x_max = dist_avg[2 * i] + np.sqrt(emittance / (gamma - alpha ** 2 / beta))
-            x_min = dist_avg[2 * i] - np.sqrt(emittance / (gamma - alpha ** 2 / beta))
-            y_max = dist_avg[2 * i + 1] + np.sqrt(emittance / (beta - alpha ** 2 / gamma))
-            y_min = dist_avg[2 * i + 1] - np.sqrt(emittance / (beta - alpha ** 2 / gamma))
-
-            x_vals = np.linspace(x_min, x_max, num_pts)
-            y_vals = np.linspace(y_min, y_max, num_pts)
-            X, Y = np.meshgrid(x_vals, y_vals)
-            Z = ellipse_func(X, Y)
-
             # Plot the contour where Z = 0 (the ellipse)
             ax = axes[i // 2, i % 2]
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
-            ax.contour(X, Y, Z, levels=[0], colors='black')
+            X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=1, num_pts=num_pts)
+            ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
+            X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
+            ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
 
             # Construct the text string from the Twiss parameters
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
