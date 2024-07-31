@@ -47,7 +47,7 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", "$\phi$ (deg)"]
+        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$\phi$ (deg)"]
         label_axes =["x", "y", "z"]
         twiss = pd.DataFrame(columns=label_twiss)
         for i in range(3):
