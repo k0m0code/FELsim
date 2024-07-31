@@ -37,12 +37,10 @@ class beam:
         y_vals = np.linspace(y_min, y_max, num_pts)
         X, Y = np.meshgrid(x_vals, y_vals)
         Z = gamma * (X - xc)** 2 + 2 * alpha * (X - xc) * (Y - yc) + beta * (Y - yc) ** 2 - emittance
-
+        
         return X, Y, Z
 
-    def particles_in_ellipse(self):
-        return
-
+    
     def cal_twiss(self, dist_6d, ddof=1):
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
@@ -64,10 +62,109 @@ class beam:
         particles = np.random.normal(mean, std_dev, size=(num_particles, 6))
         return particles
 
+    # def particles_in_ellipse(self, dist_6d, n = 1):
+    #     fig, axes = plt.subplots(2, 2)
+
+    #     dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=1)
+    #     for i, axis in enumerate(['x', 'y', 'z']):
+    #         ax = axes[i // 2, i % 2]
+    #         twiss_axis = twiss.loc[axis]
+    #         X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=n, num_pts=60)
+    #         ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
+    #         ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
+    #         # twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
+    #         # props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    #         # ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
+    #         #         verticalalignment='top', bbox=props)
+
+    #     plt.tight_layout()
+    #     plt.show()
+    #     return
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def is_within_ellipse(self, x, y, xc, yc, twiss_axis, n):
+        emittance = n * twiss_axis[r"$\epsilon$ ($\pi$.mm.mrad)"]
+        alpha = twiss_axis[r"$\alpha$"]
+        beta = twiss_axis[r"$\beta$ (m)"]
+        gamma = twiss_axis[r"$\gamma$ (rad/m)"]
+
+        # Calculate the ellipse equation
+        Z = gamma * (x - xc) ** 2 + 2 * alpha * (x - xc) * (y - yc) + beta * (y - yc) ** 2 - emittance
+        # print("Z: ")
+        # print(Z)
+        # Check if the point (x, y) is inside or on the ellipse
+        return Z <= 0
+
+
+    def particles_in_ellipse(self, dist_6d, n=1):
+        fig, axes = plt.subplots(2, 2)
+
+        dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=1)
+        count_within_ellipse = []  # List to store count of particles within ellipse for each axis
+
+        for i, axis in enumerate(['x', 'y', 'z']):
+            ax = axes[i // 2, i % 2]
+            twiss_axis = twiss.loc[axis]
+            X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=n, num_pts=60)
+            # print("Z1: ")
+            # print(Z)
+            # Plot particle points and ellipse contours
+            ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
+            ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
+
+            # Evaluate particles within ellipse
+            num_within_ellipse = 0          #PROGRAM RECALUCLATING Z, JUST USE OG Z VALUE 
+            for j in range(len(dist_6d)):
+                x, y = dist_6d[j, 2 * i], dist_6d[j, 2 * i + 1]
+                # Check if the particle is within the ellipse
+                if self.is_within_ellipse(x, y, dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n):
+                    num_within_ellipse += 1
+
+            count_within_ellipse.append(num_within_ellipse)
+            # Optional: Display the count on the plot
+            ax.set_title(f'{axis} - Phase Space\nParticles within ellipse: {num_within_ellipse}')
+            ax.set_xlabel(f'Position {axis}')
+            ax.set_ylabel(f'Phase {axis} prime')
+            ax.grid(True)
+
+        plt.tight_layout()
+        plt.show()
+
+        return count_within_ellipse
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def plot_6d(self, dist_6d, title):
-        import matplotlib.pyplot as plt
-        import sympy as sp
-        import numpy as np
 
         num_pts = 60  # Used for implicit plot of the ellipse
         ddof = 1  # Unbiased Bessel correction for standard deviation calculation
@@ -84,6 +181,7 @@ class beam:
                     r'Position $y$ (mm)']
 
         for i, axis in enumerate(['x', 'y', 'z']):
+
             # Access Twiss parameters for the current axis
             twiss_axis = twiss.loc[axis]
 
