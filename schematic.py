@@ -10,7 +10,7 @@ import datetime
 from matplotlib.widgets import Slider
 from scipy.stats import norm
 
-#Same total pipe length but different interval should end with the same standard deviation
+#Same total pipe length but different interval should end with the same standard deviation (PROBLEMS WITH QPF AND QPD FUNC)
 
 class draw_beamline:
     def __init__(self):
@@ -103,21 +103,21 @@ class draw_beamline:
 
         plt.subplots_adjust(bottom=0.25)
         ax.set_xticks(x_axis)
-        plt.xlim(0,x_axis[-1] + x_axis[-1]*0.10)
+        plt.xlim(0,x_axis[-1])
         ax.set_xticklabels(x_axis,rotation=45,ha='right')
         plt.tick_params(labelsize = 9)
         plt.xlabel("Distance from start of beam (mm)")
         plt.ylabel("Standard deviation (mm)")
-        plt.xlim(0, xaxisMax*0.20)
         plt.legend()
 
-        scrollax = plt.axes([0.1,0.02,0.8,0.06], facecolor = 'lightgoldenrodyellow')
-        scrollbar = Slider(scrollax, 'scroll', 0, 100, valinit = 0, valstep=1)
-        def update_scroll(val):
-            pos = scrollbar.val
-            ax.set_xlim((pos/125)*xaxisMax, (pos/125)*xaxisMax + xaxisMax*(0.2))
-            fig.canvas.draw_idle()
-        scrollbar.on_changed(update_scroll)
+        # plt.xlim(0, xaxisMax*0.20)
+        # scrollax = plt.axes([0.1,0.02,0.8,0.06], facecolor = 'lightgoldenrodyellow')
+        # scrollbar = Slider(scrollax, 'scroll', 0, 100, valinit = 0, valstep=1)
+        # def update_scroll(val):
+        #     pos = scrollbar.val
+        #     ax.set_xlim((pos/125)*xaxisMax, (pos/125)*xaxisMax + xaxisMax*(0.2))
+        #     fig.canvas.draw_idle()
+        # scrollbar.on_changed(update_scroll)
         
         plt.suptitle("Beamline Simulation")
         plt.tight_layout()

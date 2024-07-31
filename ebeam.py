@@ -47,7 +47,7 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$\phi$ (deg)"]
+        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", "$\phi$ (deg)"]
         label_axes =["x", "y", "z"]
         twiss = pd.DataFrame(columns=label_twiss)
         for i in range(3):
@@ -55,7 +55,7 @@ class beam:
             alpha = - dist_cov[2 * i, 2 * i + 1] / emittance
             beta = dist_cov[2 * i, 2 * i] / emittance
             gamma = dist_cov[2 * i + 1, 2 * i + 1] / emittance
-            phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi # to be fixed
+            phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi
             tmp = pd.DataFrame([[emittance, alpha, beta, gamma, phi]], columns=label_twiss, index=[label_axes[i]])
             twiss = pd.concat([twiss, tmp])
         return dist_avg, dist_cov, twiss
