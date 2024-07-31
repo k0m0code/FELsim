@@ -55,7 +55,7 @@ class beam:
             alpha = - dist_cov[2 * i, 2 * i + 1] / emittance
             beta = dist_cov[2 * i, 2 * i] / emittance
             gamma = dist_cov[2 * i + 1, 2 * i + 1] / emittance
-            phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi
+            phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi # to be fixed
             tmp = pd.DataFrame([[emittance, alpha, beta, gamma, phi]], columns=label_twiss, index=[label_axes[i]])
             twiss = pd.concat([twiss, tmp])
         return dist_avg, dist_cov, twiss
