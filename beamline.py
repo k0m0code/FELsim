@@ -99,6 +99,17 @@ class lattice:
                 return nomenclature
         # If z does not fall within any range, return a default value
         return "Position out of range"
+    
+    def loadBeamSegments(self):
+        beamline = []
+        for index, row in self.positions.iterrows():
+            nomenclature = self.nomenclatures[index]
+            zend = row['z_end']
+            zstart = row['z_sta']
+            length = zend-zstart
+            if nomenclature.upper() == "QPF":
+                segment = qpfLattice()
+
 
     def __str__(self):
         return f"Beamline: {len(self.nomenclatures)} elements"
@@ -139,15 +150,25 @@ class qpfLattice(lattice):
     values: np.array([list[int],...])
     '''
     def useMatrice(self, values, length):
-        self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(length*self.ME*self.C*self.beta*self.gamma)))
+        self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
         self.theta = np.sqrt(self.k)*length
 
-        return super().useMatrice(values,(np.array([  [np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0, 0, 0],
-                               [(-(np.sqrt(self.k)))*(np.sin(self.theta)), np.cos(self.theta), 0, 0, 0, 0],
-                               [0, 0, np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0],
-                               [0, 0, np.sqrt(self.k)*np.sinh(self.theta), np.cosh(self.theta), 0, 0],
-                               [0, 0, 0, 0, 1, length/((self.gamma)**2)],
-                               [0, 0, 0, 0, 0, 1]])))
+        field1 = np.cos(self.theta)
+        field2 = np.sin(self.theta)*(1/np.sqrt(self.k))
+        field3 = (-(np.sqrt(self.k)))*np.sin(self.theta)
+        field4 = np.cos(self.theta)
+        field5 = np.cosh(self.theta)
+        field6 = np.sinh(self.theta)*(1/np.sqrt(self.k))
+        field7 = np.sqrt(self.k)*np.sinh(self.theta)
+        field8 = np.cosh(self.theta)
+        field9 = length/(self.gamma**2)
+
+        return super().useMatrice(values, np.array([[field1, field2, 0, 0, 0, 0],
+                                                    [field3, field4, 0, 0, 0, 0],
+                                                    [0, 0, field5, field6, 0, 0],
+                                                    [0, 0, field7, field8, 0, 0],
+                                                    [0, 0, 0, 0, 1, field9],
+                                                    [0, 0, 0, 0, 0, 1]]))
     
     def __str__(self):
         return f"QPF beamline segment {self.length} mm long"
@@ -161,15 +182,25 @@ class qpdLattice(lattice):
         self.current = current # Amps
 
     def useMatrice(self, values, length):
-        self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(length*self.ME*self.C*self.beta*self.gamma)))
+        self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
         self.theta = np.sqrt(self.k)*length
 
-        return super().useMatrice(values, (np.array([   [np.cosh(self.theta), (np.sinh(self.theta))/(np.sqrt(self.k)), 0, 0, 0, 0],
-                                                        [np.sqrt(self.k)*np.sinh(self.theta), np.cosh(self.theta), 0, 0, 0, 0],
-                                                        [0, 0, np.cos(self.theta), (np.sin(self.theta)/np.sqrt(self.k)), 0, 0],
-                                                        [0, 0, (-(np.sqrt(self.k)))*(np.sin(self.theta)), np.cos(self.theta), 0, 0],
-                                                        [0, 0, 0, 0, 1, length/((self.gamma)**2)],
-                                                        [0, 0, 0, 0, 0, 1]])))
+        field1 = np.cos(self.theta)
+        field2 = np.sin(self.theta)*(1/np.sqrt(self.k))
+        field3 = (-(np.sqrt(self.k)))*np.sin(self.theta)
+        field4 = np.cos(self.theta)
+        field5 = np.cosh(self.theta)
+        field6 = np.sinh(self.theta)*(1/np.sqrt(self.k))
+        field7 = np.sqrt(self.k)*np.sinh(self.theta)
+        field8 = np.cosh(self.theta)
+        field9 = length/(self.gamma**2)
+
+        return super().useMatrice(values, (np.array([[field5, field6, 0, 0, 0, 0],
+                                                    [field7, field8, 0, 0, 0, 0],
+                                                    [0, 0, field1, field2, 0, 0],
+                                                    [0, 0, field3, field4, 0, 0],
+                                                    [0, 0, 0, 0, 1, field9],
+                                                    [0, 0, 0, 0, 0, 1]])))
 
     def __str__(self):
         return f"QPD beamline segment {self.length} mm long"
