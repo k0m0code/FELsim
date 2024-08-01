@@ -22,7 +22,8 @@ class lattice:
         self.length = length
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
-
+        self.color = 'none'
+        
     def changeE(self, E):
         self.E = E
         self.gamma = (1 + (self.E/self.E0))
@@ -123,6 +124,7 @@ class driftLattice(lattice):
     def __init__(self, length: float = -1):
         if length != -1:
             super().__init__(length = length)
+            self.color = "grey"
         else: raise ValueError("Invalid Parameter: Please enter a positive length parameter")
 
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
@@ -144,6 +146,7 @@ class qpfLattice(lattice):
     def __init__(self, current: float, length: float = 88.9):
         super().__init__(length = length)
         self.current = current # Amps
+        self.color = "green"
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -180,6 +183,7 @@ class qpdLattice(lattice):
     def __init__(self, length: float = 88.9, current: float = 0):
         super().__init__(length)
         self.current = current # Amps
+        self.color = "yellow"
 
     def useMatrice(self, values, length):
         self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
