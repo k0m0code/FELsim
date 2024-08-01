@@ -17,7 +17,8 @@ ebeam = beam()
 
 
 
-beamline.load_excel_lattice(file_path)
+# beamline.load_excel_lattice(file_path)
+# print(beamline.nomenclatures)
 # test = beamline.find_element_by_position(4.19)
 # print(beamline.positions)
 # print(test)
@@ -41,21 +42,27 @@ beamline.load_excel_lattice(file_path)
 #          [500,88.9,900,88.9]]
 # # ebeam.plotBeamPositionTransform(list, test,150)
 
-sec1 = driftLattice(100)
-sec2 = qpfLattice(current = 10)
-sec3 = driftLattice(20)
-sec4 = qpfLattice(current = 15)
-sec5 = driftLattice(20)
-sec6 = qpfLattice(current = 10)
-sec7 = driftLattice(1000)
-beamline_lattice = [sec1,sec2,sec3,sec4,sec5,sec6,sec7]
-beam_dist = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],1000)
+sec1 = driftLattice(200)
+sec2 = qpfLattice(current = 32)
+sec3 = driftLattice(100)
+sec4 = qpdLattice(current = 32)
+sec5 = driftLattice(100)
+sec6 = qpfLattice(current = 32)
+sec7 = driftLattice(100)
+sec8 = qpdLattice(current = 32)
+sec9 = driftLattice(200)
+beamline_lattice = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+beam_dist = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],50)
+
+# ebeam.particles_in_ellipse(beam_dist)
+# ebeam.cal_twiss(beam_dist)
+# ebeam.plot_6d(beam_dist, 'bruh')
 
 schem = draw_beamline()
 # schem.driftTransformScatter(beam_dist,70,True)
-schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 50, saveData=True)
-schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 10, saveData=True)
-schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 25, saveData=True)
+# schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 5, saveData=True)
+# schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 500, plot_z = (400, 0))
+schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 15)
 
 # print(beam_dist)
 # bru = sec1.useMatrice(beam_dist,100)
