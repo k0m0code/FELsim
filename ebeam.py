@@ -251,10 +251,11 @@ class beam:
             std1.append([X,Y,Z])
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
             std6.append([X,Y,Z])
-        return std1, std6
+        return std1, std6, dist_6d
     
 
     def plotXYZ(self, dist_6d, std1, std6, ax1, ax2, ax3, ax4):
+        ddof = 1  # Unbiased Bessel correction for standard deviation calculation
         num_pts = 60  # Used for implicit plot of the ellipse
         axlist = [ax1,ax2,ax3]
         # Define SymPy symbols for plotting
@@ -269,7 +270,7 @@ class beam:
 
             # Access Twiss parameters for the current axis
             ax = axlist[i]
-            ddof = 1  # Unbiased Bessel correction for standard deviation calculation
+            
 
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
             ax.contour(std1[0], std1[1], std1[2], levels=[0], colors='black', linestyles='--')
