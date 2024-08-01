@@ -2,15 +2,17 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.gridspec as gridspec
+from matplotlib.widgets import Slider
+from scipy.stats import norm
 import csv
 import numpy as np
 from beamline import *
 from ebeam import beam
 import datetime
-from matplotlib.widgets import Slider
-from scipy.stats import norm
 
 #Same total pipe length but different interval should end with the same standard deviation (PROBLEMS WITH QPF AND QPD FUNC)
+#Make spacing of chart more efficient and useful?
 
 class draw_beamline:
     def __init__(self):
@@ -56,7 +58,7 @@ class draw_beamline:
     saveData: boolean
     boolean value specifying whether to save data into a csv file or not
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, plot_z = (), saveData = False):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, saveData = False):
         #  Initialize values
         xStd = [np.std(matrixVariables[:, 0])]
         yStd = [np.std(matrixVariables[:, 2])]
@@ -64,60 +66,77 @@ class draw_beamline:
         yMean = [np.mean(matrixVariables[:, 2])]
         x_axis = [0]
         xaxisMax = 0
+        plot6dValues = {0: matrixVariables}
 
         #  Loop through each beamline object in beamSegments array
         for i in range(len(beamSegments)):
             intTrack = beamSegments[i].length
             xaxisMax += intTrack
 
-            #  Check if our z point is within the interval of our beamline object
-            for ii in plot_z:
-                if ((xaxisMax - intTrack) < ii <= xaxisMax):
-                    sixDarry = np.array(beamSegments[i].useMatrice(matrixVariables, length = (ii-(xaxisMax-intTrack))))
-                    ebeam = beam()
-                    ebeam.plot_6d(sixDarry, "6D plot of beam at " + str(ii) + " mm")
-
             #  Make calculations to plot later on
             while intTrack >= interval:
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
+                plot6dValues.update({x_axis[-1]: matrixVariables})
                 intTrack -= interval
             if intTrack > 0:
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
+                plot6dValues.update({x_axis[-1]: matrixVariables})
 
+        #  Optionally save standard deviation and mean data
         if saveData:
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
             for i in range(len(x_axis)):
                 self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
 
-        # print("x: \n" + str(x_axis))
-        # print("xstd: \n" + str(xStd))
-        # print ("ystd: \n" + str(yStd))
-
-        fig, ax = plt.subplots()
+        #  Configure graph shape
+        fig = plt.figure(figsize=(10, 9))
+        gs = gridspec.GridSpec(3, 2, height_ratios=[0.8, 0.8, 1])
+        ax1 = plt.subplot(gs[0,0])
+        ax2 = plt.subplot(gs[0, 1])
+        ax3 = plt.subplot(gs[1, 0])
+        ax4 = plt.subplot(gs[1, 1])
+        
+        #  Plot inital 6d scatter data
+        ebeam = beam()
+        ebeam.plot_6d(matrixVariables, ax1,ax2,ax3,ax4)
+        
+        #  Plot and optimize line graph data
+        ax5 = plt.subplot(gs[2, :])
         plt.plot(x_axis, xStd, label = 'x position std')
         plt.plot(x_axis, yStd, label = "y position std")
         plt.plot(x_axis, xMean, color = 'red', label = 'x position mean')
         plt.plot(x_axis, yMean, color = 'blue', label = 'y position mean')
-
-        plt.subplots_adjust(bottom=0.25)
-        ax.set_xticks(x_axis)
+        ax5.set_xticks(x_axis)
         plt.xlim(0,x_axis[-1])
-        ax.set_xticklabels(x_axis,rotation=45,ha='right')
+        ax5.set_xticklabels(x_axis,rotation=45,ha='right')
         plt.tick_params(labelsize = 9)
         plt.xlabel("Distance from start of beam (mm)")
         plt.ylabel("Standard deviation (mm)")
         plt.legend()
 
-        # plt.xlim(0, xaxisMax*0.20)
-        # scrollax = plt.axes([0.1,0.02,0.8,0.06], facecolor = 'lightgoldenrodyellow')
-        # scrollbar = Slider(scrollax, 'scroll', 0, 100, valinit = 0, valstep=1)
-        # def update_scroll(val):
-        #     pos = scrollbar.val
-        #     ax.set_xlim((pos/125)*xaxisMax, (pos/125)*xaxisMax + xaxisMax*(0.2))
-        #     fig.canvas.draw_idle()
-        # scrollbar.on_changed(update_scroll)
+        #  Create visual representation of beamline segments
+        ymin, ymax = ax5.get_ylim()
+        ax5.set_ylim(ymin-(ymax*0.05), ymax)
+        ymin, ymax = ax5.get_ylim()
+        blockstart = 0
+        for seg in beamSegments:
+            rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
+            ax5.add_patch(rectangle)
+            blockstart += seg.length
+        
+        scrollax = plt.axes([0.079,0.01,0.905,0.01], facecolor = 'lightgoldenrodyellow')
+        scrollbar = Slider(scrollax, 'scroll', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
+        def update_scroll(val):
+            matrix = plot6dValues.get(scrollbar.val)
+            ax1.clear()
+            ax2.clear()
+            ax3.clear()
+            ax4.clear()
+            ebeam.plot_6d(matrix, ax1,ax2,ax3,ax4)
+            fig.canvas.draw_idle()
+        scrollbar.on_changed(update_scroll)
         
         plt.suptitle("Beamline Simulation")
         plt.tight_layout()
