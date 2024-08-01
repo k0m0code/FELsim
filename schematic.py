@@ -66,7 +66,8 @@ class draw_beamline:
         yMean = [np.mean(matrixVariables[:, 2])]
         x_axis = [0]
         xaxisMax = 0
-        plot6dValues = {0: matrixVariables}
+        ebeam = beam()
+        plot6dValues = {0: ebeam.getXYZ(matrixVariables)}
 
         #  Loop through each beamline object in beamSegments array
         for i in range(len(beamSegments)):
@@ -77,18 +78,22 @@ class draw_beamline:
             while intTrack >= interval:
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
-                plot6dValues.update({x_axis[-1]: matrixVariables})
+                print(ebeam.getXYZ(matrixVariables))
+                plot6dValues.update({x_axis[-1]: ebeam.getXYZ(matrixVariables)})
                 intTrack -= interval
             if intTrack > 0:
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
-                plot6dValues.update({x_axis[-1]: matrixVariables})
+                plot6dValues.update({x_axis[-1]: ebeam.getXYZ(matrixVariables)})
 
         #  Optionally save standard deviation and mean data
         if saveData:
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
             for i in range(len(x_axis)):
                 self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
+
+        #Can test code values in this area
+        
 
         #  Configure graph shape
         fig = plt.figure(figsize=(10, 9))
@@ -99,8 +104,8 @@ class draw_beamline:
         ax4 = plt.subplot(gs[1, 1])
         
         #  Plot inital 6d scatter data
-        ebeam = beam()
-        ebeam.plot_6d(matrixVariables, ax1,ax2,ax3,ax4)
+        matrix = plot6dValues.get(0)
+        ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], ax1,ax2,ax3,ax4)
         
         #  Plot and optimize line graph data
         ax5 = plt.subplot(gs[2, :])
@@ -134,7 +139,7 @@ class draw_beamline:
             ax2.clear()
             ax3.clear()
             ax4.clear()
-            ebeam.plot_6d(matrix, ax1,ax2,ax3,ax4)
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], ax1,ax2,ax3,ax4)
             fig.canvas.draw_idle()
         scrollbar.on_changed(update_scroll)
         
