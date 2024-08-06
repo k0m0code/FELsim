@@ -11,9 +11,7 @@ import matplotlib.gridspec as gridspec
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchanging with tuples, more efficient for calculations
 
-#For functions like drifttransform, paramter should only be a single 2d array with all 6 initial variables
 #Add legend for graphs 
-#Same total pipe length but different interval should end with the same standard deviation
 
 
 class beam:
@@ -78,10 +76,6 @@ class beam:
     '''
     THIS FUNCTION BELOW IS A WIP
     '''
-
-
-
-
 
 
     # def particles_in_ellipse(self, dist_6d, n = 1):
@@ -182,61 +176,10 @@ class beam:
 
 
 
+    
 
 
 
-    # def plot_6d(self, dist_6d, title):
-
-    #     num_pts = 60  # Used for implicit plot of the ellipse
-    #     ddof = 1  # Unbiased Bessel correction for standard deviation calculation
-
-    #     dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=ddof)
-
-    #     # Define SymPy symbols for plotting
-    #     x_sym, y_sym = sp.symbols('x y')
-
-    #     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-        
-    #     x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Energy $\Delta$ $E$ (keV)', r'Position $x$ (mm)']
-    #     y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Time $\Delta$ $t$ (ns)',
-    #                 r'Position $y$ (mm)']
-
-    #     for i, axis in enumerate(['x', 'y', 'z']):
-
-    #         # Access Twiss parameters for the current axis
-    #         twiss_axis = twiss.loc[axis]
-
-    #         # Plot the contour where Z = 0 (the ellipse)
-    #         ax = axes[i // 2, i % 2]
-    #         ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
-    #         X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=1, num_pts=num_pts)
-    #         ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
-    #         X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
-    #         ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
-
-    #         # Construct the text string from the Twiss parameters
-    #         twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
-    #         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    #         ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
-    #                 verticalalignment='top', bbox=props)
-
-    #         ax.set_title(f'{axis} - Phase Space')
-    #         ax.set_xlabel(x_labels[i])
-    #         ax.set_ylabel(y_labels[i])
-    #         ax.grid(True)
-
-    #     # Plot for 'x, y - Space'
-    #     ax = axes[(i + 1) // 2, (i + 1) % 2]
-    #     ax.scatter(dist_6d[:, 0], dist_6d[:, 2], s=15, alpha=0.7)
-
-    #     ax.set_title(f'x, y - Space')
-    #     ax.set_xlabel(x_labels[i + 1])
-    #     ax.set_ylabel(y_labels[i + 1])
-    #     ax.grid(True)
-
-    #     plt.suptitle(title)
-    #     plt.tight_layout()
-    #     plt.show()
 
     def getXYZ(self, dist_6d):
         num_pts = 60  # Used for implicit plot of the ellipse
@@ -251,19 +194,15 @@ class beam:
             std1.append([X,Y,Z])
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
             std6.append([X,Y,Z])
-        return std1, std6, dist_6d
-    
+        return std1, std6, dist_6d, twiss
 
-    def plotXYZ(self, dist_6d, std1, std6, ax1, ax2, ax3, ax4):
-        ddof = 1  # Unbiased Bessel correction for standard deviation calculation
-        num_pts = 60  # Used for implicit plot of the ellipse
+    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4):
         axlist = [ax1,ax2,ax3]
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
         x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Energy $\Delta$ $E$ (keV)', r'Position $x$ (mm)']
         y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Time $\Delta$ $t$ (ns)',
                     r'Position $y$ (mm)']
-        dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=ddof)
         
         for i, axis in enumerate(['x', 'y', 'z']):
             twiss_axis = twiss.loc[axis]
@@ -273,8 +212,8 @@ class beam:
             
 
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
-            ax.contour(std1[0], std1[1], std1[2], levels=[0], colors='black', linestyles='--')
-            ax.contour(std6[0], std6[1], std6[2], levels=[0], colors='black', linestyles='--')
+            ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
+            ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
 
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
@@ -295,17 +234,17 @@ class beam:
         ax4.grid(True)
 
 
-
-    def plot_6d(self, dist_6d, ax1, ax2, ax3, ax4):
+    def plot_6d(self, dist_6d, title):
 
         num_pts = 60  # Used for implicit plot of the ellipse
         ddof = 1  # Unbiased Bessel correction for standard deviation calculation
 
         dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=ddof)
-        axlist = [ax1,ax2,ax3]
 
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
+
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
         
         x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Energy $\Delta$ $E$ (keV)', r'Position $x$ (mm)']
         y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Time $\Delta$ $t$ (ns)',
@@ -317,7 +256,7 @@ class beam:
             twiss_axis = twiss.loc[axis]
 
             # Plot the contour where Z = 0 (the ellipse)
-            ax = axlist[i]
+            ax = axes[i // 2, i % 2]
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=1, num_pts=num_pts)
             ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
@@ -334,12 +273,16 @@ class beam:
             ax.set_xlabel(x_labels[i])
             ax.set_ylabel(y_labels[i])
             ax.grid(True)
-            
 
         # Plot for 'x, y - Space'
-        ax4.scatter(dist_6d[:, 0], dist_6d[:, 2], s=15, alpha=0.7)
+        ax = axes[(i + 1) // 2, (i + 1) % 2]
+        ax.scatter(dist_6d[:, 0], dist_6d[:, 2], s=15, alpha=0.7)
 
-        ax4.set_title(f'x, y - Space')
-        ax4.set_xlabel(x_labels[i + 1])
-        ax4.set_ylabel(y_labels[i + 1])
-        ax4.grid(True)
+        ax.set_title(f'x, y - Space')
+        ax.set_xlabel(x_labels[i + 1])
+        ax.set_ylabel(y_labels[i + 1])
+        ax.grid(True)
+
+        plt.suptitle(title)
+        plt.tight_layout()
+        plt.show()
