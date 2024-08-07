@@ -7,6 +7,8 @@ import sympy as sp
 from sympy.plotting import plot_implicit, PlotGrid
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as patches
+
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchanging with tuples, more efficient for calculations
@@ -35,9 +37,7 @@ class beam:
         y_vals = np.linspace(y_min, y_max, num_pts)
         X, Y = np.meshgrid(x_vals, y_vals)
         Z = gamma * (X - xc)** 2 + 2 * alpha * (X - xc) * (Y - yc) + beta * (Y - yc) ** 2 - emittance
-
         
-
         return X, Y, Z
 
     
@@ -77,27 +77,6 @@ class beam:
     THIS FUNCTION BELOW IS A WIP
     '''
 
-
-    # def particles_in_ellipse(self, dist_6d, n = 1):
-    #     fig, axes = plt.subplots(2, 2)
-
-    #     dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=1)
-    #     for i, axis in enumerate(['x', 'y', 'z']):
-    #         ax = axes[i // 2, i % 2]
-    #         twiss_axis = twiss.loc[axis]
-    #         X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=n, num_pts=60)
-    #         ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
-    #         ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
-    #         twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
-    #         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    #         ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
-    #                 verticalalignment='top', bbox=props)
-
-    #     plt.tight_layout()
-    #     plt.show()
-    #     return
-
-
     def is_within_ellipse(self, x, y, xc, yc, twiss_axis, n):
         emittance = n * twiss_axis[r"$\epsilon$ ($\pi$.mm.mrad)"]
         alpha = twiss_axis[r"$\alpha$"]
@@ -106,8 +85,8 @@ class beam:
 
         # Calculate the ellipse equation
         Z = gamma * (x - xc) ** 2 + 2 * alpha * (x - xc) * (y - yc) + beta * (y - yc) ** 2 - emittance
-        # print("Z: ")
-        # print(Z)
+        print("Z: ")
+        print(Z)
         # Check if the point (x, y) is inside or on the ellipse
         return Z <= 0
 
@@ -122,7 +101,7 @@ class beam:
             ax = axes[i // 2, i % 2]
             twiss_axis = twiss.loc[axis]
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=n, num_pts=60)
-
+            
             # Plot particle points and ellipse contours
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
             ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
@@ -135,12 +114,7 @@ class beam:
                 if self.is_within_ellipse(x, y, dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n = n):
                     num_within_ellipse += 1
 
-            # num_within_ellipse = 0
-            # for j in Z:
-            #     for jj in j:
-            #         if jj <= 0:
-            #             num_within_ellipse += 1
-
+          
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
             ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
@@ -180,7 +154,6 @@ class beam:
 
 
 
-
     def getXYZ(self, dist_6d):
         num_pts = 60  # Used for implicit plot of the ellipse
         ddof = 1  # Unbiased Bessel correction for standard deviation calculation
@@ -196,7 +169,7 @@ class beam:
             std6.append([X,Y,Z])
         return std1, std6, dist_6d, twiss
 
-    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4):
+    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
         axlist = [ax1,ax2,ax3]
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
@@ -209,7 +182,9 @@ class beam:
 
             # Access Twiss parameters for the current axis
             ax = axlist[i]
-            
+            if defineLim:
+                ax.set_xlim(minVals[2*i], maxVals[2*i])
+                ax.set_ylim(minVals[2*i + 1], maxVals[2*i + 1])
 
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
             ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
@@ -217,7 +192,7 @@ class beam:
 
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-            ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
+            ax.text(0.01, 0.97, twiss_txt, transform=ax.transAxes, fontsize=8,
                     verticalalignment='top', bbox=props)
 
             ax.set_title(f'{axis} - Phase Space')
@@ -226,7 +201,45 @@ class beam:
             ax.grid(True)
 
         # Plot for 'x, y - Space'
-        ax4.scatter(dist_6d[:, 0], dist_6d[:, 2], s=15, alpha=0.7)
+        withinArea = [[],[]]
+        outsideArea = [[],[]]
+        xyPart = [dist_6d[:, 0], dist_6d[:, 2]]
+        if shape.get("shape") == "circle":
+            radius = shape.get("radius")
+            origin = shape.get("origin")
+            for ii in range(len(xyPart[0])):
+                x, y = xyPart[0][ii], xyPart[1][ii]
+                if (x - origin[0])**2 + (y - origin[1])**2 < radius**2:
+                    withinArea[0].append(x)
+                    withinArea[1].append(y)
+                else:
+                    outsideArea[0].append(x)
+                    outsideArea[1].append(y)
+            circle = patches.Circle(origin, radius, edgecolor = "black", facecolor = "None")
+            ax4.add_patch(circle)
+        elif shape.get("shape") == "rectangle":
+            length = shape.get("length")
+            width = shape.get("width")
+            origin = shape.get("origin")
+            updatedOrigin = ((origin[0] - length/2),(origin[1] - width/2))
+            for ii in range(len(xyPart[0])):
+                x, y = xyPart[0][ii], xyPart[1][ii]
+                if (origin[0] - (length/2)) < x < (origin[0] + (length/2)) and (origin[1] - (width/2)) < y < (origin[1] + (width/2)):
+                    withinArea[0].append(x)
+                    withinArea[1].append(y)
+                else:
+                    outsideArea[0].append(x)
+                    outsideArea[1].append(y)
+            rectangle = patches.Rectangle(updatedOrigin,length,width, edgecolor = "black", facecolor = "none")
+            ax4.add_patch(rectangle)
+        else:
+            ax4.scatter(xyPart[0], xyPart[1], s=15,alpha = 0.7)
+        if defineLim:
+            ax4.set_xlim(minVals[0], maxVals[0])
+            ax4.set_ylim(minVals[2], maxVals[2])
+        ax4.scatter(withinArea[0], withinArea[1], s=15, alpha=0.7, color = "blue")
+        ax4.scatter(outsideArea[0], outsideArea[1], s=15, alpha=0.7, color = "red")
+        
 
         ax4.set_title(f'x, y - Space')
         ax4.set_xlabel(x_labels[i + 1])
