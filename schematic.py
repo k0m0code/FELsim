@@ -11,7 +11,6 @@ from beamline import *
 from ebeam import beam
 import datetime
 
-#Same total pipe length but different interval should end with the same standard deviation (PROBLEMS WITH QPF AND QPD FUNC)
 #Make spacing of chart more efficient and useful?
 
 class draw_beamline:
@@ -88,6 +87,22 @@ class draw_beamline:
                 csvwriter.writerow(['distance (mm)','x position standard deviaton (mm)', 'y position standard deviation (mm)', 'x position mean (mm)', 'y position mean (mm)'])
             csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
 
+    def checkMinMax(self, matrixVariables, maxval, minval):
+        initialx = matrixVariables[:, 0]
+        initialy = matrixVariables[:, 2]
+        initialxphase = matrixVariables[:, 1]
+        initialyphase = matrixVariables[:, 3]
+        initialz = matrixVariables[:, 4]
+        initialzphase = matrixVariables[:, 5]
+        initialList = [initialx, initialxphase, initialy, initialyphase, initialz, initialzphase]
+        for i in range(len(initialList)):
+            maximum = max(initialList[i])
+            if maximum > maxval[i]:
+                maxval[i] = maximum
+            minimum = min(initialList[i])
+            if minimum < minval[i]:
+                minval[i] = minimum
+        return maxval, minval
 
     '''
     Class function to append updated values to five different arrays
@@ -99,6 +114,7 @@ class draw_beamline:
         yMean.append(np.mean(matrixVariables[:,2]))
         x_axis.append(round(x_axis[-1]+interval, 3))
         return xStd, yStd, xMean, yMean, x_axis
+
 
     '''
     matrixvairables: np.array(list[float][float])
@@ -116,18 +132,24 @@ class draw_beamline:
     saveData: boolean
     boolean value specifying whether to save data into a csv file or not
     '''
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, saveData = False):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, defineLim = True, saveData = False, shape = {}):
         #  Initialize values
-        xStd = [np.std(matrixVariables[:, 0])]
-        yStd = [np.std(matrixVariables[:, 2])]
-        xMean = [np.mean(matrixVariables[:, 0])]
-        yMean = [np.mean(matrixVariables[:, 2])]
+        initialx = matrixVariables[:, 0]
+        initialy = matrixVariables[:, 2]
+        initialxphase = matrixVariables[:, 1]
+        initialyphase = matrixVariables[:, 3]
+        xStd = [np.std(initialx)]
+        yStd = [np.std(initialy)]
+        xMean = [np.mean(initialx)]
+        yMean = [np.mean(initialy)]
         x_axis = [0]
         xaxisMax = 0
         ebeam = beam()
         plot6dValues = {0: (ebeam.getXYZ(matrixVariables))}
-        maxVals = []
-        minVals = []
+        maxVals = [0,0,0,0,0,0]
+        minVals = [0,0,0,0,0,0]
+        if defineLim:
+           maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)  
 
         #  Loop through each beamline object in beamSegments array
         for i in range(len(beamSegments)):
@@ -138,11 +160,15 @@ class draw_beamline:
             while intTrack >= interval:
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
+                if defineLim:
+                    maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
                 plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
                 intTrack -= interval
             if intTrack > 0:
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
+                if defineLim:
+                    maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
                 plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
 
         #  Optionally save standard deviation and mean data
@@ -164,7 +190,7 @@ class draw_beamline:
         
         #  Plot inital 6d scatter data
         matrix = plot6dValues.get(0)
-        ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4)
+        ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
         
         #  Plot and optimize line graph data
         ax5 = plt.subplot(gs[2, :])
@@ -190,6 +216,7 @@ class draw_beamline:
             ax5.add_patch(rectangle)
             blockstart += seg.length
         
+        #   Scroll bar creation and function
         scrollax = plt.axes([0.079,0.01,0.905,0.01], facecolor = 'lightgoldenrodyellow')
         scrollbar = Slider(scrollax, 'scroll', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
         def update_scroll(val):
@@ -198,7 +225,7 @@ class draw_beamline:
             ax2.clear()
             ax3.clear()
             ax4.clear()
-            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4)
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
             fig.canvas.draw_idle()
         scrollbar.on_changed(update_scroll)
         
