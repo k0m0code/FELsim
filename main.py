@@ -16,7 +16,6 @@ beamline = lattice()
 ebeam = beam()
 
 
-
 # beamline.load_excel_lattice(file_path)
 # print(beamline.nomenclatures)
 # test = beamline.find_element_by_position(4.19)
@@ -52,17 +51,23 @@ sec7 = driftLattice(100)
 sec8 = qpdLattice(current = 32)
 sec9 = driftLattice(200)
 beamline_lattice = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
-beam_dist = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],50)
+beam_dist = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],1000)
+
+
 
 # ebeam.particles_in_ellipse(beam_dist)
 # ebeam.cal_twiss(beam_dist)
 # ebeam.plot_6d(beam_dist, 'bruh')
 
 schem = draw_beamline()
+# tup = ebeam.getXYZ(beam_dist)
+
 # schem.driftTransformScatter(beam_dist,70,True)
 # schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 5, saveData=True)
 # schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 500, plot_z = (400, 0))
-schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 15)
+shape1 = {"shape": "circle", "radius": 5, "origin": (0,5)}
+shape = {"shape": "bruh", "length": 5, "width": 10, "origin": (10,-4)}
+schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 10, True, shape = shape)
 
 # print(beam_dist)
 # bru = sec1.useMatrice(beam_dist,100)
