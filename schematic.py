@@ -12,6 +12,8 @@ from ebeam import beam
 import datetime
 
 #Make spacing of chart more efficient and useful?
+#Make some of the lines in the line graph optional and enable flexibility to add more line parameters
+#Make shape acceptance a flexible function, that you are able to plot a shape acceptance for say z vs z'
 
 class draw_beamline:
     def __init__(self):
@@ -136,8 +138,6 @@ class draw_beamline:
         #  Initialize values
         initialx = matrixVariables[:, 0]
         initialy = matrixVariables[:, 2]
-        initialxphase = matrixVariables[:, 1]
-        initialyphase = matrixVariables[:, 3]
         xStd = [np.std(initialx)]
         yStd = [np.std(initialy)]
         xMean = [np.mean(initialx)]
