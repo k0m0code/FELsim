@@ -12,7 +12,7 @@ import matplotlib.patches as patches
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
 #Replace list variables that are unchanging with tuples, more efficient for calculations
-
+#Remove acceptance percentage when shapes are not in use
 #Add legend for graphs 
 
 
@@ -239,9 +239,10 @@ class beam:
             ax4.set_ylim(minVals[2], maxVals[2])
         ax4.scatter(withinArea[0], withinArea[1], s=15, alpha=0.7, color = "blue")
         ax4.scatter(outsideArea[0], outsideArea[1], s=15, alpha=0.7, color = "red")
+        percentageInside = len(withinArea[0])/len(xyPart[0])*100
         
 
-        ax4.set_title(f'x, y - Space')
+        ax4.set_title(f'x, y - Space: {round(percentageInside,4)}% acceptance')
         ax4.set_xlabel(x_labels[i + 1])
         ax4.set_ylabel(y_labels[i + 1])
         ax4.grid(True)
