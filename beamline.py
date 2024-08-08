@@ -8,7 +8,7 @@ import numpy as np
 # ORGANIZE OBJECTS SO THAT YOU ONLY HAVE TO CALL ONE FUNCTION NAME TO USE THE MATRICE, NO NEED TO CHECK WHAT KINE OBJECT IT IS
 
 class lattice:
-    def __init__(self, length: float = -1, E = 35):
+    def __init__(self, length: float = 0, E = 35):
         self.nomenclatures = []  # List of strings from the first column
         self.positions = pd.DataFrame()  # DataFrame for numerical columns
         self.descriptions = []  # List of descriptions from the sixth column
@@ -19,10 +19,13 @@ class lattice:
         self.ME = 9.1093837e-31  #kg
         self.C = 299792458  #m/s
         self.G = 0.02694  #Quadruple focusing strength (T/A)
-        self.length = length
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
         self.color = 'none'
+        if not length <= 0:
+            self.length = length
+        else:
+            raise ValueError("Invalid Parameter: Please enter a positive length parameter")
         
     def changeE(self, E):
         self.E = E
@@ -122,15 +125,16 @@ class lattice:
 
 class driftLattice(lattice):
     def __init__(self, length: float = -1):
-        if length != -1:
-            super().__init__(length = length)
-            self.color = "grey"
-        else: raise ValueError("Invalid Parameter: Please enter a positive length parameter")
+        super().__init__(length = length)
+        self.color = "grey"
+        
 
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
     #values = np.array([[x, x', y, y', z, z'],...])
     #Note: 1x6 array is multiplied correctly with 6x6 array
-    def useMatrice(self, values, length):
+    def useMatrice(self, values, length = -1):
+        if length <= 0:
+            length = self.length
         return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
                                  [0, 1, 0, 0, 0, 0],
                                  [0, 0, 1, length, 0, 0],
@@ -152,8 +156,17 @@ class qpfLattice(lattice):
 
     values: np.array([list[int],...])
     '''
-    def useMatrice(self, values, length):
-        self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
+    def useMatrice(self, values, length = -1, current = -1):
+        if length <= 0:
+            length = self.length
+        if current < 0:
+            current = self.current
+
+        #   TEMPORARY PURPOSES
+        if isinstance(current, np.ndarray):
+            current = current[0]
+
+        self.k = np.abs((1e-3)*((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
         self.theta = np.sqrt(self.k)*length
 
         field1 = np.cos(self.theta)
@@ -185,8 +198,17 @@ class qpdLattice(lattice):
         self.current = current # Amps
         self.color = "yellow"
 
-    def useMatrice(self, values, length):
-        self.k = np.abs((1e-3)*((self.QE*self.G*self.current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
+    def useMatrice(self, values, length = -1, current = -1):
+        if length <= 0:
+            length = self.length
+        if current < 0:
+            current = self.current
+
+        #   TEMPORARY PURPOSES
+        if isinstance(current, np.ndarray):
+            current = current[0]
+
+        self.k = np.abs((1e-3)*((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
         self.theta = np.sqrt(self.k)*length
 
         field1 = np.cos(self.theta)
