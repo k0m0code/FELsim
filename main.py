@@ -12,7 +12,7 @@ directory = Path("C:/Users/User/Documents/FELsim")
 file_path = directory / 'Beamline_elements.xlsx'
 
 # Load beamline lattice and electron beam properties
-beamline = lattice()
+# beamline = lattice()
 ebeam = beam()
 
 
@@ -66,8 +66,8 @@ schem = draw_beamline()
 # schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 5, saveData=True)
 # schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 500, plot_z = (400, 0))
 shape1 = {"shape": "circle", "radius": 5, "origin": (0,5)}
-shape = {"shape": "bruh", "length": 5, "width": 10, "origin": (10,-4)}
-schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 10, True, shape = shape)
+shape = {"shape": "rectangle", "length": 5, "width": 10, "origin": (10,-4)}
+schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 10, shape = shape)
 
 # print(beam_dist)
 # bru = sec1.useMatrice(beam_dist,100)

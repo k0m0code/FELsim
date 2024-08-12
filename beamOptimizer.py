@@ -1,6 +1,5 @@
 #Author: Christian Komo
 
-
 '''
 https://www.youtube.com/watch?v=G0yP_TM-oag
 https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant
@@ -11,16 +10,24 @@ import scipy.optimize as spo
 from beamline import *
 import numpy as np
 
-
-
 class beamOptimizer():
     def __init__(self, matrixVariables, beamline, indices: tuple, stdxend, stdyend):
+        '''
+        Constructor for the optimizer object
+
+        matrixVariables: 2D numPy list of particle elements
+        beamline: list of beamline objects representing accelerator beam
+        indices: tuple of indices representing the interval in the beamline we want to optimize 
+        stdxend: final standard deviation of particles' x position that we are targeting
+        stdyend: final standard deviation of particles' y position that we are targeting
+        '''
         self.stdxend = stdxend
         self.stdyend = stdyend
         self.matrixVariables = matrixVariables
         self.beamline = beamline
         self.indices = indices
 
+    
     def updateIndices(self, indices: tuple):
         self.indices = indices
 

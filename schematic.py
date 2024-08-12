@@ -54,7 +54,6 @@ class draw_beamline:
 
 
 
-    # Can length variable be negative?
     def driftTransformScatter(self, values, length, plot = True):
 
         x_pos = values[:, 0]
@@ -106,10 +105,10 @@ class draw_beamline:
                 minval[i] = minimum
         return maxval, minval
 
-    '''
-    Class function to append updated values to five different arrays
-    '''
     def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
+        '''
+        Append updated values to five different arrays, used for plotBeamPositionTransform
+        '''
         xStd.append(np.std(matrixVariables[:,0]))
         yStd.append(np.std(matrixVariables[:,2]))
         xMean.append(np.mean(matrixVariables[:,0]))
@@ -117,24 +116,27 @@ class draw_beamline:
         x_axis.append(round(x_axis[-1]+interval, 3))
         return xStd, yStd, xMean, yMean, x_axis
 
-
-    '''
-    matrixvairables: np.array(list[float][float])
-    A 6r x 10c 2d numpy array containing initial values of each electron's measurements
-
-    beamSegmeents: list[beamline]
-    numpy array/list containing beamline objects which represent the beam
-
-    interval: float
-    arbitrary number specifying interval for graph to take measurements at
-
-    plot_z: tuple(float)
-    tuple of numbered points in the beam on where to plot 6D
-
-    saveData: boolean
-    boolean value specifying whether to save data into a csv file or not
-    '''
+    
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, defineLim = True, saveData = False, shape = {}):
+        '''
+        matrixvairables: np.array(list[float][float])
+        A 6r x 10c 2d numpy array containing initial values of each electron's measurements
+
+        beamSegmeents: list[beamline]
+        Numpy array/list containing beamline objects which represent the beam
+
+        interval: float
+        Arbitrary number specifying interval for graph to take measurements at
+
+        defineLim: bool
+        If plot should change dynamically with the points or stay static.
+
+        saveData: boolean
+        Boolean value specifying whether to save data into a csv file or not
+
+        shape: dict{}
+        '''
+
         #  Initialize values
         initialx = matrixVariables[:, 0]
         initialy = matrixVariables[:, 2]
