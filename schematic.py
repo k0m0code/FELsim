@@ -17,11 +17,8 @@ import datetime
 
 class draw_beamline:
     def __init__(self):
-        self.stroke_width = 2  # Example of a constant related to the figure
-
         # Other figure-related constants can be defined here
-        self.element_height = 0.2
-        self.element_color = 'blue'
+        self.figsize = (10,9)
 
     def display_beamline(self, beamline):
         """
@@ -55,7 +52,6 @@ class draw_beamline:
 
 
     def driftTransformScatter(self, values, length, plot = True):
-
         x_pos = values[:, 0]
         phase_x = values[:, 1]
         y_pos = values[:, 2]
@@ -82,6 +78,24 @@ class draw_beamline:
         return x_transform, y_transform
 
     def csvWriteData(self, name, distance, std_x, std_y, mean_x, mean_y):
+        '''
+        Appends particle data to a csv file
+
+        Parameters
+        ----------
+        name: str
+            Name of csv file
+        distance: float
+            Length into the beamline element data is measured at
+        std_x: float
+            standard deviation measurement of x position
+        std_y: float
+            standard deviation measurement of y position
+        mean_x: float
+            average particle x position
+        mean_y: float
+            average particle y position
+        '''
         with open(name, 'a', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             if csvfile.tell() == 0:
@@ -89,6 +103,25 @@ class draw_beamline:
             csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
 
     def checkMinMax(self, matrixVariables, maxval, minval):
+        '''
+        Updates max and min values of a set of particles in a beamline
+
+        Parameters
+        ----------
+        matrixvairables: np.array(list[float][float])
+            A 6r x 10c 2d numpy array containing initial values of each electron's measurements
+        maxval: list[float]
+            list of each current maximum value for each variable throughout the beamline
+        minval: list[float]
+            list of each current minimum value for each variable throughout the beamline
+
+        Returns
+        -------
+        maxval: list[float]
+            updated list of maximum values
+        minval: list[float]
+            updated list of minimum values
+        '''
         initialx = matrixVariables[:, 0]
         initialy = matrixVariables[:, 2]
         initialxphase = matrixVariables[:, 1]
@@ -119,22 +152,23 @@ class draw_beamline:
     
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, defineLim = True, saveData = False, shape = {}):
         '''
+        Simulates movement of particles through an accelerator beamline
+
+        Parameters
+        ----------
         matrixvairables: np.array(list[float][float])
-        A 6r x 10c 2d numpy array containing initial values of each electron's measurements
-
+            A 6r x 10c 2d numpy array containing initial values of each electron's measurements
         beamSegmeents: list[beamline]
-        Numpy array/list containing beamline objects which represent the beam
-
+            Numpy array/list containing beamline objects which represent the beam
         interval: float
-        Arbitrary number specifying interval for graph to take measurements at
-
-        defineLim: bool
-        If plot should change dynamically with the points or stay static.
-
-        saveData: boolean
-        Boolean value specifying whether to save data into a csv file or not
-
-        shape: dict{}
+            Arbitrary number specifying interval for graph to take measurements at
+        defineLim: bool, optional
+            If plot should change dynamically with the points or stay static.
+        saveData: boolean, optional
+            Boolean value specifying whether to save data into a csv file or not
+        shape: dict{}, optional
+            dictionary storing info about the acceptance boundary
+            ex. shape, width, radius, length, origin
         '''
 
         #  Initialize values
@@ -153,13 +187,16 @@ class draw_beamline:
         if defineLim:
            maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)  
 
-        #  Loop through each beamline object in beamSegments array
+        
         for i in range(len(beamSegments)):
+            #  Loop through each beamline object in beamSegments array
             intTrack = beamSegments[i].length
             xaxisMax += intTrack
 
-            #  Make calculations to plot later on
+            
             while intTrack >= interval:
+                #  Perform calculations to plot later on
+                #  Use each segment's array to transform particles
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
                 if defineLim:
@@ -167,23 +204,21 @@ class draw_beamline:
                 plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
                 intTrack -= interval
             if intTrack > 0:
+                #  Use remainder length once when it's smaller than interval
                 matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
                 xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
                 if defineLim:
                     maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
                 plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
 
-        #  Optionally save standard deviation and mean data
         if saveData:
+            #  Optionally save standard deviation and mean data
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
             for i in range(len(x_axis)):
                 self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
 
-        #Can test code values in this area
-        
-
         #  Configure graph shape
-        fig = plt.figure(figsize=(10, 9))
+        fig = plt.figure(figsize=self.figsize)
         gs = gridspec.GridSpec(3, 2, height_ratios=[0.8, 0.8, 1])
         ax1 = plt.subplot(gs[0,0])
         ax2 = plt.subplot(gs[0, 1])
@@ -194,7 +229,7 @@ class draw_beamline:
         matrix = plot6dValues.get(0)
         ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
         
-        #  Plot and optimize line graph data
+        #  Plot and configure line graph data
         ax5 = plt.subplot(gs[2, :])
         plt.plot(x_axis, xStd, label = 'x position std')
         plt.plot(x_axis, yStd, label = "y position std")
@@ -231,6 +266,7 @@ class draw_beamline:
             fig.canvas.draw_idle()
         scrollbar.on_changed(update_scroll)
         
+        #  Title and ploting
         plt.suptitle("Beamline Simulation")
         plt.tight_layout()
         plt.show()

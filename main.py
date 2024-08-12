@@ -42,7 +42,7 @@ ebeam = beam()
 # # ebeam.plotBeamPositionTransform(list, test,150)
 
 sec1 = driftLattice(200)
-sec2 = qpfLattice(current = 32)
+sec2 = qpfLattice(current = 32, length = 500)
 sec3 = driftLattice(100)
 sec4 = qpdLattice(current = 32)
 sec5 = driftLattice(100)
@@ -50,7 +50,8 @@ sec6 = qpfLattice(current = 32)
 sec7 = driftLattice(100)
 sec8 = qpdLattice(current = 32)
 sec9 = driftLattice(200)
-beamline_lattice = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+# beamline_lattice = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+beamline_lattice = [sec2]
 beam_dist = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],1000)
 
 
