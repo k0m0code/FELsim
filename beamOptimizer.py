@@ -50,7 +50,7 @@ class beamOptimizer():
                 particles = np.array(segments[i].useMatrice(particles))
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
-        return np.sqrt((stdx-self.stdxend)**2+(stdy-self.stdyend)**2)
+        return np.sqrt(((stdx-self.stdxend)**2)+((stdy-self.stdyend)**2))
     
     def calc(self, startx):
         # constrain = 

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
 from matplotlib.widgets import Slider
-from scipy.stats import norm
 import csv
 import numpy as np
 from beamline import *
@@ -19,6 +18,9 @@ class draw_beamline:
     def __init__(self):
         # Other figure-related constants can be defined here
         self.figsize = (10,9)
+
+        #  Testing purposes
+        self.matrixVariables = None
 
     def display_beamline(self, beamline):
         """
@@ -228,6 +230,9 @@ class draw_beamline:
         #  Plot inital 6d scatter data
         matrix = plot6dValues.get(0)
         ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+       
+        #  Testing purposes
+        self.matrixVariables = matrixVariables
         
         #  Plot and configure line graph data
         ax5 = plt.subplot(gs[2, :])

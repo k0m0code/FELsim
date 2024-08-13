@@ -8,6 +8,7 @@ from sympy.plotting import plot_implicit, PlotGrid
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as patches
+from scipy.stats import norm
 
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
