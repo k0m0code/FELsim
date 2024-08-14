@@ -21,6 +21,7 @@ class draw_beamline:
 
         #  Testing purposes
         self.matrixVariables = None
+        self.sixdValues = None
 
     def display_beamline(self, beamline):
         """
@@ -152,7 +153,7 @@ class draw_beamline:
         return xStd, yStd, xMean, yMean, x_axis
 
     
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, defineLim = True, saveData = False, shape = {}):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, defineLim = True, saveData = False, shape = {}, plot = True):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -171,6 +172,8 @@ class draw_beamline:
         shape: dict{}, optional
             dictionary storing info about the acceptance boundary
             ex. shape, width, radius, length, origin
+        plot: bool, optional
+            Optional boolean variable to plot simulation or not
         '''
 
         #  Initialize values
@@ -219,59 +222,61 @@ class draw_beamline:
             for i in range(len(x_axis)):
                 self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
 
-        #  Configure graph shape
-        fig = plt.figure(figsize=self.figsize)
-        gs = gridspec.GridSpec(3, 2, height_ratios=[0.8, 0.8, 1])
-        ax1 = plt.subplot(gs[0,0])
-        ax2 = plt.subplot(gs[0, 1])
-        ax3 = plt.subplot(gs[1, 0])
-        ax4 = plt.subplot(gs[1, 1])
-        
-        #  Plot inital 6d scatter data
-        matrix = plot6dValues.get(0)
-        ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
-       
         #  Testing purposes
         self.matrixVariables = matrixVariables
-        
-        #  Plot and configure line graph data
-        ax5 = plt.subplot(gs[2, :])
-        plt.plot(x_axis, xStd, label = 'x position std')
-        plt.plot(x_axis, yStd, label = "y position std")
-        plt.plot(x_axis, xMean, color = 'red', label = 'x position mean')
-        plt.plot(x_axis, yMean, color = 'blue', label = 'y position mean')
-        ax5.set_xticks(x_axis)
-        plt.xlim(0,x_axis[-1])
-        ax5.set_xticklabels(x_axis,rotation=45,ha='right')
-        plt.tick_params(labelsize = 9)
-        plt.xlabel("Distance from start of beam (mm)")
-        plt.ylabel("Standard deviation (mm)")
-        plt.legend()
+        self.sixdValues = plot6dValues
 
-        #  Create visual representation of beamline segments
-        ymin, ymax = ax5.get_ylim()
-        ax5.set_ylim(ymin-(ymax*0.05), ymax)
-        ymin, ymax = ax5.get_ylim()
-        blockstart = 0
-        for seg in beamSegments:
-            rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
-            ax5.add_patch(rectangle)
-            blockstart += seg.length
-        
-        #   Scroll bar creation and function
-        scrollax = plt.axes([0.079,0.01,0.905,0.01], facecolor = 'lightgoldenrodyellow')
-        scrollbar = Slider(scrollax, 'scroll', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
-        def update_scroll(val):
-            matrix = plot6dValues.get(scrollbar.val)
-            ax1.clear()
-            ax2.clear()
-            ax3.clear()
-            ax4.clear()
+        if plot:
+            #  Configure graph shape
+            fig = plt.figure(figsize=self.figsize)
+            gs = gridspec.GridSpec(3, 2, height_ratios=[0.8, 0.8, 1])
+            ax1 = plt.subplot(gs[0,0])
+            ax2 = plt.subplot(gs[0, 1])
+            ax3 = plt.subplot(gs[1, 0])
+            ax4 = plt.subplot(gs[1, 1])
+            
+            #  Plot inital 6d scatter data
+            matrix = plot6dValues.get(0)
             ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
-            fig.canvas.draw_idle()
-        scrollbar.on_changed(update_scroll)
         
-        #  Title and ploting
-        plt.suptitle("Beamline Simulation")
-        plt.tight_layout()
-        plt.show()
+            #  Plot and configure line graph data
+            ax5 = plt.subplot(gs[2, :])
+            plt.plot(x_axis, xStd, label = 'x position std')
+            plt.plot(x_axis, yStd, label = "y position std")
+            plt.plot(x_axis, xMean, color = 'red', label = 'x position mean')
+            plt.plot(x_axis, yMean, color = 'blue', label = 'y position mean')
+            ax5.set_xticks(x_axis)
+            plt.xlim(0,x_axis[-1])
+            ax5.set_xticklabels(x_axis,rotation=45,ha='right')
+            plt.tick_params(labelsize = 9)
+            plt.xlabel("Distance from start of beam (mm)")
+            plt.ylabel("Standard deviation (mm)")
+            plt.legend()
+
+            #  Create visual representation of beamline segments
+            ymin, ymax = ax5.get_ylim()
+            ax5.set_ylim(ymin-(ymax*0.05), ymax)
+            ymin, ymax = ax5.get_ylim()
+            blockstart = 0
+            for seg in beamSegments:
+                rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
+                ax5.add_patch(rectangle)
+                blockstart += seg.length
+            
+            #   Scroll bar creation and function
+            scrollax = plt.axes([0.079,0.01,0.905,0.01], facecolor = 'lightgoldenrodyellow')
+            scrollbar = Slider(scrollax, 'scroll', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
+            def update_scroll(val):
+                matrix = plot6dValues.get(scrollbar.val)
+                ax1.clear()
+                ax2.clear()
+                ax3.clear()
+                ax4.clear()
+                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+                fig.canvas.draw_idle()
+            scrollbar.on_changed(update_scroll)
+            
+            #  Title and ploting
+            plt.suptitle("Beamline Simulation")
+            plt.tight_layout()
+            plt.show()

@@ -68,7 +68,7 @@ schem = draw_beamline()
 # schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 500, plot_z = (400, 0))
 shape1 = {"shape": "circle", "radius": 5, "origin": (0,5)}
 shape = {"shape": "rectangle", "length": 5, "width": 10, "origin": (10,-4)}
-schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 10, shape = shape)
+schem.plotBeamPositionTransform(beam_dist, beamline_lattice, 10, shape = shape1)
 
 # print(beam_dist)
 # bru = sec1.useMatrice(beam_dist,100)

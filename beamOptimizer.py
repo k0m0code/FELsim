@@ -9,6 +9,8 @@ gpt"can you xplain the parameters of a constraint paramter in scipy.minimize"
 import scipy.optimize as spo
 from beamline import *
 import numpy as np
+from schematic import *
+import csv
 
 class beamOptimizer():
     def __init__(self, matrixVariables, beamline, indices: tuple, stdxend, stdyend):
@@ -50,9 +52,20 @@ class beamOptimizer():
                 particles = np.array(segments[i].useMatrice(particles))
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
-        return np.sqrt(((stdx-self.stdxend)**2)+((stdy-self.stdyend)**2))
+        # return (((stdx-self.stdxend)**2)/self.stdxend) + (((stdy-self.stdyend)**2)/self.stdyend)
+        return (stdx-self.stdxend) + (stdy-self.stdyend)
     
     def calc(self, startx):
         # constrain = 
         result = spo.minimize(self.func2, startx, options={"disp": True})
         return result
+    
+    def testRepeat(self, repeat: int, method = ""):
+        for i in range(repeat):
+            result = self.calc(1)
+            current = result.x
+            diff = result.fun
+            schem = draw_beamline()
+            schem.plotBeamPositionTransform(beam_dist, line, 1000000, plot = False)
+            stdx = np.std(schem.matrixVariables[:, 0])
+            stdy = np.std(schem.matrixVariables[:, 2])
