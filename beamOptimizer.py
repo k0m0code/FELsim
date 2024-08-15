@@ -1,6 +1,7 @@
 #Author: Christian Komo
 
 '''
+helpful resources
 https://www.youtube.com/watch?v=G0yP_TM-oag
 https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant
 https://docs.scipy.org/doc/scipy/reference/optimize.html
@@ -9,11 +10,13 @@ gpt"can you xplain the parameters of a constraint paramter in scipy.minimize"
 import scipy.optimize as spo
 from beamline import *
 import numpy as np
+from ebeam import beam
 from schematic import *
 import csv
+import timeit
 
 class beamOptimizer():
-    def __init__(self, matrixVariables, beamline, indices: tuple, stdxend, stdyend):
+    def __init__(self, beamline, indices: tuple, stdxend, stdyend, start, method):
         '''
         Constructor for the optimizer object
 
@@ -25,22 +28,29 @@ class beamOptimizer():
         '''
         self.stdxend = stdxend
         self.stdyend = stdyend
-        self.matrixVariables = matrixVariables
+        self.matrixVariables = None
         self.beamline = beamline
         self.indices = indices
 
+        self.method = method
+        self.start = start
     
-    def updateIndices(self, indices: tuple):
-        self.indices = indices
+    #  IT IS ASSUMED THAT THE EACH ELEMENT OF current CORRESPONDS TO THE NTH NUMBER OF QPF/QPD
+    def _optiSpeed(self, current):
+        '''
+        simulates particle movement through a beamline, calculates positional standard deviation, 
+        and returns an accuracy statistic
 
-    def func(self, current):
-        segment = qpfLattice(current = current,length = 80)
-        endValues = np.array(segment.useMatrice(values = self.matrixVariables))
-        stdx = np.std(endValues[:,0])
-        stdy = np.std(endValues[:,2])
-        return np.sqrt((stdx-self.stdxend)**2+(stdy-self.stdyend)**2)
-    
-    def func2(self, current):
+        Parameters
+        ----------
+        current: list[float]
+            test value(s) for quadruples
+
+        returns
+        -------
+        difference: float
+            the combined squared difference between target standard deviaiton and actual standard deviation
+        '''
         particles = self.matrixVariables
         segments = self.beamline[self.indices[0]:self.indices[1]]
         ii = 0
@@ -52,20 +62,91 @@ class beamOptimizer():
                 particles = np.array(segments[i].useMatrice(particles))
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
-        # return (((stdx-self.stdxend)**2)/self.stdxend) + (((stdy-self.stdyend)**2)/self.stdyend)
-        return (stdx-self.stdxend) + (stdy-self.stdyend)
+        #  difference = (((stdx-self.stdxend)**2)/self.stdxend) + (((stdy-self.stdyend)**2)/self.stdyend)
+        difference = (stdx-self.stdxend)**2 + (stdy-self.stdyend)**2
+        return difference
     
-    def calc(self, startx):
-        # constrain = 
-        result = spo.minimize(self.func2, startx, options={"disp": True})
+
+
+
+
+    
+    def calc(self):
+        '''
+        Generates random particles and optimizes beamline variables so particles' positional standard
+        deviation is as close to target as possible
+
+        Returns
+        -------
+        result: OptimizeResult
+            Object containing resulting information about optimization process and results
+        '''
+        ebeam = beam()
+        self.matrixVariables = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],1000)
+
+        # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
+        result = spo.minimize(self._optiSpeed, self.start, method = self.method)
         return result
+   
+    def testSpeed(self, iterations):
+        '''
+        Test the speed of an optimization algorithm (more iterations = more accurate)
+
+        Parameters
+        ----------
+        iterations: float
+            Number of times to run calc() function with 
+
+        Returns
+        -------
+        timeResult: float
+            average number of seconds to execute calc() function once
+        '''
+        timeResult = (timeit.timeit(self.calc,number = iterations))/iterations
+        return timeResult
     
-    def testRepeat(self, repeat: int, method = ""):
-        for i in range(repeat):
-            result = self.calc(1)
-            current = result.x
-            diff = result.fun
-            schem = draw_beamline()
-            schem.plotBeamPositionTransform(beam_dist, line, 1000000, plot = False)
-            stdx = np.std(schem.matrixVariables[:, 0])
-            stdy = np.std(schem.matrixVariables[:, 2])
+    def testFuncEval(self, iterations):
+        '''
+        Test the number of function evalutions an optimization algorithm performs (more iterations = more accurate)
+
+        Parameters
+        ----------
+        iterations: float
+            Number of times to run calc() function with 
+
+        Returns
+        -------
+        timeResult: float
+            average number of function evalutions per calc() call
+        '''
+        iterationsTotal = 0
+        for i in range(iterations):
+            result = self.calc()
+            try: iterationsTotal += result.nhev
+            except AttributeError: 
+                try: iterationsTotal += result.nfev
+                except AttributeError: iterationsTotal += result.njev
+        return iterationsTotal/iterations    
+        
+    def testFuncIt(self, iterations):
+        '''
+        Test the number of iterations of an optimization algorithm (more iterations = more accurate)
+
+        Parameters
+        ----------
+        iterations: float
+            Number of times to run calc() function with 
+        
+        Returns
+        -------
+        avIterate: float
+            average number of function iterations per calc() call
+        '''
+        iterationsTotal = 0
+        for i in range(iterations):
+            result = self.calc()
+            try: iterationsTotal += result.nit
+            except AttributeError: 
+                raise AttributeError("algorithm does not track iterations")
+        avIterate = iterationsTotal/iterations   
+        return avIterate
