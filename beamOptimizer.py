@@ -16,26 +16,40 @@ import csv
 import timeit
 
 class beamOptimizer():
-    def __init__(self, beamline, indices: tuple, stdxend, stdyend, start, method):
+    def __init__(self, beamline, indices: tuple, 
+                 stdxend, stdyend, start, method):
         '''
-        Constructor for the optimizer object
+        Constructor for the optimizer object. Object is used to optimize the electric current values
+        for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
+        acheived
 
-        matrixVariables: 2D numPy list of particle elements
-        beamline: list of beamline objects representing accelerator beam
-        indices: tuple of indices representing the interval in the beamline we want to optimize 
-        stdxend: final standard deviation of particles' x position that we are targeting
-        stdyend: final standard deviation of particles' y position that we are targeting
+        Parameters
+        ----------
+        matrixvairables: np.array(list[float][float])
+            2D numPy list of particle elements
+        beamline: list[beamline]
+            list of beamline objects representing accelerator beam
+        indices: tuple(int)
+            tuple of indices representing the interval in the beamline we want to optimize 
+        stdxend: float
+            final standard deviation of particles' x position that we are targeting
+        stdyend: float
+            final standard deviation of particles' y position that we are targeting
+        start: list[float]
+            list of electrical current values for minimizing function to start optimizing from. 
+            Each nth value in list HAS corresponds to the nth qpd/qfd.
+        method: str
+            name of optimization method to use for desired values
+
         '''
         self.stdxend = stdxend
         self.stdyend = stdyend
         self.matrixVariables = None
         self.beamline = beamline
         self.indices = indices
-
-        self.method = method
         self.start = start
+        self.method = method
     
-    #  IT IS ASSUMED THAT THE EACH ELEMENT OF current CORRESPONDS TO THE NTH NUMBER OF QPF/QPD
     def _optiSpeed(self, current):
         '''
         simulates particle movement through a beamline, calculates positional standard deviation, 
@@ -44,7 +58,7 @@ class beamOptimizer():
         Parameters
         ----------
         current: list[float]
-            test value(s) for quadruples
+            test current value(s) for quadruples (IT IS ASSUMED THAT THE EACH ELEMENT OF current CORRESPONDS TO THE NTH NUMBER OF QPF/QPD)
 
         returns
         -------
@@ -65,11 +79,6 @@ class beamOptimizer():
         #  difference = (((stdx-self.stdxend)**2)/self.stdxend) + (((stdy-self.stdyend)**2)/self.stdyend)
         difference = (stdx-self.stdxend)**2 + (stdy-self.stdyend)**2
         return difference
-    
-
-
-
-
     
     def calc(self):
         '''
@@ -118,15 +127,24 @@ class beamOptimizer():
         -------
         timeResult: float
             average number of function evalutions per calc() call
+        evalType: str
+            type of evaluations that is being returned
         '''
         iterationsTotal = 0
+        evalType = ''
         for i in range(iterations):
             result = self.calc()
-            try: iterationsTotal += result.nhev
+            try: 
+                iterationsTotal += result.nfev
+                evalType = "# of function evaluations"
             except AttributeError: 
-                try: iterationsTotal += result.nfev
-                except AttributeError: iterationsTotal += result.njev
-        return iterationsTotal/iterations    
+                try: 
+                    iterationsTotal += result.njev
+                    evalType = "# of Jacobian evaluations"
+                except AttributeError: 
+                    iterationsTotal += result.nhev
+                    evalType = "# of Hessian evaluations"
+        return iterationsTotal/iterations, evalType   
         
     def testFuncIt(self, iterations):
         '''
