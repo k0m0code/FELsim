@@ -3,6 +3,12 @@ import numpy as np
 from beamline import *
 
 class excelElements:
+    def __init__(self):
+        self.nomenclatures = []  # List of strings from the first column
+        self.positions = pd.DataFrame()  # DataFrame for numerical columns
+        self.descriptions = []  # List of descriptions from the sixth column
+        self.ch = []  # List (array) of channel numbers from the last column
+        
     def get_matrix(self, identifier):
         # Split the identifier by dots and extract the middle part
         parts = identifier.split('.')
