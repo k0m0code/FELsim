@@ -10,51 +10,71 @@ from beamline import *
 from ebeam import beam
 import datetime
 
-#Make spacing of chart more efficient and useful?
-#Make some of the lines in the line graph optional and enable flexibility to add more line parameters
-#Make shape acceptance a flexible function, that you are able to plot a shape acceptance for say z vs z'
-
 class draw_beamline:
     def __init__(self):
-        # Other figure-related constants can be defined here
-        self.figsize = (10,9)
+        '''
+        Beamline object creates graphs and plots to visualize beamline data and information
+        '''
+        self.figsize = (10,9)  #  Size of graph window
+        self.matrixVariables = None  # For access to data after transformation
+        self.sixdValues = None  # For access to data after transformation
 
-        #  Testing purposes
-        self.matrixVariables = None
-        self.sixdValues = None
 
-    def display_beamline(self, beamline):
-        """
-        Draws a schematic representation of a beamline.
+    '''
+    POSSIBLE WIP FUNCTION IN THE FUTURE
+    DISPLAY BEAMLINE AND DATA ABOUT EACH SEGMENT
+    '''
+    # def display_beamline(self, beamline):
+    #     """
+    #     Draws a schematic representation of a beamline.
 
-        :param beamline: An object containing information about the beamline elements,
-                         including their positions.
-        """
-        fig, ax = plt.subplots()
+    #     :param beamline: An object containing information about the beamline elements,
+    #                      including their positions.
+    #     """
+    #     fig, ax = plt.subplots()
 
-        # Set up the plot
-        ax.set_xlim(min(beamline.z_start) - 1, max(beamline.z_end) + 1)
-        ax.set_ylim(-1, 1)
-        ax.set_xlabel('Position (m)')
-        ax.set_title('Beamline Schematic')
+    #     # Set up the plot
+    #     ax.set_xlim(min(beamline.z_start) - 1, max(beamline.z_end) + 1)
+    #     ax.set_ylim(-1, 1)
+    #     ax.set_xlabel('Position (m)')
+    #     ax.set_title('Beamline Schematic')
 
-        # Draw each beamline element
-        for i, name in enumerate(beamline.names):
-            z_start = beamline.z_start[i]
-            z_end = beamline.z_end[i]
-            element_width = z_end - z_start
+    #     # Draw each beamline element
+    #     for i, name in enumerate(beamline.names):
+    #         z_start = beamline.z_start[i]
+    #         z_end = beamline.z_end[i]
+    #         element_width = z_end - z_start
 
-            rect = patches.Rectangle((z_start, -self.element_height / 2), element_width, self.element_height,
-                                     linewidth=self.stroke_width, edgecolor=self.element_color, facecolor='none')
-            ax.add_patch(rect)
-            ax.text((z_start + z_end) / 2, 0, name, ha='center', va='center')
+    #         rect = patches.Rectangle((z_start, -self.element_height / 2), element_width, self.element_height,
+    #                                  linewidth=self.stroke_width, edgecolor=self.element_color, facecolor='none')
+    #         ax.add_patch(rect)
+    #         ax.text((z_start + z_end) / 2, 0, name, ha='center', va='center')
 
-        plt.grid(True)
-        plt.show()
+    #     plt.grid(True)
+    #     plt.show()
 
 
 
     def driftTransformScatter(self, values, length, plot = True):
+        '''
+        Simulates particles passing through drift space
+
+        Parameters
+        ----------
+        values: np.array(list[float][float])
+            2D numPy list of particle elements
+        length: float
+            length of the drift space particle passes through
+        plot: bool, optional
+            tells function whether to plot particle data or not
+
+        Returns
+        -------
+        x_transform: list[float]
+            list containing each particles' x position
+        y_transform: list[float]
+            list containing each particles' y position
+        '''
         x_pos = values[:, 0]
         phase_x = values[:, 1]
         y_pos = values[:, 2]
@@ -107,12 +127,13 @@ class draw_beamline:
 
     def checkMinMax(self, matrixVariables, maxval, minval):
         '''
-        Updates max and min values of a set of particles in a beamline
+        Updates max and min values of a set of particles in a beamline. Used for finding and
+        setting the plot boundaries displaying the position of particles.
 
         Parameters
         ----------
         matrixvairables: np.array(list[float][float])
-            A 6r x 10c 2d numpy array containing initial values of each electron's measurements
+            A 6 column 2d numpy array, each row containing 6 initial values of each particle's measurements
         maxval: list[float]
             list of each current maximum value for each variable throughout the beamline
         minval: list[float]
@@ -144,6 +165,36 @@ class draw_beamline:
     def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
         '''
         Append updated values to five different arrays, used for plotBeamPositionTransform
+
+        Parameters
+        ----------
+        xStd: list[float]
+            standard deviation of particles' x position for each distance interval
+        yStd: list[float]
+            standard deviation of particles' y position for each distance interval
+        xMean: list[float]
+            average of particles' x position for each distance interval
+        yMean: list[float]
+            average of particles' y position for each distance interval
+        x_axis: list[float]
+            contains distance intervals to measure particle data over
+        interval: float
+            the amount between each distance interval
+        matrixVariables: np.array(list[float][float])
+            2D numPy list of particle elements to measure data from
+
+        Returns
+        -------
+        xStd: list[float]
+            updated standard deviation of x position list
+        yStd: list[float]
+            updated standard deviation of y position list
+        xMean: list[float]
+            updated average of x position list
+        yMean: list[float]
+            updated average of y positiion list
+        x[axis]: list[float]
+            updated distance interval list
         '''
         xStd.append(np.std(matrixVariables[:,0]))
         yStd.append(np.std(matrixVariables[:,2]))
