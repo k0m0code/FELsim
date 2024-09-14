@@ -12,8 +12,10 @@ sec3 = driftLattice(100)
 sec4 = qpdLattice(current = 32)
 line = [sec1,sec2, sec3, sec4]
 
-test = beamOptimizer(line, (0,4),50,90, [60,40], method = "COBYLA")
+matrixVariables = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],1000)
+test = beamOptimizer(line, (0,4),200,40, [10,10], "Nelder-Mead", matrixVariables)
 result = test.calc()
+
 # print("speed " + str(test.testSpeed(10)))
 # evals, evalType = test.testFuncEval(10)
 # print("evals " + str(evals) + ", " + evalType)
