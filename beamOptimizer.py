@@ -10,14 +10,13 @@ gpt"can you xplain the parameters of a constraint paramter in scipy.minimize"
 import scipy.optimize as spo
 from beamline import *
 import numpy as np
-from ebeam import beam
 from schematic import *
-import csv
 import timeit
 
 class beamOptimizer():
     def __init__(self, beamline, indices: tuple, 
-                 stdxend, stdyend, start, method):
+                 stdxend, stdyend, start, method, 
+                 matrixVariables, xWeight = 1, yWeight = 1):
         '''
         Constructor for the optimizer object. Object is used to optimize the electric current values
         for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
@@ -25,8 +24,6 @@ class beamOptimizer():
 
         Parameters
         ----------
-        matrixvairables: np.array(list[float][float])
-            2D numPy list of particle elements
         beamline: list[beamline]
             list of beamline objects representing accelerator beam
         indices: tuple(int)
@@ -40,30 +37,44 @@ class beamOptimizer():
             Each nth value in list HAS corresponds to the nth qpd/qfd.
         method: str
             name of optimization method to use for desired values
+        matrixVariables: np.array(list[float][float])
+            2D numPy list of particle elements
+        xWeight: float, optional
+            number giving the algorithm more or less bias towards minimizing standard deviation goal difference for x position.
+            weight > 1 means more bias, weight < 1 means less bias
+        yWeight: float, optional
+            number giving the algorithm more or less bias towards minimizing standard deviation goal difference for y position.
+            weight > 1 means more bias, weight < 1 means less bias
 
         '''
         self.stdxend = stdxend
         self.stdyend = stdyend
-        self.matrixVariables = None
+        self.matrixVariables = matrixVariables
         self.beamline = beamline
         self.indices = indices
         self.start = start
         self.method = method
+        self.xWeight = xWeight
+        self.yWeight = yWeight
     
     def _optiSpeed(self, current):
         '''
-        simulates particle movement through a beamline, calculates positional standard deviation, 
-        and returns an accuracy statistic
+        Simulates particle movement through a beamline, calculates positional standard deviation, 
+        and returns a chi-squared accuracy statistic. Function to call on for standard deviation
+        optimization.
 
         Parameters
         ----------
         current: list[float]
-            test current value(s) for quadruples (IT IS ASSUMED THAT THE EACH ELEMENT OF current CORRESPONDS TO THE NTH NUMBER OF QPF/QPD)
+            test current value(s) for quadruples (IT IS ASSUMED THAT THE EACH nth 
+            ELEMENT OF current CORRESPONDS TO THE nth NUMBER OF a QPF/QPD)
 
-        returns
+        Returns
         -------
         difference: float
-            the combined squared difference between target standard deviaiton and actual standard deviation
+            chi-squared statistic, it is the combined squared difference between 
+            target standard deviation and actual standard deviation devided by the 
+            target standard deviation. Weighted bias for x vs y stats also accounted for.
         '''
         particles = self.matrixVariables
         segments = self.beamline[self.indices[0]:self.indices[1]]
@@ -76,13 +87,13 @@ class beamOptimizer():
                 particles = np.array(segments[i].useMatrice(particles))
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
-        #  difference = (((stdx-self.stdxend)**2)/self.stdxend) + (((stdy-self.stdyend)**2)/self.stdyend)
-        difference = (stdx-self.stdxend)**2 + (stdy-self.stdyend)**2
+        difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
+        # print(difference)  #for testing
         return difference
     
     def calc(self):
         '''
-        Generates random particles and optimizes beamline variables so particles' positional standard
+        optimizes beamline quadruple current values so particles' positional standard
         deviation is as close to target as possible
 
         Returns
@@ -90,8 +101,6 @@ class beamOptimizer():
         result: OptimizeResult
             Object containing resulting information about optimization process and results
         '''
-        ebeam = beam()
-        self.matrixVariables = ebeam.gen_6d_gaussian(0,[1,.1,1,0.1,1,1],1000)
 
         # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
         result = spo.minimize(self._optiSpeed, self.start, method = self.method)
@@ -128,7 +137,7 @@ class beamOptimizer():
         timeResult: float
             average number of function evalutions per calc() call
         evalType: str
-            type of evaluations that is being returned
+            type of evaluation that is being returned
         '''
         iterationsTotal = 0
         evalType = ''
