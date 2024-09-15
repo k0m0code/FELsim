@@ -300,7 +300,7 @@ class draw_beamline:
             plt.xlim(0,x_axis[-1])
             ax5.set_xticklabels(x_axis,rotation=45,ha='right')
             plt.tick_params(labelsize = 9)
-            plt.xlabel("Distance from start of beam (mm)")
+            plt.xlabel("Distance from start of beam (m)")
             plt.ylabel("Standard deviation (mm)")
             plt.legend()
 

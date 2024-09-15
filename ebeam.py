@@ -117,7 +117,7 @@ class beam:
 
           
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
-            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+            props = dict(boxstyle='round', facecolor='lavender', alpha=0.5)
             ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
                     verticalalignment='top', bbox=props)
             
@@ -192,7 +192,7 @@ class beam:
             ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
 
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
-            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+            props = dict(boxstyle='round', facecolor='lavender', alpha=0.5)
             ax.text(0.01, 0.97, twiss_txt, transform=ax.transAxes, fontsize=8,
                     verticalalignment='top', bbox=props)
 
@@ -280,7 +280,7 @@ class beam:
 
             # Construct the text string from the Twiss parameters
             twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
-            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+            props = dict(boxstyle='round', facecolor='lavender', alpha=0.5)
             ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
                     verticalalignment='top', bbox=props)
 

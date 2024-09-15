@@ -70,7 +70,7 @@ class driftLattice(lattice):
             length of drift segment
         '''
         super().__init__(length = length)
-        self.color = "grey"
+        self.color = "white"
         
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
     #values = np.array([[x, x', y, y', z, z'],...])
@@ -86,14 +86,14 @@ class driftLattice(lattice):
                                  [0, 0, 0, 0, 0, 1]])))
     
     def __str__(self):
-        return f"Drift beamline segment {self.length} mm long"
+        return f"Drift beamline segment {self.length} m long"
 
 
 class qpfLattice(lattice):
-    def __init__(self, current: float, length: float = 88.9):
+    def __init__(self, current: float, length: float = 0.0889):
         super().__init__(length = length)
         self.current = current # Amps
-        self.color = "green"
+        self.color = "cornflowerblue"
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -109,7 +109,7 @@ class qpfLattice(lattice):
         if isinstance(current, np.ndarray):
             current = current[0]
 
-        self.k = np.abs((1e-3)*((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
+        self.k = np.abs((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
         field1 = np.cos(self.theta)
@@ -136,10 +136,10 @@ class qpfLattice(lattice):
 
 
 class qpdLattice(lattice):
-    def __init__(self, length: float = 88.9, current: float = 0):
+    def __init__(self, length: float = 0.0889, current: float = 0):
         super().__init__(length)
         self.current = current # Amps
-        self.color = "yellow"
+        self.color = "lightcoral"
 
     def useMatrice(self, values, length = -1, current = -1):
         if length <= 0:
@@ -151,7 +151,7 @@ class qpdLattice(lattice):
         if isinstance(current, np.ndarray):
             current = current[0]
 
-        self.k = np.abs((1e-3)*((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma)))
+        self.k = np.abs((self.QE*self.G*current)/(self.length*self.ME*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
         field1 = np.cos(self.theta)
@@ -172,4 +172,4 @@ class qpdLattice(lattice):
                                                     [0, 0, 0, 0, 0, 1]])))
 
     def __str__(self):
-        return f"QPD beamline segment {self.length} mm long"
+        return f"QPD beamline segment {self.length} m long"

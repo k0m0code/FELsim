@@ -1,65 +1,84 @@
 import pandas as pd
-import numpy as np
 from beamline import *
 
-class excelElements:
-    def __init__(self):
-        self.nomenclatures = []  # List of strings from the first column
-        self.positions = pd.DataFrame()  # DataFrame for numerical columns
-        self.descriptions = []  # List of descriptions from the sixth column
-        self.ch = []  # List (array) of channel numbers from the last column
-        
-    def get_matrix(self, identifier):
-        # Split the identifier by dots and extract the middle part
-        parts = identifier.split('.')
-        if len(parts) != 3:
-            raise ValueError("Identifier must be in the format 'XXX.YYY.123'")
 
-        middle_part = parts[1]
+class ExcelElements:
+    def __init__(self, file_path):
+        """
+        Initialize the ExcelElements class and load the Excel file.
 
-        # Define matrices for each case
-        matrices = {
-            "QPF": np.array([[1, 0, 0, 0, 0, 0],  # Placeholder matrix for QPF
-                            [0, 1, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0]
-                            ]),
-            "QPD": np.array([[2, 0, 0, 0, 0, 0],  # Placeholder matrix for QPD
-                            [0, 2, 0, 0, 0, 0],
-                            # Add the rest of the rows for a 6x6 matrix
-                            ]),
-            # Add matrices for SB1, SB2, ... SB5 in a similar manner
-            "SB1": np.array([[1, 0, 0, 0, 0, 0],  # Placeholder matrix for SB1
-                            [0, 1, 0, 0, 0, 0],
-                            # Add the rest of the rows for a 6x6 matrix
-                            ]),
-            # Continue for SB2 to SB5...
-        }
-
-        # Check if the middle part matches any key in the matrices dictionary
-        if middle_part in matrices:
-            return matrices[middle_part]
-        else:
-            raise ValueError(f"No matrix defined for identifier {middle_part}")
+        :param file_path: Path to the Excel file containing the beamline information.
+        """
+        self.df = pd.DataFrame()  # DataFrame to store the entire spreadsheet data
+        self.load_excel_lattice(file_path)
 
     def load_excel_lattice(self, file_path):
+        """
+        Load the lattice from an Excel file and store it in a DataFrame.
+
+        :param file_path: Path to the Excel file.
+        """
         # Load the Excel file without headers and skip the first row
         df = pd.read_excel(file_path, header=None, skiprows=1)
 
-        # Assuming the first column contains string identifiers
-        self.nomenclatures = df.iloc[:, 0].tolist()
+        # Rename columns to match their usage
+        df.columns = ['Nomenclature', 'z_sta', 'z_mid', 'z_end', 'I (A)', 'Element name', 'ch', 'Difference', 'Sector',...,
+                      'Element','Vacuum sectors','z logbook UH (m)']
 
-        # Columns 2 to 5 contain numbers, creating a DataFrame directly
-        self.positions = df.iloc[:, 1:5]
-        self.positions.columns = ['z_sta', 'z_mid', 'z_end', 'z_log']
+        # Convert 'ch' to numeric, handling any non-numeric gracefully
+        df['ch'] = pd.to_numeric(df['ch'], errors='coerce')
 
-        # Column 6 is a description
-        self.descriptions = df.iloc[:, 5].tolist()
+        # Store the DataFrame for external access
+        self.df = df
 
-        # The last column contains channel numbers
-        self.ch = df.iloc[:, -1].tolist()
+    def create_beamline(self):
+        """
+        Create the beamline by iterating through the DataFrame and generating
+        the corresponding beamline elements (QPF, QPD, drifts).
 
-        # Convert 'ch' to a numeric type, handling any non-numeric gracefully
-        self.ch = pd.to_numeric(self.ch, errors='coerce').tolist()
+        :return: List of beamline elements (drifts, quadrupoles).
+        """
+        beamline = []  # This will hold the beamline elements
+        prev_z_end = 0  # Track the end position of the previous element
+        default_current = 0
+
+        for index, row in self.df.iterrows():
+            element = row['Element']
+            z_sta = row['z_sta']
+            z_end = row['z_end']
+
+            # Read the current for the quadrupole; if not a number, default to 0
+            try:
+                current = float(row['I (A)']) if pd.notna(row['I (A)']) else 0.0
+            except (ValueError, TypeError):
+                current = default_current
+
+            # Calculate the drift length between previous element and current element
+            if z_sta > prev_z_end:
+                drift_length = z_sta - prev_z_end
+                beamline.append(driftLattice(drift_length))
+
+            # Add quadrupole focusing (QPF) or defocusing (QPD) based on nomenclature
+            if element == "QPF":
+                beamline.append(qpfLattice(current=current))
+            elif element == "QPD":
+                beamline.append(qpdLattice(current=current))
+            else:
+                # Add additional elements here if necessary
+                pass
+
+            # Update prev_z_end for the next element
+            prev_z_end = z_end
+
+        return beamline
+
+    def get_dataframe(self):
+        """
+        Return the DataFrame containing the beamline elements.
+
+        :return: DataFrame with the loaded Excel data.
+        """
+        return self.df
 
     def find_element_by_position(self, z):
         # Iterate through the DataFrame rows
