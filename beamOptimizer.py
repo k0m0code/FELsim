@@ -51,12 +51,58 @@ class beamOptimizer():
         self.stdyend = stdyend
         self.matrixVariables = matrixVariables
         self.beamline = beamline
+
         self.indices = indices
+        checkSet = set()
+        self.variablesOptimize = []
+        for item in indices:
+            varItem = indices.get(item)[0]
+            if varItem not in checkSet:
+                varItem = indices.get(item)[0]
+                self.variablesOptimize.append(varItem)
+                checkSet.add(varItem)
+        self.variablesValues = [0 for i in self.variablesOptimize]
+
         self.start = start
         self.method = method
         self.xWeight = xWeight
         self.yWeight = yWeight
     
+    # def _optiSpeed(self, current):
+    #     '''
+    #     Simulates particle movement through a beamline, calculates positional standard deviation, 
+    #     and returns a chi-squared accuracy statistic. Function to call on for standard deviation
+    #     optimization.
+
+    #     Parameters
+    #     ----------
+    #     current: list[float]
+    #         test current value(s) for quadruples (IT IS ASSUMED THAT THE EACH nth 
+    #         ELEMENT OF current CORRESPONDS TO THE nth NUMBER OF a QPF/QPD)
+
+    #     Returns
+    #     -------
+    #     difference: float
+    #         chi-squared statistic, it is the combined squared difference between 
+    #         target standard deviation and actual standard deviation devided by the 
+    #         target standard deviation. Weighted bias for x vs y stats also accounted for.
+    #     '''
+    #     particles = self.matrixVariables
+    #     segments = self.beamline[self.indices[0]:self.indices[1]]
+    #     ii = 0
+    #     for i in range(len(segments)):
+    #         if isinstance(segments[i], qpdLattice) or isinstance(segments[i], qpfLattice):
+    #             particles = np.array(segments[i].useMatrice(particles, current = current[ii]))
+    #             ii += 1
+    #         else:
+    #             particles = np.array(segments[i].useMatrice(particles))
+    #     stdx = np.std(particles[:,0])
+    #     stdy = np.std(particles[:,2])
+    #     difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
+    #     # print(difference)  #for testing
+    #     return difference
+
+
     def _optiSpeed(self, current):
         '''
         Simulates particle movement through a beamline, calculates positional standard deviation, 
@@ -77,19 +123,55 @@ class beamOptimizer():
             target standard deviation. Weighted bias for x vs y stats also accounted for.
         '''
         particles = self.matrixVariables
-        segments = self.beamline[self.indices[0]:self.indices[1]]
-        ii = 0
+        segments = self.beamline
+
+        print(current)
+
         for i in range(len(segments)):
-            if isinstance(segments[i], qpdLattice) or isinstance(segments[i], qpfLattice):
-                particles = np.array(segments[i].useMatrice(particles, current = current[ii]))
-                ii += 1
-            else:
-                particles = np.array(segments[i].useMatrice(particles))
+            if i in self.indices:
+                if isinstance(segments[i], qpdLattice) or isinstance(segments[i], qpfLattice):
+                    yFunc = self.indices.get(i)[1]
+                    varIndex = self.variablesOptimize.index(self.indices.get(i)[0])
+                    particles = np.array(segments[i].useMatrice(particles, current = yFunc(current[varIndex])))
+                else:
+                  particles = np.array(segments[i].useMatrice(particles))  
+                
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
         difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
         # print(difference)  #for testing
         return difference
+    
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     def calc(self):
         '''
@@ -103,7 +185,7 @@ class beamOptimizer():
         '''
 
         # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
-        result = spo.minimize(self._optiSpeed, self.start, method = self.method)
+        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method)
         return result
    
     def testSpeed(self, iterations):
@@ -177,3 +259,4 @@ class beamOptimizer():
                 raise AttributeError("algorithm does not track iterations")
         avIterate = iterationsTotal/iterations   
         return avIterate
+    
