@@ -17,7 +17,9 @@ sec6 = qpfLattice(current = I)
 sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = I)
 sec9 = driftLattice(0.50)
-line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+sec10 = dipole(length=0.0889, angle=1.5)
+
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9, sec10]
 
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 
