@@ -235,7 +235,6 @@ class draw_beamline:
         xMean = [np.mean(initialx)]
         yMean = [np.mean(initialy)]
         x_axis = [0]
-        xaxisMax = 0
         ebeam = beam()
         plot6dValues = {0: (ebeam.getXYZ(matrixVariables))}
         maxVals = [0,0,0,0,0,0]
@@ -247,7 +246,6 @@ class draw_beamline:
         for i in range(len(beamSegments)):
             #  Loop through each beamline object in beamSegments array
             intTrack = beamSegments[i].length
-            xaxisMax += intTrack
 
             
             while intTrack >= interval:
