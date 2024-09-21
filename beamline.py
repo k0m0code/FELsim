@@ -173,16 +173,12 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, angle_i: float = 1, angle_f: float = 1):
+    def __init__(self, length: float = 0.0889, angle: float = 1.5):
         super().__init__(length=length)
-        self.color = "green"
+        self.color = "forestgreen"
         self.angle = angle # degrees
-        self.angle_i = angle_i
-        self.angle_f = angle_f
         self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (self.angle * np.pi / 180 / self.length)
         self.rho = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
-        self.theta = length / self.rho
-        self.gap = 0.01  # hard-edge fringe field gap (m)
 
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
@@ -200,10 +196,10 @@ class dipole(lattice):
             angle = angle[0]
 
         # Rectangular dipole
-        R = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
+        R = self.rho
         theta = length / self.rho
-        C = np.cos(self.theta)
-        S = np.sin(self.theta)
+        C = np.cos(theta)
+        S = np.sin(theta)
         L = length
         G = self.gamma
 
@@ -214,35 +210,52 @@ class dipole(lattice):
                       [S, R * (1 - C), 0, 0, 1, R * (L / R - S) + L / (G ** 2)],
                       [0, 0, 0, 0, 0, 1]])
 
-        # Hard edge model for the wedge magnets
-        k = np.abs((self.QE * self.By / self.gap) / (self.ME * self.C * self.beta * self.gamma)) # Verify
-        eta_i = self.angle_i * np.pi / 180
-        eta_f = self.angle_i * np.pi / 180
-        Ei = (length * k) / ((np.cos(eta_i)) ** 2)
-        Ef = (length * k) / ((np.cos(eta_f)) ** 2)
-        Ti = np.tan(eta_i)
-        Tf = np.tan(eta_f)
+        return super().useMatrice(values, M)
 
-        Mi = np.array([[1, 0, 0, 0, 0, 0],
-                      [-Ti / R, 1, 0, 0, 0, 0],
-                      [0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, -(Ti + Ei / 3) / R, 0, 0],
-                      [0, 0, 0, 0, 1, L / G ** 2],
-                      [0, 0, 0, 0, 0, 1]])
-
-        Mf = np.array([[1, 0, 0, 0, 0, 0],
-                      [-Tf / R, 1, 0, 0, 0, 0],
-                      [0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, -(Tf + Ef / 3) / R, 0, 0],
-                      [0, 0, 0, 0, 1, L / G ** 2],
-                      [0, 0, 0, 0, 0, 1]])
-        test = np.dot(M, Mi)
-        test = np.dot(Mf,np.dot(M, Mi))
-        if length < self.length - G:
-            return super().useMatrice(values, M)
-        else:
-            return super().useMatrice(values, M)
     def __str__(self):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature)"
 
+class dipole_wedge(lattice):
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5):
+        super().__init__(length=length)
+        self.color = "lightgreen"
+        self.angle = angle
+        self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (dipole_angle * np.pi / 180 / dipole_length)
+        self.rho = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
+        self.gap = 0.01  # hard-edge fringe field gap (m)
 
+    '''
+    performs a transformation to a 2d np array made of 1x6 variable matrices
+
+    values: np.array([list[int],...])
+    '''
+    def useMatrice(self, values, length = -1, angle = -1):
+        if length <= 0:
+            length = self.length
+        if angle < 0:
+            angle = self.angle
+
+        #   TEMPORARY PURPOSES
+        if isinstance(angle, np.ndarray):
+            angle = angle[0]
+
+        # Hard edge model for the wedge magnets
+        R = self.rho
+        k = np.abs((self.QE * self.By / self.length) / (self.ME * self.C * self.beta * self.gamma)) # Verify
+        eta = (self.angle * np.pi / 180)
+        E = (length * k) / ((np.cos(eta)) ** 2)
+        T = np.tan(eta)
+        L = length
+        G = self.gamma
+
+        M = np.array([[1, 0, 0, 0, 0, 0],
+                      [-T / R, 1, 0, 0, 0, 0],
+                      [0, 0, 1, 0, 0, 0],
+                      [0, 0, 0, -(T + E / 3) / R, 0, 0],
+                      [0, 0, 0, 0, 1, L / G ** 2],
+                      [0, 0, 0, 0, 0, 1]])
+
+
+        return super().useMatrice(values, M)
+    def __str__(self):
+        return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature)"
