@@ -41,24 +41,27 @@ class beam:
         
         return X, Y, Z
 
-    
     def cal_twiss(self, dist_6d, ddof=1):
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
         label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$\phi$ (deg)"]
-        label_axes =["x", "y", "z"]
-        twiss = pd.DataFrame(columns=label_twiss)
+        label_axes = ["x", "y", "z"]
+
+        twiss_data = []
+
         for i in range(3):
-            emittance = np.sqrt(dist_cov[2 * i, 2 * i] * dist_cov[2 * i + 1, 2 * i + 1] - dist_cov[2 * i, 2 * i + 1] ** 2)
+            emittance = np.sqrt(
+                dist_cov[2 * i, 2 * i] * dist_cov[2 * i + 1, 2 * i + 1] - dist_cov[2 * i, 2 * i + 1] ** 2)
             alpha = - dist_cov[2 * i, 2 * i + 1] / emittance
             beta = dist_cov[2 * i, 2 * i] / emittance
             gamma = dist_cov[2 * i + 1, 2 * i + 1] / emittance
             phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi
-            tmp = pd.DataFrame([[emittance, alpha, beta, gamma, phi]], columns=label_twiss, index=[label_axes[i]])
-            twiss = pd.concat([twiss, tmp])
 
-        
+            twiss_data.append([emittance, alpha, beta, gamma, phi])
+
+        twiss = pd.DataFrame(twiss_data, columns=label_twiss, index=label_axes[:3])
+
         return dist_avg, dist_cov, twiss
 
     def gen_6d_gaussian(self, mean, std_dev, num_particles=100):
