@@ -242,7 +242,7 @@ class dipole_wedge(lattice):
         # Hard edge model for the wedge magnets
         R = self.rho
         k = np.abs((self.QE * self.By / self.length) / (self.ME * self.C * self.beta * self.gamma)) # Verify
-        eta = (self.angle * np.pi / 180)
+        eta = (self.angle * np.pi / 180) * length / self.length # Verify
         E = (length * k) / ((np.cos(eta)) ** 2)
         T = np.tan(eta)
         L = length
@@ -251,7 +251,7 @@ class dipole_wedge(lattice):
         M = np.array([[1, 0, 0, 0, 0, 0],
                       [-T / R, 1, 0, 0, 0, 0],
                       [0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, -(T + E / 3) / R, 0, 0],
+                      [0, 0, -(T + E / 3) / R, 1, 0, 0],
                       [0, 0, 0, 0, 1, L / G ** 2],
                       [0, 0, 0, 0, 0, 1]])
 
