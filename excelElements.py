@@ -22,11 +22,12 @@ class ExcelElements:
         df = pd.read_excel(file_path, header=None, skiprows=1)
 
         # Rename columns to match their usage
-        df.columns = ['Nomenclature', 'z_sta', 'z_mid', 'z_end', 'I (A)', 'Element name', 'ch', 'Difference', 'Sector',...,
-                      'Element','Vacuum sectors','z logbook UH (m)']
+        df.columns = ['Nomenclature', 'z_start', 'z_mid', 'z_end', 'Current (A)', 'Dipole Angle (deg)',
+                      'Dipole length (m)', 'Dipole wedge (deg)', 'Gap wedge (m)', 'Element name',
+                      'Channel','Label','Sector', 'Element']
 
         # Convert 'ch' to numeric, handling any non-numeric gracefully
-        df['ch'] = pd.to_numeric(df['ch'], errors='coerce')
+        df['Channel'] = pd.to_numeric(df['Channel'], errors='coerce')
 
         # Store the DataFrame for external access
         self.df = df
@@ -44,12 +45,16 @@ class ExcelElements:
 
         for index, row in self.df.iterrows():
             element = row['Element']
-            z_sta = row['z_sta']
+            z_sta = row['z_start']
             z_end = row['z_end']
 
             # Read the current for the quadrupole; if not a number, default to 0
             try:
-                current = float(row['I (A)']) if pd.notna(row['I (A)']) else 0.0
+                current = float(row['Current (A)']) if pd.notna(row['Current (A)']) else 0.0
+                angle = float(row['Dipole Angle (deg)']) if pd.notna(row['Dipole Angle (deg)']) else 0.0
+                curvature = float(row['Dipole length (m)']) if pd.notna(row['Dipole length (m)']) else 0.0
+                angle_wedge = float(row['Dipole wedge (deg)']) if pd.notna(row['Dipole wedge (deg)']) else 0.0
+                gap_wedge = float(row['Gap wedge (m)']) if pd.notna(row['Gap wedge (m)']) else 0.0
             except (ValueError, TypeError):
                 current = default_current
 
@@ -59,10 +64,16 @@ class ExcelElements:
                 beamline.append(driftLattice(drift_length))
 
             # Add quadrupole focusing (QPF) or defocusing (QPD) based on nomenclature
+            # Possibly match the excel three letters for the element with the first three letters of the function to call
+            # name param1, param2 if possible, dict optional params
             if element == "QPF":
-                beamline.append(qpfLattice(current=current))
+                beamline.append(qpfLattice(current=current, length=(z_end - z_sta)))
             elif element == "QPD":
-                beamline.append(qpdLattice(current=current))
+                beamline.append(qpdLattice(current=current, length=(z_end - z_sta)))
+            elif element == "DPH":
+                beamline.append(dipole(length=curvature, angle=angle))
+            elif element == "DPW":
+                beamline.append(dipole_wedge(length=gap_wedge, angle=angle_wedge, dipole_length=curvature,dipole_angle=angle))
             else:
                 # Add additional elements here if necessary
                 pass
@@ -92,16 +103,6 @@ class ExcelElements:
                 return nomenclature
         # If z does not fall within any range, return a default value
         return "Position out of range"
-    
-    def loadBeamSegments(self):
-        beamline = []
-        for index, row in self.positions.iterrows():
-            nomenclature = self.nomenclatures[index]
-            zend = row['z_end']
-            zstart = row['z_sta']
-            length = zend-zstart
-            if nomenclature.upper() == "QPF":
-                segment = qpfLattice()
 
 
     def __str__(self):

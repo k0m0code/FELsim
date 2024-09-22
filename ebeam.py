@@ -177,8 +177,8 @@ class beam:
         axlist = [ax1,ax2,ax3]
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
-        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Energy $\Delta$ $E$ (keV)', r'Position $x$ (mm)']
-        y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Time $\Delta$ $t$ (ns)',
+        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Time $\Delta$ $t$ (ns)', r'Position $x$ (mm)']
+        y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Energy $\Delta$ $E$ (keV)',
                     r'Position $y$ (mm)']
         
         for i, axis in enumerate(['x', 'y', 'z']):

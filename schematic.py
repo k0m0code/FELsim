@@ -9,6 +9,8 @@ import numpy as np
 from beamline import *
 from ebeam import beam
 import datetime
+import time
+from tqdm import tqdm
 
 class draw_beamline:
     def __init__(self):
@@ -227,7 +229,7 @@ class draw_beamline:
             Optional boolean variable to plot simulation or not
         '''
 
-        #  Initialize values
+        # Initialize values
         initialx = matrixVariables[:, 0]
         initialy = matrixVariables[:, 2]
         xStd = [np.std(initialx)]
@@ -238,34 +240,47 @@ class draw_beamline:
         xaxisMax = 0
         ebeam = beam()
         plot6dValues = {0: (ebeam.getXYZ(matrixVariables))}
-        maxVals = [0,0,0,0,0,0]
-        minVals = [0,0,0,0,0,0]
+        maxVals = [0, 0, 0, 0, 0, 0]
+        minVals = [0, 0, 0, 0, 0, 0]
+
         if defineLim:
-           maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)  
+            maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
 
-        
-        for i in range(len(beamSegments)):
-            #  Loop through each beamline object in beamSegments array
-            intTrack = beamSegments[i].length
-            xaxisMax += intTrack
+        total_intervals = sum(int(segment.length // interval) + 1 for segment in beamSegments)
 
-            
-            while intTrack >= interval:
-                #  Perform calculations to plot later on
-                #  Use each segment's array to transform particles
-                matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = interval))
-                xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables)
-                if defineLim:
-                    maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
-                plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
-                intTrack -= interval
-            if intTrack > 0:
-                #  Use remainder length once when it's smaller than interval
-                matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length = intTrack))
-                xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack, matrixVariables)
-                if defineLim:
-                    maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
-                plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
+        # Initialize the progress bar
+        with tqdm(total=total_intervals, desc="Simulating Beamline",
+                  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+            for i in range(len(beamSegments)):
+                # Loop through each beamline object in beamSegments array
+                intTrack = beamSegments[i].length
+                xaxisMax += intTrack
+
+                while intTrack >= interval:
+                    # Perform calculations to plot later on
+                    # Use each segment's array to transform particles
+                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length=interval))
+                    xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval,
+                                                                         matrixVariables)
+                    if defineLim:
+                        maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
+                    plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
+
+                    # Update the progress bar
+                    pbar.update(1)
+                    intTrack -= interval
+
+                if intTrack > 0:
+                    # Use remainder length once when it's smaller than interval
+                    matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length=intTrack))
+                    xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack,
+                                                                         matrixVariables)
+                    if defineLim:
+                        maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
+                    plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
+
+                    # Update the progress bar for the remaining part
+                    pbar.update(1)
 
         if saveData:
             #  Optionally save standard deviation and mean data
