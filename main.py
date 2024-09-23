@@ -15,8 +15,6 @@ df = excel.get_dataframe()
 print(df)
 #beamlattice = lattice.changeE(E=70)
 
-beamlattice = lattice(length=0.11,E=70)
-test = beamlattice.changeE(350)
 beamline = excel.create_beamline()
 
 
@@ -28,6 +26,6 @@ schem = draw_beamline()
 
 # ebeam
 ebeam = beam()
-beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,0.1,100],1000)
+beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,0.1,450],1000)
 
-schem.plotBeamPositionTransform(beam_dist, beamline, 0.01, defineLim=True, saveData=False, shape = {}, plot=True)
+schem.plotBeamPositionTransform(beam_dist, beamline, 0.4, defineLim=True, saveData=False, shape = {}, plot=True)

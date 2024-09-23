@@ -6,7 +6,7 @@ import numpy as np
 #Give each beamline object its optional plot6d paramter at certain lengths into the beamline?
 
 class lattice:
-    def __init__(self, length: float = 0, E = 35):
+    def __init__(self, length: float = 0, E = 45):
         '''
         parent class for beamline segment object
 
