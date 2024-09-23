@@ -6,7 +6,7 @@ import numpy as np
 #Give each beamline object its optional plot6d paramter at certain lengths into the beamline?
 
 class lattice:
-    def __init__(self, length: float = 0, E = 35):
+    def __init__(self, length: float = 0, E = 45):
         '''
         parent class for beamline segment object
 
@@ -15,17 +15,20 @@ class lattice:
         length: float
             sets length of beamline element
         E: float, optional
-            Kinetic energy value (???)
+            Kinetic energy value (MeV/c^2)
         '''
         self.E = E  # Kinetic energy (MeV/c^2)
-        self.E0 = 0.51099
-        self.QE = 1.60217663e-19  #C
-        self.ME = 9.1093837e-31  #kg
-        self.C = 299792458  #m/s
-        self.G = 2.694  #Quadruple focusing strength (T/A/m)
-        self.gamma = (1 + (self.E/self.E0))
+        ## this should be passed from ebeam
+        self.E0 = 0.51099 # Electron rest energy (MeV/c^2)
+        self.QE = 1.60217663e-19  # (C)
+        self.ME = 9.1093837e-31  # (kg)
+        self.C = 299792458  # Celerity (m/s)
+        self.gamma = (1 + (self.E / self.E0))
         self.beta = np.sqrt(1 - (1 / (self.gamma ** 2)))
+        self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
+        ##
         self.color = 'none'  #Color of beamline element when graphed
+
         if not length <= 0:
             self.length = length
         else:
@@ -78,11 +81,12 @@ class driftLattice(lattice):
     def useMatrice(self, values, length = -1):
         if length <= 0:
             length = self.length
+        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
         return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
                                  [0, 1, 0, 0, 0, 0],
                                  [0, 0, 1, length, 0, 0],
                                  [0, 0, 0, 1, 0, 0],
-                                 [0, 0, 0, 0, 1, (length/((self.gamma)**2))],
+                                 [0, 0, 0, 0, 1, M56],
                                  [0, 0, 0, 0, 0, 1]])))
     
     def __str__(self):
@@ -94,6 +98,7 @@ class qpfLattice(lattice):
         super().__init__(length = length)
         self.current = current # Amps
         self.color = "cornflowerblue"
+        self.G = 2.694  # Quadruple focusing strength (T/A/m)
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -112,21 +117,21 @@ class qpfLattice(lattice):
         self.k = np.abs((self.QE*self.G*current)/(self.ME*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
-        field1 = np.cos(self.theta)
-        field2 = np.sin(self.theta)*(1/np.sqrt(self.k))
-        field3 = (-(np.sqrt(self.k)))*np.sin(self.theta)
-        field4 = np.cos(self.theta)
-        field5 = np.cosh(self.theta)
-        field6 = np.sinh(self.theta)*(1/np.sqrt(self.k))
-        field7 = np.sqrt(self.k)*np.sinh(self.theta)
-        field8 = np.cosh(self.theta)
-        field9 = length/(self.gamma**2)
+        M11 = np.cos(self.theta)
+        M12 = np.sin(self.theta)*(1/np.sqrt(self.k))
+        M21 = (-(np.sqrt(self.k)))*np.sin(self.theta)
+        M22 = np.cos(self.theta)
+        M33 = np.cosh(self.theta)
+        M34 = np.sinh(self.theta)*(1/np.sqrt(self.k))
+        M43 = np.sqrt(self.k)*np.sinh(self.theta)
+        M44 = np.cosh(self.theta)
+        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
 
-        return super().useMatrice(values, np.array([[field1, field2, 0, 0, 0, 0],
-                                                    [field3, field4, 0, 0, 0, 0],
-                                                    [0, 0, field5, field6, 0, 0],
-                                                    [0, 0, field7, field8, 0, 0],
-                                                    [0, 0, 0, 0, 1, field9],
+        return super().useMatrice(values, np.array([[M11, M12, 0, 0, 0, 0],
+                                                    [M21, M22, 0, 0, 0, 0],
+                                                    [0, 0, M33, M34, 0, 0],
+                                                    [0, 0, M43, M44, 0, 0],
+                                                    [0, 0, 0, 0, 1, M56],
                                                     [0, 0, 0, 0, 0, 1]]))
     
     def __str__(self):
@@ -137,6 +142,7 @@ class qpdLattice(lattice):
     def __init__(self, length: float = 0.0889, current: float = 0):
         super().__init__(length)
         self.current = current # Amps
+        self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
 
     def useMatrice(self, values, length = -1, current = -1):
@@ -152,37 +158,33 @@ class qpdLattice(lattice):
         self.k = np.abs((self.QE*self.G*current)/(self.ME*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
-        field1 = np.cos(self.theta)
-        field2 = np.sin(self.theta)*(1/np.sqrt(self.k))
-        field3 = (-(np.sqrt(self.k)))*np.sin(self.theta)
-        field4 = np.cos(self.theta)
-        field5 = np.cosh(self.theta)
-        field6 = np.sinh(self.theta)*(1/np.sqrt(self.k))
-        field7 = np.sqrt(self.k)*np.sinh(self.theta)
-        field8 = np.cosh(self.theta)
-        field9 = length/(self.gamma**2)
+        M11 = np.cosh(self.theta)
+        M12 = np.sinh(self.theta)*(1/np.sqrt(self.k))
+        M21 = np.sqrt(self.k)*np.sinh(self.theta)
+        M22 = np.cosh(self.theta)
+        M33 = np.cos(self.theta)
+        M34 = np.sin(self.theta)*(1/np.sqrt(self.k))
+        M43 = (-(np.sqrt(self.k)))*np.sin(self.theta)
+        M44 = np.cos(self.theta)
+        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
 
-        return super().useMatrice(values, (np.array([[field5, field6, 0, 0, 0, 0],
-                                                    [field7, field8, 0, 0, 0, 0],
-                                                    [0, 0, field1, field2, 0, 0],
-                                                    [0, 0, field3, field4, 0, 0],
-                                                    [0, 0, 0, 0, 1, field9],
+        return super().useMatrice(values, (np.array([[M11, M12, 0, 0, 0, 0],
+                                                    [M21, M22, 0, 0, 0, 0],
+                                                    [0, 0, M33, M34, 0, 0],
+                                                    [0, 0, M43, M44, 0, 0],
+                                                    [0, 0, 0, 0, 1, M56],
                                                     [0, 0, 0, 0, 0, 1]])))
 
     def __str__(self):
         return f"QPD beamline segment {self.length} m long"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, angle_i: float = 1, angle_f: float = 1):
+    def __init__(self, length: float = 0.0889, angle: float = 1.5):
         super().__init__(length=length)
-        self.color = "green"
+        self.color = "forestgreen"
         self.angle = angle # degrees
-        self.angle_i = angle_i
-        self.angle_f = angle_f
         self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (self.angle * np.pi / 180 / self.length)
         self.rho = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
-        self.theta = length / self.rho
-        self.gap = 0.01  # hard-edge fringe field gap (m)
 
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
@@ -200,49 +202,70 @@ class dipole(lattice):
             angle = angle[0]
 
         # Rectangular dipole
-        R = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
+        R = self.rho
         theta = length / self.rho
-        C = np.cos(self.theta)
-        S = np.sin(self.theta)
+        C = np.cos(theta)
+        S = np.sin(theta)
         L = length
-        G = self.gamma
 
-        M = np.array([[C, R * S, 0, 0, 0, R * (1 - C)],
-                      [-S / R, C, 0, 0, 0, S],
+        M16 = R * (1 - C) * (self.gamma / (self.gamma + 1) / self.E)
+        M26 = S * (self.gamma / (self.gamma + 1) / self.E)
+        M51 = self.unitsF * (-S / (self.beta * self.C))
+        M52 = self.unitsF * (-R * (1 - C) / (self.beta * self.C))
+        M56 = self.unitsF * (-R * (L / R - S) / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/g must be included
+
+        M = np.array([[C, R * S, 0, 0, 0, M16],
+                      [-S / R, C, 0, 0, 0, M26],
                       [0, 0, 1, L, 0, 0],
                       [0, 0, 0, 1, 0, 0],
-                      [S, R * (1 - C), 0, 0, 1, R * (L / R - S) + L / (G ** 2)],
+                      [M51, M52, 0, 0, 1, M56],
                       [0, 0, 0, 0, 0, 1]])
 
-        # Hard edge model for the wedge magnets
-        k = np.abs((self.QE * self.By / self.gap) / (self.ME * self.C * self.beta * self.gamma)) # Verify
-        eta_i = self.angle_i * np.pi / 180
-        eta_f = self.angle_i * np.pi / 180
-        Ei = (length * k) / ((np.cos(eta_i)) ** 2)
-        Ef = (length * k) / ((np.cos(eta_f)) ** 2)
-        Ti = np.tan(eta_i)
-        Tf = np.tan(eta_f)
+        return super().useMatrice(values, M)
 
-        Mi = np.array([[1, 0, 0, 0, 0, 0],
-                      [-Ti / R, 1, 0, 0, 0, 0],
-                      [0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, -(Ti + Ei / 3) / R, 0, 0],
-                      [0, 0, 0, 0, 1, L / G ** 2],
-                      [0, 0, 0, 0, 0, 1]])
-
-        Mf = np.array([[1, 0, 0, 0, 0, 0],
-                      [-Tf / R, 1, 0, 0, 0, 0],
-                      [0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, -(Tf + Ef / 3) / R, 0, 0],
-                      [0, 0, 0, 0, 1, L / G ** 2],
-                      [0, 0, 0, 0, 0, 1]])
-        test = np.dot(M, Mi)
-        test = np.dot(Mf,np.dot(M, Mi))
-        if length < self.length - G:
-            return super().useMatrice(values, M)
-        else:
-            return super().useMatrice(values, M)
     def __str__(self):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature)"
 
+class dipole_wedge(lattice):
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5):
+        super().__init__(length=length)
+        self.color = "lightgreen"
+        self.angle = angle
+        self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (dipole_angle * np.pi / 180 / dipole_length)
+        self.rho = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
+        self.gap = 0.01  # hard-edge fringe field gap (m)
 
+    '''
+    performs a transformation to a 2d np array made of 1x6 variable matrices
+
+    values: np.array([list[int],...])
+    '''
+    def useMatrice(self, values, length = -1, angle = -1):
+        if length <= 0:
+            length = self.length
+        if angle < 0:
+            angle = self.angle
+
+        #   TEMPORARY PURPOSES
+        if isinstance(angle, np.ndarray):
+            angle = angle[0]
+
+        # Hard edge model for the wedge magnets
+        R = self.rho
+        k = np.abs((self.QE * self.By / self.length) / (self.ME * self.C * self.beta * self.gamma)) # Verify
+        eta = (self.angle * np.pi / 180) * length / self.length # Verify
+        E = (length * k) / ((np.cos(eta)) ** 2)
+        T = np.tan(eta)
+        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        M = np.array([[1, 0, 0, 0, 0, 0],
+                      [-T / R, 1, 0, 0, 0, 0],
+                      [0, 0, 1, 0, 0, 0],
+                      [0, 0, -(T + E / 3) / R, 1, 0, 0],
+                      [0, 0, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+
+
+        return super().useMatrice(values, M)
+    def __str__(self):
+        return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature)"
