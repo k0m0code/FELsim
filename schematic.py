@@ -237,7 +237,6 @@ class draw_beamline:
         xMean = [np.mean(initialx)]
         yMean = [np.mean(initialy)]
         x_axis = [0]
-        xaxisMax = 0
         ebeam = beam()
         plot6dValues = {0: (ebeam.getXYZ(matrixVariables))}
         maxVals = [0, 0, 0, 0, 0, 0]

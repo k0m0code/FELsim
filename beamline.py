@@ -110,7 +110,7 @@ class qpfLattice(lattice):
         if current < 0:
             current = self.current
 
-        #   TEMPORARY PURPOSES
+        #   Necessary because code had problems working with numpy arrays
         if isinstance(current, np.ndarray):
             current = current[0]
 
@@ -151,7 +151,7 @@ class qpdLattice(lattice):
         if current < 0:
             current = self.current
 
-        #   TEMPORARY PURPOSES
+        #   Necessary because code had problems working with numpy arrays
         if isinstance(current, np.ndarray):
             current = current[0]
 

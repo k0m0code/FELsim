@@ -7,6 +7,8 @@ https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant
 https://docs.scipy.org/doc/scipy/reference/optimize.html
 gpt"can you xplain the parameters of a constraint paramter in scipy.minimize"
 '''
+#  NOTE: nelder-mead method doesn't work if starting search point is zero (if variablesValues = [0,0,0...])
+
 import scipy.optimize as spo
 from beamline import *
 import numpy as np
@@ -14,9 +16,9 @@ from schematic import *
 import timeit
 
 class beamOptimizer():
-    def __init__(self, beamline, indices: tuple, 
-                 stdxend, stdyend, start, method, 
-                 matrixVariables, xWeight = 1, yWeight = 1):
+    def __init__(self, beamline, optimVariables: dict, 
+                 stdxend, stdyend, method, 
+                 matrixVariables, startPoint = {}, xWeight = 1, yWeight = 1):
         '''
         Constructor for the optimizer object. Object is used to optimize the electric current values
         for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
@@ -26,8 +28,10 @@ class beamOptimizer():
         ----------
         beamline: list[beamline]
             list of beamline objects representing accelerator beam
-        indices: tuple(int)
-            tuple of indices representing the interval in the beamline we want to optimize 
+
+        optimVariables: tuple(int)
+            tuple of optimVariables representing the interval in the beamline we want to optimize 
+
         stdxend: float
             final standard deviation of particles' x position that we are targeting
         stdyend: float
@@ -51,12 +55,29 @@ class beamOptimizer():
         self.stdyend = stdyend
         self.matrixVariables = matrixVariables
         self.beamline = beamline
-        self.indices = indices
-        self.start = start
+
+        self.optimVariables = optimVariables
+        checkSet = set()
+        self.variablesOptimize = []
+        for item in optimVariables:
+            varItem = optimVariables.get(item)[0]
+            if varItem not in checkSet:
+                self.variablesOptimize.append(varItem)
+                checkSet.add(varItem)
+
+        self.variablesValues = [1 for i in self.variablesOptimize] 
+        self.bounds = [(None, None) for i in self.variablesOptimize]
+        for var in startPoint:
+            index = self.variablesOptimize.index(var)
+            if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
+            if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
+
+        print(self.variablesOptimize)
+        
         self.method = method
         self.xWeight = xWeight
         self.yWeight = yWeight
-    
+
     def _optiSpeed(self, current):
         '''
         Simulates particle movement through a beamline, calculates positional standard deviation, 
@@ -77,19 +98,47 @@ class beamOptimizer():
             target standard deviation. Weighted bias for x vs y stats also accounted for.
         '''
         particles = self.matrixVariables
-        segments = self.beamline[self.indices[0]:self.indices[1]]
-        ii = 0
+        segments = self.beamline
+
+
         for i in range(len(segments)):
-            if isinstance(segments[i], qpdLattice) or isinstance(segments[i], qpfLattice):
-                particles = np.array(segments[i].useMatrice(particles, current = current[ii]))
-                ii += 1
+            if i in self.optimVariables:
+                yFunc = self.optimVariables.get(i)[1]
+                varIndex = self.variablesOptimize.index(self.optimVariables.get(i)[0]) #  Get the index of the variable to use with 
+                objCurrent = yFunc(current[varIndex])
+                param = self.optimVariables.get(i)[2]
+                particles = np.array(segments[i].useMatrice(particles, **{param: objCurrent}))
             else:
-                particles = np.array(segments[i].useMatrice(particles))
+                particles = np.array(segments[i].useMatrice(particles))  
+                
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
         difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
         # print(difference)  #for testing
         return difference
+    
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     def calc(self):
         '''
@@ -103,7 +152,7 @@ class beamOptimizer():
         '''
 
         # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
-        result = spo.minimize(self._optiSpeed, self.start, method = self.method)
+        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds)
         return result
    
     def testSpeed(self, iterations):
@@ -177,3 +226,4 @@ class beamOptimizer():
                 raise AttributeError("algorithm does not track iterations")
         avIterate = iterationsTotal/iterations   
         return avIterate
+    
