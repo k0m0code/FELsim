@@ -94,8 +94,9 @@ class driftLattice(lattice):
 
 
 class qpfLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889):
-        super().__init__(length = length)
+    def __init__(self, current: float, length: float = 0.0889, 
+                 E = 45):
+        super().__init__(length = length, E = E)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
@@ -139,8 +140,8 @@ class qpfLattice(lattice):
 
 
 class qpdLattice(lattice):
-    def __init__(self, length: float = 0.0889, current: float = 0):
-        super().__init__(length)
+    def __init__(self, length: float = 0.0889, current: float = 0, E = 45):
+        super().__init__(length, E =E)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
@@ -179,8 +180,8 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5):
-        super().__init__(length=length)
+    def __init__(self, length: float = 0.0889, angle: float = 1.5, E = 45):
+        super().__init__(length=length, E = E)
         self.color = "forestgreen"
         self.angle = angle # degrees
         self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (self.angle * np.pi / 180 / self.length)
@@ -227,8 +228,8 @@ class dipole(lattice):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature)"
 
 class dipole_wedge(lattice):
-    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5):
-        super().__init__(length=length)
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E = 45):
+        super().__init__(length=length, E = E)
         self.color = "lightgreen"
         self.angle = angle
         self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (dipole_angle * np.pi / 180 / dipole_length)
