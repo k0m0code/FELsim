@@ -16,7 +16,7 @@ from schematic import *
 import timeit
 
 class beamOptimizer():
-    def __init__(self, beamline, optimVariables: dict, 
+    def __init__(self, beamline, segmentVar: dict, 
                  stdxend, stdyend, method, 
                  matrixVariables, startPoint = {}, xWeight = 1, yWeight = 1):
         '''
@@ -29,8 +29,8 @@ class beamOptimizer():
         beamline: list[beamline]
             list of beamline objects representing accelerator beam
 
-        optimVariables: tuple(int)
-            tuple of optimVariables representing the interval in the beamline we want to optimize 
+        segmentVar: tuple(int)
+            tuple of segmentVar representing the interval in the beamline we want to optimize 
 
         stdxend: float
             final standard deviation of particles' x position that we are targeting
@@ -56,11 +56,13 @@ class beamOptimizer():
         self.matrixVariables = matrixVariables
         self.beamline = beamline
 
-        self.optimVariables = optimVariables
+        self.segmentVar = segmentVar
         checkSet = set()
         self.variablesOptimize = []
-        for item in optimVariables:
-            varItem = optimVariables.get(item)[0]
+        for item in segmentVar:
+            if (item < 0 or item >= len(beamline)):
+                raise IndexError
+            varItem = segmentVar.get(item)[0]
             if varItem not in checkSet:
                 self.variablesOptimize.append(varItem)
                 checkSet.add(varItem)
@@ -71,8 +73,6 @@ class beamOptimizer():
             index = self.variablesOptimize.index(var)
             if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
             if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
-
-        print(self.variablesOptimize)
         
         self.method = method
         self.xWeight = xWeight
@@ -102,11 +102,11 @@ class beamOptimizer():
 
 
         for i in range(len(segments)):
-            if i in self.optimVariables:
-                yFunc = self.optimVariables.get(i)[1]
-                varIndex = self.variablesOptimize.index(self.optimVariables.get(i)[0]) #  Get the index of the variable to use with 
+            if i in self.segmentVar:
+                yFunc = self.segmentVar.get(i)[1]
+                varIndex = self.variablesOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the variable to use with 
                 objCurrent = yFunc(current[varIndex])
-                param = self.optimVariables.get(i)[2]
+                param = self.segmentVar.get(i)[2]
                 particles = np.array(segments[i].useMatrice(particles, **{param: objCurrent}))
             else:
                 particles = np.array(segments[i].useMatrice(particles))  
@@ -116,26 +116,6 @@ class beamOptimizer():
         difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
         # print(difference)  #for testing
         return difference
-    
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -153,6 +133,12 @@ class beamOptimizer():
 
         # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
         result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds)
+
+        #  WIP: add results in a clean format with values of each segment
+        for i in range(len(result.x)):
+            variable = self.variablesOptimize[i]
+
+            
         return result
    
     def testSpeed(self, iterations):
