@@ -227,6 +227,15 @@ class draw_beamline:
             ex. shape, width, radius, length, origin
         plot: bool, optional
             Optional boolean variable to plot simulation or not
+
+
+
+        NOTE:
+        shape is a dictionary defined as:
+        shape = {"shape": "circle", "radius": 5, "origin": (0,5)}
+        or
+        shape = {"shape": "rectangle", "length": 200, "width": 500, "origin": (10,-4)}
+        Only 2 shapes currently: rectangles and circles
         '''
 
         # Initialize values
@@ -253,7 +262,6 @@ class draw_beamline:
             for i in range(len(beamSegments)):
                 # Loop through each beamline object in beamSegments array
                 intTrack = beamSegments[i].length
-                xaxisMax += intTrack
 
                 while intTrack >= interval:
                     # Perform calculations to plot later on
