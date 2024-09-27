@@ -14,6 +14,7 @@ from beamline import *
 import numpy as np
 from schematic import *
 import timeit
+import matplotlib.pyplot as plt
 
 class beamOptimizer():
     def __init__(self, beamline, segmentVar: dict, 
@@ -29,8 +30,8 @@ class beamOptimizer():
         beamline: list[beamline]
             list of beamline objects representing accelerator beam
 
-        segmentVar: tuple(int)
-            tuple of segmentVar representing the interval in the beamline we want to optimize 
+        segmentVar: list(int)
+            list of segmentVar representing the interval in the beamline we want to optimize 
 
         stdxend: float
             final standard deviation of particles' x position that we are targeting
@@ -55,6 +56,12 @@ class beamOptimizer():
         self.stdyend = stdyend
         self.matrixVariables = matrixVariables
         self.beamline = beamline
+        self.method = method
+        self.xWeight = xWeight
+        self.yWeight = yWeight
+        self.plotChiSquared = []
+        self.plotIterate = []
+        self.iterationTrack = 0
 
         self.segmentVar = segmentVar
         checkSet = set()
@@ -74,9 +81,7 @@ class beamOptimizer():
             if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
             if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
         
-        self.method = method
-        self.xWeight = xWeight
-        self.yWeight = yWeight
+        
 
     def _optiSpeed(self, current):
         '''
@@ -114,13 +119,16 @@ class beamOptimizer():
         stdx = np.std(particles[:,0])
         stdy = np.std(particles[:,2])
         difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
+        self.plotChiSquared.append(difference)
+        self.plotIterate.append((self.iterationTrack) + 1)
+        self.iterationTrack = self.iterationTrack + 1
         # print(difference)  #for testing
         return difference
 
 
 
     
-    def calc(self):
+    def calc(self, plot = False):
         '''
         optimizes beamline quadruple current values so particles' positional standard
         deviation is as close to target as possible
@@ -132,13 +140,23 @@ class beamOptimizer():
         '''
 
         # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
-        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds)
+        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds, options={'disp':True})
+
+        if plot:
+            plt.plot(self.plotIterate, self.plotChiSquared)
+            plt.yscale('log')
+            plt.show()
 
         #  WIP: add results in a clean format with values of each segment
-        for i in range(len(result.x)):
-            variable = self.variablesOptimize[i]
+        #  Potentially add this to a seperate tinker window?
+        for key in self.segmentVar:
+            variable = self.segmentVar.get(key)[0]
+            index = self.variablesOptimize.index(variable)
+            yFunc = self.segmentVar.get(key)[1]
+            newVal = yFunc(result.x[index])
+            self.segmentVar.get(key).append(newVal)
 
-            
+
         return result
    
     def testSpeed(self, iterations):
