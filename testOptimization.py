@@ -25,15 +25,21 @@ beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 
 # schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
-# vals = {5: ("Z", lambda num: num*3.14*2), 1:("bruh", lambda num: num*2), 3: ("B",lambda num: num+5),  7: ("poi",lambda num: num**12)}
 
-vals = {0: ("A", lambda num: num, "length"),
-        9: ("C", lambda num:num, "length")}
+vals = {0: ["A", lambda num: num, "length"],
+        1: ["I", lambda num:num, "current"],
+        3: ["I", lambda num:num, "current"],
+        5: ["I", lambda num:num, "current"],
+        7: ["I", lambda num:num, "current"],
+        9: ["B", lambda num:num, "angle"]}
+
+starting = {"I": {"bounds": (0,10), "start": 1}, 
+            "A": {"start": 0.5},
+            "B": {"start": 10}}
 
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
-test = beamOptimizer(line, vals,1,1, "COBYLA", matrixVariables, startPoint={"I": {"bounds": (0,10), "start": 1}, 
-                                                                            "B": {"start": 10}})
+test = beamOptimizer(line, vals,1,1, "COBYLA", matrixVariables, startPoint= starting)
 
 
 
@@ -42,7 +48,7 @@ test = beamOptimizer(line, vals,1,1, "COBYLA", matrixVariables, startPoint={"I":
 # test = beamOptimizer(line, (1,3,5),1,1, [A,B], "Nelder-Mead", matrixVariables)
 
 
-result = test.calc()
+result = test.calc(plot=True)
 
 # print("speed " + str(test.testSpeed(10)))
 # evals, evalType = test.testFuncEval(10)
