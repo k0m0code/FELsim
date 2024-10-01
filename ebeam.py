@@ -157,7 +157,9 @@ class beam:
     
 
 
-
+    '''
+    returns twiss and eliptical data
+    '''
     def getXYZ(self, dist_6d):
         num_pts = 60  # Used for implicit plot of the ellipse
         ddof = 1  # Unbiased Bessel correction for standard deviation calculation
@@ -173,6 +175,9 @@ class beam:
             std6.append([X,Y,Z])
         return std1, std6, dist_6d, twiss
 
+    '''
+    plots 6d and twiss data, used in schematic.py file
+    '''
     def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
         axlist = [ax1,ax2,ax3]
         # Define SymPy symbols for plotting
@@ -251,7 +256,9 @@ class beam:
         ax4.set_ylabel(y_labels[i + 1])
         ax4.grid(True)
 
-
+    '''
+    plots 6d and twiss data with only particle distribution data
+    '''
     def plot_6d(self, dist_6d, title):
 
         num_pts = 60  # Used for implicit plot of the ellipse
