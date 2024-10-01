@@ -23,20 +23,26 @@ line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9, sec10]
 
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 
-# schem.plotBeamPositionTransform(beam_dist, line, 0.05)
-
 
 vals = {0: ["A", lambda num: num, "length"],
         1: ["I", lambda num:num, "current"],
         3: ["I", lambda num:num, "current"],
         5: ["I", lambda num:num, "current"],
-        7: ["I", lambda num:num, "current"],
-        9: ["B", lambda num:num, "angle"]}
+        7: ["I", lambda num:num, "current"],}
 
 starting = {"I": {"bounds": (0,10), "start": 1}, 
-            "A": {"start": 0.5},
-            "B": {"start": 10}}
+            "A": {"start": 0.5}}
 
+def alpha(particles):
+    return beam.getXYZ(particles)
+
+objectives = {9: {"measure": "xstd", "goal": 5, "weight": 9}, 5: {"measure": alpha, "goal": 5, "weight": 9}}
+
+valTest =       {0: {"variab;e": "A", "relationship": lambda num: num, "optimized": "length"},
+                1: ["I", lambda num:num, "current"],
+                3: ["I", lambda num:num, "current"],
+                5: ["I", lambda num:num, "current"],
+                7: ["I", lambda num:num, "current"],}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
 test = beamOptimizer(line, vals,1,1, "COBYLA", matrixVariables, startPoint= starting)
@@ -50,6 +56,7 @@ test = beamOptimizer(line, vals,1,1, "COBYLA", matrixVariables, startPoint= star
 
 result = test.calc(plot=True)
 
+
 # print("speed " + str(test.testSpeed(10)))
 # evals, evalType = test.testFuncEval(10)
 # print("evals " + str(evals) + ", " + evalType)
@@ -57,10 +64,10 @@ result = test.calc(plot=True)
 
 beam_dist = test.matrixVariables
 schem = draw_beamline()
-line[0].length = result.x[2]
-line[1].current = result.x[0]
-line[3].current = result.x[0]
-line[5].current = result.x[0]
+line[0].length = result.x[0]
+line[1].current = result.x[1]
+line[3].current = result.x[1]
+line[5].current = result.x[1]
 line[7].current = result.x[1]
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
