@@ -16,11 +16,13 @@ import numpy as np
 from schematic import *
 import timeit
 import matplotlib.pyplot as plt
+# NOTE: EACH BEAMOPTIMIZER OBJECT AFTER INSTANTIATION SHOULD ONLY BE USED TO 
+# RUN A CALC() FUNCTION ONE TIME, CODE HAS NOT BEEN MODIFIED YET BEYOND ONE CALC() FUNCTION CALL
+# For each indice of the beam segment in parameter, no proper error handling yet for invalid values, repeating indices with same objective, have to test...
 
 class beamOptimizer():
-    def __init__(self, beamline, segmentVar: dict, 
-                 stdxend, stdyend, method, 
-                 matrixVariables, startPoint = {}, xWeight = 1, yWeight = 1, objectives = {}):
+    def __init__(self, beamline, segmentVar: dict, method, 
+                 matrixVariables, startPoint = {}, objectives = {}):
         '''
         Constructor for the optimizer object. Object is used to optimize the electric current values
         for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
@@ -53,19 +55,12 @@ class beamOptimizer():
             weight > 1 means more bias, weight < 1 means less bias
 
         '''
-        self.stdxend = stdxend
-        self.stdyend = stdyend
         self.matrixVariables = matrixVariables
         self.beamline = beamline
         self.method = method
-        self.xWeight = xWeight
-        self.yWeight = yWeight
-        self.objectives = objectives
+        #Methods included in class to return staistical information
+        self.OBJECTIVEMETHODS = {"xStd": self.xStd, "yStd": self.yStd}
 
-
-        self.plotChiSquared = []
-        self.plotIterate = []
-        self.iterationTrack = 0
 
         self.segmentVar = segmentVar
         checkSet = set()
@@ -78,23 +73,35 @@ class beamOptimizer():
                 self.variablesToOptimize.append(varItem)
                 checkSet.add(varItem)
 
+        self.plotChiSquared = []
+        self.plotIterate = []
+        self.iterationTrack = 0
+        self.trackVariables = []
+
+
+        for key, value in objectives.items():
+            if value["measure"] in self.OBJECTIVEMETHODS:
+                value["measure"] = self.OBJECTIVEMETHODS[value["measure"]]
+            # indiceStr = "indice " + str(key) + ", " + value["measure"].__name__
+            self.trackVariables.append([key, value["measure"].__name__ []])
+        self.objectives = objectives
+
+
         self.variablesValues = [] 
         self.bounds = []
-        self.trackVariables = []
         for i in self.variablesToOptimize:
             self.variablesValues.append(1) 
             self.bounds.append((None, None))
-            self.trackVariables.append([])
         
         for var in startPoint:
             index = self.variablesToOptimize.index(var)
             if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
             if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
 
-    def getXStd(particles):
+    def xStd(particles):
         return np.std(particles[:,0])
         
-    def getYStd(particles):
+    def yStd(particles):
         return np.std(particles[:,2])
         
 
@@ -119,6 +126,7 @@ class beamOptimizer():
         '''
         particles = self.matrixVariables
         segments = self.beamline
+        chiPieces = []
 
 
         for i in range(len(segments)):
@@ -130,20 +138,27 @@ class beamOptimizer():
                 particles = np.array(segments[i].useMatrice(particles, **{param: objCurrent}))
 
                 if i in self.objectives:
-                    chiPiece = 
+                    objParams = self.objectives[i]
+                    stat = (objParams["measure"](particles))
+                    chiPieces.append((((stat-objParams["goal"])**2)*objParams["weight"])/objParams["goal"])
+                
             else:
                 particles = np.array(segments[i].useMatrice(particles))  
                 
-        stdx = np.std(particles[:,0])
-        stdy = np.std(particles[:,2])
 
 
-        difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
+
+        # difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
+        difference = 0
+        for piece in chiPieces: difference = difference + piece
+        difference = np.sqrt(difference)
+
         self.plotChiSquared.append(difference)
         self.plotIterate.append((self.iterationTrack) + 1)
         self.iterationTrack = self.iterationTrack + 1
         self.trackVariables[0].append(stdx)
         self.trackVariables[1].append(stdy)
+
         # print(difference)  #for testing
         return difference
     

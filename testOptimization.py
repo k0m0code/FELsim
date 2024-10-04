@@ -36,16 +36,17 @@ starting = {"I": {"bounds": (0,10), "start": 1},
 def alpha(particles):
     return beam.getXYZ(particles)
 
-objectives = {9: {"measure": "xstd", "goal": 5, "weight": 9}, 5: {"measure": alpha, "goal": 5, "weight": 9}}
+objectives = {9: {"measure": "xStd", "goal": 5, "weight": 9}, 5: {"measure": "yStd", "goal": 5, "weight": 9}}
 
-valTest =       {0: {"variab;e": "A", "relationship": lambda num: num, "optimized": "length"},
+valTest =       {0: {"variable": "A", "relationship": lambda num: num, "optimized": "length"},
                 1: ["I", lambda num:num, "current"],
                 3: ["I", lambda num:num, "current"],
                 5: ["I", lambda num:num, "current"],
                 7: ["I", lambda num:num, "current"],}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
-test = beamOptimizer(line, vals,1,1, "COBYLA", matrixVariables, startPoint= starting)
+test = beamOptimizer(line, vals, "COBYLA", matrixVariables, startPoint= starting, objectives=objectives)
+print(test.trackVariables)
 
 
 
