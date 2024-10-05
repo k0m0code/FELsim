@@ -7,7 +7,10 @@ https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant
 https://docs.scipy.org/doc/scipy/reference/optimize.html
 gpt"can you xplain the parameters of a constraint paramter in scipy.minimize"
 '''
-#  NOTE: nelder-mead method doesn't work if starting search point is zero (if variablesValues = [0,0,0...])
+#  NOTE: nelder-mead method doesn't work if starting search point is zero (if variablesValues = [0,0,0...]
+#  NOTE: After testing, COBYLA and some other methods may try a test value of 0 for current, length, etc, that may throw back a difference of NAN
+#        (because beamline object divides by 0). Have to figure out how to bound variable values automatically so computer doesn't use weird values like 0, 
+#        negative numbers (YOU MUST USE bounds for now so program doesn't use negative/zero numbers
 
 import scipy.optimize as spo
 from beamline import *
@@ -16,13 +19,20 @@ import numpy as np
 from schematic import *
 import timeit
 import matplotlib.pyplot as plt
+
 # NOTE: EACH BEAMOPTIMIZER OBJECT AFTER INSTANTIATION SHOULD ONLY BE USED TO 
 # RUN A CALC() FUNCTION ONE TIME, CODE HAS NOT BEEN MODIFIED YET BEYOND ONE CALC() FUNCTION CALL
+
 # For each indice of the beam segment in parameter, no proper error handling yet for invalid values, repeating indices with same objective, have to test...
+
+#Currently can only optimize one variable for each segment indice
+
+# TODO: some objectives would like value goal to be zero, but we cant divide by zero in our chi difference calc. Find a way
+
 
 class beamOptimizer():
     def __init__(self, beamline, segmentVar: dict, method, 
-                 matrixVariables, startPoint = {}, objectives = {}):
+                 matrixVariables,objectives, startPoint = {}):
         '''
         Constructor for the optimizer object. Object is used to optimize the electric current values
         for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
@@ -58,8 +68,8 @@ class beamOptimizer():
         self.matrixVariables = matrixVariables
         self.beamline = beamline
         self.method = method
-        #Methods included in class to return staistical information
-        self.OBJECTIVEMETHODS = {"xStd": self.xStd, "yStd": self.yStd}
+        self.DDOF = 1 #  Unbiased Bessel correction for standard deviation calculation for alpha function
+        self.OBJECTIVEMETHODS = {"xStd": self.xStd, "yStd": self.yStd, "xAlpha": self.xAlpha,"yAlpha": self.yAlpha} #  Methods included in class to return staistical information
 
 
         self.segmentVar = segmentVar
@@ -76,35 +86,47 @@ class beamOptimizer():
         self.plotChiSquared = []
         self.plotIterate = []
         self.iterationTrack = 0
-        self.trackVariables = []
+        self.trackVariables = {}
 
-
+        #  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
         for key, value in objectives.items():
-            if value["measure"] in self.OBJECTIVEMETHODS:
-                value["measure"] = self.OBJECTIVEMETHODS[value["measure"]]
-            # indiceStr = "indice " + str(key) + ", " + value["measure"].__name__
-            self.trackVariables.append([key, value["measure"].__name__ []])
+            for goal in value:
+                if goal["measure"] in self.OBJECTIVEMETHODS:
+                    goal["measure"] = self.OBJECTIVEMETHODS[goal["measure"]]
+                self.trackVariables.update({"indice " + str(key) + ": " + goal["measure"].__name__: []})
         self.objectives = objectives
-
 
         self.variablesValues = [] 
         self.bounds = []
         for i in self.variablesToOptimize:
             self.variablesValues.append(1) 
             self.bounds.append((None, None))
-        
         for var in startPoint:
             index = self.variablesToOptimize.index(var)
             if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
             if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
 
-    def xStd(particles):
+    def xStd(self, particles):
         return np.std(particles[:,0])
         
-    def yStd(particles):
+    def yStd(self, particles):
         return np.std(particles[:,2])
-        
-
+    
+    def xAlpha(self, particles):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc["x"].loc[r"$\alpha$"]
+    
+    def yAlpha(self, particles):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc["y"].loc[r"$\alpha$"]
+    
+    def twissParams(self, particles):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc["y"].loc[r"$\alpha$"]
+    
     def _optiSpeed(self, variableVals):
         '''
         Simulates particle movement through a beamline, calculates positional standard deviation, 
@@ -133,33 +155,26 @@ class beamOptimizer():
             if i in self.segmentVar:
                 yFunc = self.segmentVar.get(i)[1]
                 varIndex = self.variablesToOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the variable to use with 
-                objCurrent = yFunc(variableVals[varIndex])
+                newValue = yFunc(variableVals[varIndex])
                 param = self.segmentVar.get(i)[2]
-                particles = np.array(segments[i].useMatrice(particles, **{param: objCurrent}))
-
-                if i in self.objectives:
-                    objParams = self.objectives[i]
-                    stat = (objParams["measure"](particles))
-                    chiPieces.append((((stat-objParams["goal"])**2)*objParams["weight"])/objParams["goal"])
-                
+                particles = np.array(segments[i].useMatrice(particles, **{param: newValue}))
             else:
                 particles = np.array(segments[i].useMatrice(particles))  
-                
+            if i in self.objectives:
+                for goalDict in self.objectives[i]:
+                    stat = (goalDict["measure"](particles))
+                    chiPieces.append((((stat-goalDict["goal"])**2)*goalDict["weight"])/goalDict["goal"])
+                    stringForm = "indice " + str(i) + ": " + goalDict["measure"].__name__
+                    self.trackVariables[stringForm].append(stat)
 
-
-
-        # difference = np.sqrt(((stdx-self.stdxend)**2)*self.xWeight*(1/self.stdxend) + ((stdy-self.stdyend)**2)*self.yWeight*(1/self.stdyend))
         difference = 0
-        for piece in chiPieces: difference = difference + piece
-        difference = np.sqrt(difference)
+        difference = np.sqrt(np.sum(chiPieces))
 
         self.plotChiSquared.append(difference)
         self.plotIterate.append((self.iterationTrack) + 1)
         self.iterationTrack = self.iterationTrack + 1
-        self.trackVariables[0].append(stdx)
-        self.trackVariables[1].append(stdy)
 
-        # print(difference)  #for testing
+        # print("diff:" + str(difference))  #for testing
         return difference
     
     def calc(self, plot = False):
@@ -172,12 +187,12 @@ class beamOptimizer():
         result: OptimizeResult
             Object containing resulting information about optimization process and results
         '''
-
-        # result = spo.minimize(self._optiSpeed, self.start, options={"disp": True}, method = self.method)
         result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds, options={'disp':True})
 
+        #  Alpha parameters look a little weird when plotting their minimization
         if plot:
             fig, ax1 = plt.subplots()
+            handles = []
 
             chiLine, =ax1.plot(self.plotIterate, self.plotChiSquared, label = 'Chi Squared', color = 'green')
             ax1.set_yscale('log')
@@ -185,14 +200,17 @@ class beamOptimizer():
             ax1.tick_params(axis='y', labelcolor = 'green')
             ax1.spines['left'].set_color('green')
             ax1.spines['left'].set_linewidth(1)
+            handles.append(chiLine)
 
             ax2 = ax1.twinx()
-            xStdLine, = ax2.plot(self.plotIterate, self.trackVariables[0], label = 'xstd', color = 'red')
-            yStdLine, =ax2.plot(self.plotIterate, self.trackVariables[1], label = 'ystd', color = 'blue')
-            ax2.set_ylabel('x and y standard deviation')
+            for key in self.trackVariables:
+                valAx, = ax2.plot(self.plotIterate, self.trackVariables[key], label = key)
+                handles.append(valAx)
+            ax2.set_yscale('log')
+            ax2.set_ylabel('Objective functions')
             
 
-            plt.legend(handles = [chiLine, xStdLine, yStdLine], loc = 'upper right')
+            plt.legend(handles = handles, loc = 'upper right')
             plt.show()
 
         #  WIP: add results in a clean format with values of each segment
