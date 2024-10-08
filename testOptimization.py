@@ -22,20 +22,21 @@ sec10 = dipole(length=0.0889, angle=1.5)
 line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9, sec10]
 
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
+schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
 
 vals = {1: ["I", lambda num:num, "current"],
         3: ["I", lambda num:num, "current"],
         5: ["I", lambda num:num, "current"],
-        7: ["I", lambda num:3*num, "current"]}
+        7: ["I", lambda num:num, "current"]}
 
-starting = {"I": {"bounds": (0.00001,100), "start": 5}}
+starting = {"I": {"bounds": (0.00001,10), "start": 5}}
 
 def alpha(particles):
     return beam.getXYZ(particles)
 
-#  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
-objectives = {3: [{"measure": "xAlpha", "goal": 0.000001, "weight": 1},{"measure": "yAlpha", "goal": 0.000001, "weight": 1}],9: [{"measure": "yStd", "goal": 1, "weight": 1},{"measure": "xStd", "goal": 1, "weight": 1}]}
+objectives = {5: [{"measure": ["x", "beta"],"goal":0.001,"weight":1},{"measure": ["y", "beta"],"goal":0.001,"weight":1}],
+              9: [{"measure": ["x", "std"],"goal":1,"weight":1},{"measure": ["y", "std"],"goal":1,"weight":1}]}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
 test = beamOptimizer(line, vals, "COBYLA", matrixVariables, objectives, startPoint= starting)
@@ -49,7 +50,6 @@ test = beamOptimizer(line, vals, "COBYLA", matrixVariables, objectives, startPoi
 
 
 result = test.calc(plot=True)
-print(result.x)
 
 
 # print("speed " + str(test.testSpeed(10)))
@@ -62,7 +62,7 @@ schem = draw_beamline()
 line[1].current = result.x[0]
 line[3].current = result.x[0]
 line[5].current = result.x[0]
-line[7].current = result.x[0]*3
+line[7].current = result.x[0]
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
 print("Current" + str(result.x))

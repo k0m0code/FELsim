@@ -3,6 +3,7 @@ from pathlib import Path
 from ebeam import beam
 from schematic import draw_beamline
 from excelElements import ExcelElements
+import numpy as np
 
 # # Create beamline from Excel file
 # path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
@@ -20,15 +21,18 @@ from excelElements import ExcelElements
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 
+print(10**(np.ceil(np.log10(0.000012342))))
 
 
 # ebeam
 ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
+tup = (ebeam.cal_twiss, 1)
 
-ebeam.plot_6d(beam_dist, 'bruh')
 
-dist_avg, dist_cov, twiss = ebeam.cal_twiss(beam_dist, ddof=1)
+
+dist_avg, dist_cov, twiss =tup[0](beam_dist, ddof=1)
+print(twiss)
 print(twiss.loc['x'])
 print(twiss.loc["x"].loc[r"$\alpha$"])
 

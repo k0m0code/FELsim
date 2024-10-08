@@ -12,14 +12,21 @@ from scipy.stats import norm
 
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
+
 #Replace list variables that are unchanging with tuples, more efficient for calculations
+
 #Remove acceptance percentage when shapes are not in use
+
 #Add legend for graphs 
+
+# In the future, for twiss parameters and other methods, instead of taking entire 2D particle array,
+# only perform calculations on just one variable list for faster performance while making optispeed function
+# handle list splicing based on variable given to reach goal for.
 
 
 class beam:
     def __init__(self):
-        pass
+        self.DDOF = 1 #  Unbiased Bessel correction for standard deviation calculation for twiss functions
 
     x_sym, y_sym = sp.symbols('x_sym y_sym')
 
@@ -151,7 +158,40 @@ class beam:
 
 
 
+    def findVarValues(self, particles, variable):
+        particleDict = {"x":particles[:,0],"x'":particles[:,1],
+                "y":particles[:,2],"y'":particles[:,3],
+                "z":particles[:,4],"z'":particles[:,5]}
+        return particleDict[variable]
 
+    def std(self, particles, variable):
+        particleData = self.findVarValues(particles, variable)
+        return np.std(particleData)
+
+    def alpha(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$\alpha$"]
+    
+    def epsilon(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$\epsilon$ ($\pi$.mm.mrad)"]
+    
+    def beta(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$\beta$ (m)"]
+    
+    def gamma(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$\gamma$ (rad/m)"]
+    
+    def phi(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$\phi$ (deg)"]
 
 
     

@@ -25,9 +25,10 @@ import matplotlib.pyplot as plt
 
 # For each indice of the beam segment in parameter, no proper error handling yet for invalid values, repeating indices with same objective, have to test...
 
-#Currently can only optimize one variable for each segment indice
+#  Currently can only optimize one variable for each segment indice, have to implement more than one variable inthe future
 
 # TODO: some objectives would like value goal to be zero, but we cant divide by zero in our chi difference calc. Find a way
+
 
 
 class beamOptimizer():
@@ -68,9 +69,9 @@ class beamOptimizer():
         self.matrixVariables = matrixVariables
         self.beamline = beamline
         self.method = method
-        self.DDOF = 1 #  Unbiased Bessel correction for standard deviation calculation for alpha function
-        self.OBJECTIVEMETHODS = {"xStd": self.xStd, "yStd": self.yStd, "xAlpha": self.xAlpha,"yAlpha": self.yAlpha} #  Methods included in class to return staistical information
-
+        
+        ebeam = beam()
+        self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi} #  Methods included in class to return staistical information
 
         self.segmentVar = segmentVar
         checkSet = set()
@@ -83,18 +84,20 @@ class beamOptimizer():
                 self.variablesToOptimize.append(varItem)
                 checkSet.add(varItem)
 
+        
         self.plotChiSquared = []
         self.plotIterate = []
         self.iterationTrack = 0
         self.trackVariables = {}
 
         #  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
-        for key, value in objectives.items():
-            for goal in value:
-                if goal["measure"] in self.OBJECTIVEMETHODS:
-                    goal["measure"] = self.OBJECTIVEMETHODS[goal["measure"]]
-                self.trackVariables.update({"indice " + str(key) + ": " + goal["measure"].__name__: []})
         self.objectives = objectives
+        for key, value in self.objectives.items():
+            for goal in value:
+                if goal["measure"][1] in self.OBJECTIVEMETHODS:
+                    goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
+                self.trackVariables.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
+
 
         self.variablesValues = [] 
         self.bounds = []
@@ -105,27 +108,6 @@ class beamOptimizer():
             index = self.variablesToOptimize.index(var)
             if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
             if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
-
-    def xStd(self, particles):
-        return np.std(particles[:,0])
-        
-    def yStd(self, particles):
-        return np.std(particles[:,2])
-    
-    def xAlpha(self, particles):
-        ebeam = beam()
-        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
-        return twiss.loc["x"].loc[r"$\alpha$"]
-    
-    def yAlpha(self, particles):
-        ebeam = beam()
-        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
-        return twiss.loc["y"].loc[r"$\alpha$"]
-    
-    def twissParams(self, particles):
-        ebeam = beam()
-        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
-        return twiss.loc["y"].loc[r"$\alpha$"]
     
     def _optiSpeed(self, variableVals):
         '''
@@ -162,9 +144,9 @@ class beamOptimizer():
                 particles = np.array(segments[i].useMatrice(particles))  
             if i in self.objectives:
                 for goalDict in self.objectives[i]:
-                    stat = (goalDict["measure"](particles))
+                    stat = (goalDict["measure"][1](particles, goalDict["measure"][0]))
                     chiPieces.append((((stat-goalDict["goal"])**2)*goalDict["weight"])/goalDict["goal"])
-                    stringForm = "indice " + str(i) + ": " + goalDict["measure"].__name__
+                    stringForm = "indice " + str(i) + ": " + goalDict["measure"][0] + " " + goalDict["measure"][1].__name__
                     self.trackVariables[stringForm].append(stat)
 
         difference = 0
@@ -188,7 +170,6 @@ class beamOptimizer():
             Object containing resulting information about optimization process and results
         '''
         result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds, options={'disp':True})
-
         #  Alpha parameters look a little weird when plotting their minimization
         if plot:
             fig, ax1 = plt.subplots()
@@ -203,10 +184,16 @@ class beamOptimizer():
             handles.append(chiLine)
 
             ax2 = ax1.twinx()
-            for key in self.trackVariables:
+            mini = 0
+            for i, key in enumerate(self.trackVariables):
                 valAx, = ax2.plot(self.plotIterate, self.trackVariables[key], label = key)
                 handles.append(valAx)
-            ax2.set_yscale('log')
+                tempMin = abs(min(self.trackVariables[key]))
+                if i == 0 or mini>tempMin:
+                    mini = tempMin
+            print(str(10**(np.ceil(np.log10(mini)))))
+            print("min" + str(mini))
+            ax2.set_yscale('symlog', linthresh=10**(np.ceil(np.log10(mini))))
             ax2.set_ylabel('Objective functions')
             
 
