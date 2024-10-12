@@ -27,8 +27,6 @@ import matplotlib.pyplot as plt
 
 #  Currently can only optimize one variable for each segment indice, have to implement more than one variable inthe future
 
-# TODO: some objectives would like value goal to be zero, but we cant divide by zero in our chi difference calc. Find a way
-
 
 
 class beamOptimizer():
@@ -85,8 +83,9 @@ class beamOptimizer():
                 checkSet.add(varItem)
 
         
-        self.plotChiSquared = []
+        self.plotMSE = []
         self.plotIterate = []
+        self.plotVariables = []
         self.iterationTrack = 0
         self.trackVariables = {}
 
@@ -130,7 +129,10 @@ class beamOptimizer():
         '''
         particles = self.matrixVariables
         segments = self.beamline
-        chiPieces = []
+        mse = []
+        numGoals = 0
+        self.plotVariables.append(variableVals)
+        
 
 
         for i in range(len(segments)):
@@ -145,14 +147,16 @@ class beamOptimizer():
             if i in self.objectives:
                 for goalDict in self.objectives[i]:
                     stat = (goalDict["measure"][1](particles, goalDict["measure"][0]))
-                    chiPieces.append((((stat-goalDict["goal"])**2)*goalDict["weight"])/goalDict["goal"])
+                    # mse.append((((stat-goalDict["goal"])**2)*goalDict["weight"])/goalDict["goal"])
+                    mse.append((stat-goalDict["goal"])**2)
+                    numGoals = numGoals+1
                     stringForm = "indice " + str(i) + ": " + goalDict["measure"][0] + " " + goalDict["measure"][1].__name__
                     self.trackVariables[stringForm].append(stat)
 
         difference = 0
-        difference = np.sqrt(np.sum(chiPieces))
+        difference = (np.sum(mse))/numGoals
 
-        self.plotChiSquared.append(difference)
+        self.plotMSE.append(difference)
         self.plotIterate.append((self.iterationTrack) + 1)
         self.iterationTrack = self.iterationTrack + 1
 
@@ -172,32 +176,31 @@ class beamOptimizer():
         result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds, options={'disp':True})
         #  Alpha parameters look a little weird when plotting their minimization
         if plot:
-            fig, ax1 = plt.subplots()
+            fig, ax = plt.subplots(2,1)
             handles = []
 
-            chiLine, =ax1.plot(self.plotIterate, self.plotChiSquared, label = 'Chi Squared', color = 'green')
-            ax1.set_yscale('log')
-            ax1.set_ylabel('Chi-Squared Difference', color = 'green')
-            ax1.tick_params(axis='y', labelcolor = 'green')
-            ax1.spines['left'].set_color('green')
-            ax1.spines['left'].set_linewidth(1)
-            handles.append(chiLine)
+            mseLine, =ax[0].plot(self.plotIterate, self.plotMSE, label = 'Mean Squared Error', color = 'green')
+            ax[0].set_xlabel('Iterations')
+            ax[0].set_yscale('log')
+            ax[0].set_ylabel('Mean Squared Error', color = 'green')
+            ax[0].tick_params(axis='y', labelcolor = 'green')
+            ax[0].spines['left'].set_color('green')
+            ax[0].spines['left'].set_linewidth(1)
+            handles.append(mseLine)
 
-            ax2 = ax1.twinx()
+            ax2 = ax[0].twinx()
             mini = 0
             for i, key in enumerate(self.trackVariables):
-                valAx, = ax2.plot(self.plotIterate, self.trackVariables[key], label = key)
-                handles.append(valAx)
+                valLine, = ax2.plot(self.plotIterate, self.trackVariables[key], label = key)
+                handles.append(valLine)
                 tempMin = abs(min(self.trackVariables[key]))
                 if i == 0 or mini>tempMin:
                     mini = tempMin
-            print(str(10**(np.ceil(np.log10(mini)))))
-            print("min" + str(mini))
             ax2.set_yscale('symlog', linthresh=10**(np.ceil(np.log10(mini))))
             ax2.set_ylabel('Objective functions')
-            
-
             plt.legend(handles = handles, loc = 'upper right')
+
+            
             plt.show()
 
         #  WIP: add results in a clean format with values of each segment
