@@ -4,9 +4,21 @@ import numpy as np
 
 #should I use the position that each beamline object takes up instead of its total length?
 #Give each beamline object its optional plot6d paramter at certain lengths into the beamline?
+class beamline:
+    def __init__(self):
+        #  [Mass, charge, rest energy]
+        self.PARTICLES = {"electron": [9.1093837e-31, 1.60217663e-19, 0.51099]}
+
+    def getBeamType(self, beamSegments, particleType, kineticE):
+        newBeamline = beamSegments
+        particleData = self.PARTICLES[particleType]
+        for seg in newBeamline:
+            seg.setMQE(particleData[0],particleData[1],particleData[2])
+            seg.setE(kineticE)
+        return newBeamline
 
 class lattice:
-    def __init__(self, length: float = 0, E = 45):
+    def __init__(self, E0, Q, M, E, length: float = 0):
         '''
         parent class for beamline segment object
 
@@ -19,9 +31,9 @@ class lattice:
         '''
         self.E = E  # Kinetic energy (MeV/c^2)
         ## this should be passed from ebeam
-        self.E0 = 0.51099 # Electron rest energy (MeV/c^2)
-        self.QE = 1.60217663e-19  # (C)
-        self.ME = 9.1093837e-31  # (kg)
+        self.E0 = E0 # Electron rest energy (MeV/c^2)
+        self.Q = Q  # (C)
+        self.M = M  # (kg)
         self.C = 299792458  # Celerity (m/s)
         self.gamma = (1 + (self.E / self.E0))
         self.beta = np.sqrt(1 - (1 / (self.gamma ** 2)))
@@ -34,7 +46,7 @@ class lattice:
         else:
             raise ValueError("Invalid Parameter: Please enter a positive length parameter")
         
-    def changeE(self, E):
+    def setE(self, E):
         '''
         Set value of E and its subsequent dependent formulas
 
@@ -44,6 +56,13 @@ class lattice:
             New value of E
         '''
         self.E = E
+        self.gamma = (1 + (self.E/self.E0))
+        self.beta = np.sqrt(1-(1/(self.gamma**2)))
+
+    def setMQE(self, mass, charge, restE):
+        self.M = mass
+        self.Q = charge
+        self.E0 = restE
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
@@ -65,14 +84,14 @@ class lattice:
         return newMatrix #  return 2d list
 
 class driftLattice(lattice):
-    def __init__(self, length: float = -1):
+    def __init__(self, E0, Q, M, E, length: float):
         '''
         drift lattice segment
 
         length: float
             length of drift segment
         '''
-        super().__init__(length = length)
+        super().__init__(E0, Q, M, E, length = length)
         self.color = "white"
         
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
@@ -94,9 +113,8 @@ class driftLattice(lattice):
 
 
 class qpfLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, 
-                 E = 45):
-        super().__init__(length = length, E = E)
+    def __init__(self,  E0, Q, M, E, current: float, length: float = 0.0889):
+        super().__init__( E0, Q, M, E, length = length)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
@@ -115,7 +133,7 @@ class qpfLattice(lattice):
         if isinstance(current, np.ndarray):
             current = current[0]
 
-        self.k = np.abs((self.QE*self.G*current)/(self.ME*self.C*self.beta*self.gamma))
+        self.k = np.abs((self.Q*self.G*current)/(self.M*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
         M11 = np.cos(self.theta)
@@ -140,8 +158,8 @@ class qpfLattice(lattice):
 
 
 class qpdLattice(lattice):
-    def __init__(self, length: float = 0.0889, current: float = 0, E = 45):
-        super().__init__(length, E =E)
+    def __init__(self, E0, Q, M, E, length: float = 0.0889, current: float = 0):
+        super().__init__(E0, Q, M, E, length)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
@@ -156,7 +174,7 @@ class qpdLattice(lattice):
         if isinstance(current, np.ndarray):
             current = current[0]
 
-        self.k = np.abs((self.QE*self.G*current)/(self.ME*self.C*self.beta*self.gamma))
+        self.k = np.abs((self.Q*self.G*current)/(self.M*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
         M11 = np.cosh(self.theta)
@@ -180,12 +198,12 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, E = 45):
-        super().__init__(length=length, E = E)
+    def __init__(self,  E0, Q, M, E, length: float = 0.0889, angle: float = 1.5):
+        super().__init__(E0, Q, M, E, length=length)
         self.color = "forestgreen"
         self.angle = angle # degrees
-        self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (self.angle * np.pi / 180 / self.length)
-        self.rho = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
+        self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (self.angle * np.pi / 180 / self.length)
+        self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
 
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
@@ -228,12 +246,12 @@ class dipole(lattice):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature)"
 
 class dipole_wedge(lattice):
-    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E = 45):
-        super().__init__(length=length, E = E)
+    def __init__(self, E0, Q, M, E, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5):
+        super().__init__(E0, Q, M, E, length=length)
         self.color = "lightgreen"
         self.angle = angle
-        self.By = (self.ME*self.C*self.beta*self.gamma / self.QE) * (dipole_angle * np.pi / 180 / dipole_length)
-        self.rho = self.ME*self.C*self.beta*self.gamma / (self.QE * self.By)
+        self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * np.pi / 180 / dipole_length)
+        self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
         self.gap = 0.01  # hard-edge fringe field gap (m)
 
     '''
@@ -253,7 +271,7 @@ class dipole_wedge(lattice):
 
         # Hard edge model for the wedge magnets
         R = self.rho
-        k = np.abs((self.QE * self.By / self.length) / (self.ME * self.C * self.beta * self.gamma)) # Verify
+        k = np.abs((self.Q * self.By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
         eta = (self.angle * np.pi / 180) * length / self.length # Verify
         E = (length * k) / ((np.cos(eta)) ** 2)
         T = np.tan(eta)
