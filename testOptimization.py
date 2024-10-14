@@ -12,20 +12,20 @@ M = 9.1093837e-31
 Q = 1.60217663e-19
 E0 = 0.51099
 E = 45
-sec1 = driftLattice(E0,Q,M,E,0.5)
-sec2 = qpfLattice(E0,Q,M,E,current = I)
-sec3 = driftLattice(E0,Q,M,E,0.25)
-sec4 = qpdLattice(E0,Q,M,E,current = I)
-sec5 = driftLattice(E0,Q,M,E,0.25)
-sec6 = qpfLattice(E0,Q,M,E,current = I)
-sec7 = driftLattice(E0,Q,M,E,0.25)
-sec8 = qpdLattice(E0,Q,M,E,current = I)
-sec9 = driftLattice(E0,Q,M,E,0.50)
-sec10 = dipole(E0,Q,M,E,length=0.0889, angle=1.5)
+sec1 = driftLattice(0.5)
+sec2 = qpfLattice(current = I)
+sec3 = driftLattice(0.25)
+sec4 = qpdLattice(current = I)
+sec5 = driftLattice(0.25)
+sec6 = qpfLattice(current = I)
+sec7 = driftLattice(0.25)
+sec8 = qpdLattice(current = I)
+sec9 = driftLattice(0.50)
+sec10 = dipole(length=0.0889, angle=1.5)
 line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9, sec10]
 
 beamtype = beamline()
-pBeam = beamtype.getBeamType(line, "electron", 55)
+pBeam = beamtype.changeBeamType(line, "electron", 55)
 
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
@@ -38,7 +38,10 @@ vals = {1: ["I", lambda num:num, "current"],
 
 starting = {"I": {"bounds": (0.00001,10), "start": 5}}
 
-objectives = {9: [{"measure": ["x", "std"],"goal":1,"weight":1},{"measure": ["y", "std"],"goal":1,"weight":1}]}
+objectives = {9: [{"measure": ["x", "alpha"],"goal":0,"weight":1},
+                  {"measure": ["y", "alpha"],"goal":0,"weight":1},
+                  {"measure": ["y", "std"],"goal":1,"weight":1},
+                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
 test = beamOptimizer(line, vals, "COBYLA", matrixVariables, objectives, startPoint= starting)
@@ -67,7 +70,8 @@ line[5].current = result.x[0]
 line[7].current = result.x[0]
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
+print("Var" + str(test.variablesToOptimize))
 print("Current" + str(result.x))
-print("Chi Squared:" + str(result.fun))
+print("MSE:" + str(result.fun))
 print("xstd; " + str(np.std(schem.matrixVariables[:, 0])))
 print("ystd: " + str(np.std(schem.matrixVariables[:, 2])))

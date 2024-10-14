@@ -67,17 +67,16 @@ class beamOptimizer():
         self.matrixVariables = matrixVariables
         self.beamline = beamline
         self.method = method
-        
         ebeam = beam()
         self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi} #  Methods included in class to return staistical information
 
         self.segmentVar = segmentVar
         checkSet = set()
         self.variablesToOptimize = []
-        for item in segmentVar:
+        for item in self.segmentVar:
             if (item < 0 or item >= len(beamline)):
                 raise IndexError
-            varItem = segmentVar.get(item)[0]
+            varItem = self.segmentVar.get(item)[0]
             if varItem not in checkSet:
                 self.variablesToOptimize.append(varItem)
                 checkSet.add(varItem)
@@ -85,9 +84,9 @@ class beamOptimizer():
         
         self.plotMSE = []
         self.plotIterate = []
-        self.plotVariables = []
+        self.trackVariables = []
         self.iterationTrack = 0
-        self.trackVariables = {}
+        self.trackGoals = {}
 
         #  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
         self.objectives = objectives
@@ -95,7 +94,7 @@ class beamOptimizer():
             for goal in value:
                 if goal["measure"][1] in self.OBJECTIVEMETHODS:
                     goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
-                self.trackVariables.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
+                self.trackGoals.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
 
 
         self.variablesValues = [] 
@@ -131,7 +130,7 @@ class beamOptimizer():
         segments = self.beamline
         mse = []
         numGoals = 0
-        self.plotVariables.append(variableVals)
+        
         
 
 
@@ -151,11 +150,12 @@ class beamOptimizer():
                     mse.append((stat-goalDict["goal"])**2)
                     numGoals = numGoals+1
                     stringForm = "indice " + str(i) + ": " + goalDict["measure"][0] + " " + goalDict["measure"][1].__name__
-                    self.trackVariables[stringForm].append(stat)
+                    self.trackGoals[stringForm].append(stat)
 
         difference = 0
         difference = (np.sum(mse))/numGoals
 
+        self.trackVariables.append(variableVals)
         self.plotMSE.append(difference)
         self.plotIterate.append((self.iterationTrack) + 1)
         self.iterationTrack = self.iterationTrack + 1
@@ -174,6 +174,7 @@ class beamOptimizer():
             Object containing resulting information about optimization process and results
         '''
         result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds, options={'disp':True})
+
         #  Alpha parameters look a little weird when plotting their minimization
         if plot:
             fig, ax = plt.subplots(2,1)
@@ -190,17 +191,27 @@ class beamOptimizer():
 
             ax2 = ax[0].twinx()
             mini = 0
-            for i, key in enumerate(self.trackVariables):
-                valLine, = ax2.plot(self.plotIterate, self.trackVariables[key], label = key)
+            for i, key in enumerate(self.trackGoals):
+                valLine, = ax2.plot(self.plotIterate, self.trackGoals[key], label = key)
                 handles.append(valLine)
-                tempMin = abs(min(self.trackVariables[key]))
+                tempMin = abs(min(self.trackGoals[key]))
                 if i == 0 or mini>tempMin:
                     mini = tempMin
             ax2.set_yscale('symlog', linthresh=10**(np.ceil(np.log10(mini))))
             ax2.set_ylabel('Objective functions')
-            plt.legend(handles = handles, loc = 'upper right')
+            ax2.legend(handles = handles, loc = 'upper right')
 
-            
+            tempTrackVari = np.array(self.trackVariables)
+            handles = []
+            for i in range(len(tempTrackVari[0])):
+                varLine, = ax[1].plot(self.plotIterate, tempTrackVari[:,i], label = self.variablesToOptimize[i])
+                handles.append(varLine)
+            ax[1].set_xlabel('Iterations')
+            ax[1].set_ylabel('Variable values')
+            ax[1].set_title('Variable Values through each Iteration')
+            ax[1].legend(handles = handles, loc = 'upper right')
+
+            plt.tight_layout()
             plt.show()
 
         #  WIP: add results in a clean format with values of each segment
