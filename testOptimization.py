@@ -27,20 +27,20 @@ beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
 
-vals = {1: ["B", lambda num:num, "current"],
+vals = {0: ["L", lambda num:num, "length"],
+        1: ["I", lambda num:num, "current"],
         3: ["I", lambda num:num, "current"],
         5: ["I", lambda num:num, "current"],
-        7: ["A", lambda num:num, "current"]}
+        7: ["I", lambda num:num, "current"]}
 
-starting = {"I": {"bounds": (0.00001,10), "start": 5}}
+starting = {"L": {"bounds": (0.00001,10), "start": 0.1},
+            "I": {"bounds": (0.00001,10), "start": 5}}
 
-objectives = {9: [{"measure": ["y", "alpha"],"goal":0,"weight":1},
-                  {"measure": ["x", "alpha"],"goal":0,"weight":1},
-                  {"measure": ["y", "std"],"goal":1,"weight":1},
-                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
+objectives = {9: [{"measure": ["x", "std"],"goal":1,"weight":1},{"measure": ["y", "std"],"goal":1,"weight":1}]}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
-beam_dist = matrixVariables
+test = beamOptimizer(line, vals, "COBYLA", matrixVariables, objectives, startPoint= starting)
+
 test = beamOptimizer(line, vals, "SLSQP", matrixVariables, objectives, startPoint= starting)
 
 
