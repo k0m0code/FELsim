@@ -206,7 +206,7 @@ class draw_beamline:
         return xStd, yStd, xMean, yMean, x_axis
 
     
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval, defineLim = True, saveData = False, shape = {}, plot = True):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1, defineLim = True, saveData = False, shape = {}, plot = True):
         '''
         Simulates movement of particles through an accelerator beamline
 
