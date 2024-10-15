@@ -19,14 +19,17 @@ import numpy as np
 from schematic import *
 import timeit
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+import time
 
 # NOTE: EACH BEAMOPTIMIZER OBJECT AFTER INSTANTIATION SHOULD ONLY BE USED TO 
 # RUN A CALC() FUNCTION ONE TIME, CODE HAS NOT BEEN MODIFIED YET BEYOND ONE CALC() FUNCTION CALL
 
 # For each indice of the beam segment in parameter, no proper error handling yet for invalid values, repeating indices with same objective, have to test...
 
-#  Currently can only optimize one variable for each segment indice, have to implement more than one variable inthe future
+#  Currently can only optimize one variable for each segment indice, should we implement more than one variable inthe future?
 
+#   Do we begin plotting iterations at 0 or 1????
 
 
 class beamOptimizer():
@@ -136,17 +139,19 @@ class beamOptimizer():
 
         for i in range(len(segments)):
             if i in self.segmentVar:
-                yFunc = self.segmentVar.get(i)[1]
-                varIndex = self.variablesToOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the variable to use with 
-                newValue = yFunc(variableVals[varIndex])
-                param = self.segmentVar.get(i)[2]
-                particles = np.array(segments[i].useMatrice(particles, **{param: newValue}))
+                try:
+                    yFunc = self.segmentVar.get(i)[1]
+                    varIndex = self.variablesToOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the variable to use with 
+                    newValue = yFunc(variableVals[varIndex])
+                    param = self.segmentVar.get(i)[2]
+                    particles = np.array(segments[i].useMatrice(particles, **{param: newValue}))
+                except TypeError as e:
+                    raise ValueError(f"segment {i} has no paramter {param}")
             else:
                 particles = np.array(segments[i].useMatrice(particles))  
             if i in self.objectives:
                 for goalDict in self.objectives[i]:
                     stat = (goalDict["measure"][1](particles, goalDict["measure"][0]))
-                    # mse.append((((stat-goalDict["goal"])**2)*goalDict["weight"])/goalDict["goal"])
                     mse.append((stat-goalDict["goal"])**2)
                     numGoals = numGoals+1
                     stringForm = "indice " + str(i) + ": " + goalDict["measure"][0] + " " + goalDict["measure"][1].__name__
@@ -163,7 +168,7 @@ class beamOptimizer():
         # print("diff:" + str(difference))  #for testing
         return difference
     
-    def calc(self, plot = False):
+    def calc(self, plotProgress = False, beamlinePlotParams = None):
         '''
         optimizes beamline quadruple current values so particles' positional standard
         deviation is as close to target as possible
@@ -173,20 +178,20 @@ class beamOptimizer():
         result: OptimizeResult
             Object containing resulting information about optimization process and results
         '''
-        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds, options={'disp':True})
+        startTime = time.perf_counter()
+        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds)
+        endTime = time.perf_counter()
 
-        #  Alpha parameters look a little weird when plotting their minimization
-        if plot:
+        if plotProgress:
             fig, ax = plt.subplots(2,1)
             handles = []
 
-            mseLine, =ax[0].plot(self.plotIterate, self.plotMSE, label = 'Mean Squared Error', color = 'green')
+            mseLine, =ax[0].plot(self.plotIterate, self.plotMSE, label = 'Mean Squared Error', color = 'black')
             ax[0].set_xlabel('Iterations')
             ax[0].set_yscale('log')
-            ax[0].set_ylabel('Mean Squared Error', color = 'green')
-            ax[0].tick_params(axis='y', labelcolor = 'green')
-            ax[0].spines['left'].set_color('green')
-            ax[0].spines['left'].set_linewidth(1)
+            ax[0].set_ylabel('Mean Squared Error')
+            ax[0].set_title("MSE and objectives vs Iterations")
+            ax[0].tick_params(axis='y')
             handles.append(mseLine)
 
             ax2 = ax[0].twinx()
@@ -209,20 +214,25 @@ class beamOptimizer():
             ax[1].set_xlabel('Iterations')
             ax[1].set_ylabel('Variable values')
             ax[1].set_title('Variable Values through each Iteration')
+            timeLine = mlines.Line2D([], [], color = 'white', label=f'{round((endTime-startTime)/self.iterationTrack,4)} s/iteration')
+            handles.append(timeLine)
             ax[1].legend(handles = handles, loc = 'upper right')
 
+           
             plt.tight_layout()
             plt.show()
 
-        #  WIP: add results in a clean format with values of each segment
-        #  Potentially add this to a seperate tinker window?
         for key in self.segmentVar:
-            variable = self.segmentVar.get(key)[0]
-            index = self.variablesToOptimize.index(variable)
-            yFunc = self.segmentVar.get(key)[1]
-            newVal = yFunc(result.x[index])
-            self.segmentVar.get(key).append(newVal)
+                variable = self.segmentVar.get(key)[0]
+                index = self.variablesToOptimize.index(variable)
+                yFunc = self.segmentVar.get(key)[1]
+                newVal = yFunc(result.x[index])
+                setattr(self.beamline[key], self.segmentVar.get(key)[2], newVal)
+                self.segmentVar.get(key).append(newVal)
 
+        if not beamlinePlotParams == None:
+            schem = draw_beamline()
+            schem.plotBeamPositionTransform(self.matrixVariables, self.beamline, **beamlinePlotParams)
 
         return result
    
