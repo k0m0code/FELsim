@@ -33,7 +33,7 @@ import time
 
 
 class beamOptimizer():
-    def __init__(self, beamline, segmentVar: dict, method, 
+    def __init__(self, beamline, segmentVar: dict, 
                  matrixVariables,objectives, startPoint = {}):
         '''
         Constructor for the optimizer object. Object is used to optimize the electric current values
@@ -67,11 +67,12 @@ class beamOptimizer():
             weight > 1 means more bias, weight < 1 means less bias
 
         '''
-        self.matrixVariables = matrixVariables
-        self.beamline = beamline
-        self.method = method
         ebeam = beam()
         self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi} #  Methods included in class to return staistical information
+        self.matrixVariables = matrixVariables
+        self.beamline = beamline
+        
+        
 
         self.segmentVar = segmentVar
         checkSet = set()
@@ -168,7 +169,7 @@ class beamOptimizer():
         # print("diff:" + str(difference))  #for testing
         return difference
     
-    def calc(self, plotProgress = False, beamlinePlotParams = None):
+    def calc(self, method, plotProgress = False, plotBeam = False, printResults = False):
         '''
         optimizes beamline quadruple current values so particles' positional standard
         deviation is as close to target as possible
@@ -179,8 +180,21 @@ class beamOptimizer():
             Object containing resulting information about optimization process and results
         '''
         startTime = time.perf_counter()
-        result = spo.minimize(self._optiSpeed, self.variablesValues, method = self.method, bounds=self.bounds)
+        result = spo.minimize(self._optiSpeed, self.variablesValues, method=method, bounds=self.bounds)
         endTime = time.perf_counter()
+
+        for indice in self.segmentVar:
+                variable = self.segmentVar.get(indice)[0]
+                index = self.variablesToOptimize.index(variable)
+                yFunc = self.segmentVar.get(indice)[1]
+                newVal = yFunc(result.x[index])
+                segAttr = self.segmentVar.get(indice)[2]
+                setattr(self.beamline[indice], segAttr, newVal)
+                if printResults:
+                    print("\nindice " + str(indice) + " new " + segAttr + " value: " + str(newVal), end ="")
+
+        if printResults:
+            print("\nFinal difference: " + str(result.fun) + "\n")
 
         if plotProgress:
             fig, ax = plt.subplots(2,1)
@@ -222,17 +236,10 @@ class beamOptimizer():
             plt.tight_layout()
             plt.show()
 
-        for key in self.segmentVar:
-                variable = self.segmentVar.get(key)[0]
-                index = self.variablesToOptimize.index(variable)
-                yFunc = self.segmentVar.get(key)[1]
-                newVal = yFunc(result.x[index])
-                setattr(self.beamline[key], self.segmentVar.get(key)[2], newVal)
-                self.segmentVar.get(key).append(newVal)
 
-        if not beamlinePlotParams == None:
+        if plotBeam:
             schem = draw_beamline()
-            schem.plotBeamPositionTransform(self.matrixVariables, self.beamline, **beamlinePlotParams)
+            schem.plotBeamPositionTransform(self.matrixVariables, self.beamline)
 
         return result
    
