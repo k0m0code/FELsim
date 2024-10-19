@@ -2,12 +2,8 @@
 
 import numpy as np
 
-#should I use the position that each beamline object takes up instead of its total length? -> Did not understand let's discuss about it
-#Give each beamline object its optional plot6d paramter at certain lengths into the beamline? -> Yes
 class beamline:
     def __init__(self):
-        #  [Mass (kg), charge (C), rest energy (MeV)]
-        #
         c = 299792458.0  # Speed of light in vacuum (m/s)
         q_e = 1.602176634e-19  # Elementary charge (C)
         m_e = 9.1093837139e-31  # Electron Mass (kg)
@@ -23,6 +19,7 @@ class beamline:
 
         k_MeV = 1e-6 / q_e  # Conversion factor (MeV / J)
 
+        #  [Mass (kg), charge (C), rest energy (MeV)]
         self.PARTICLES = {"electron": [m_e, q_e, (m_e * c ** 2) * k_MeV],
                           "proton": [m_p, q_e, (m_p * c ** 2) * k_MeV],
                           "ion": [m_i, q_i, (m_i * c ** 2) * k_MeV]}
