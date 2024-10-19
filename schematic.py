@@ -9,7 +9,6 @@ import numpy as np
 from beamline import *
 from ebeam import beam
 import datetime
-import time
 from tqdm import tqdm
 
 class draw_beamline:
@@ -20,6 +19,7 @@ class draw_beamline:
         self.figsize = (10,9)  #  Size of graph window
         self.matrixVariables = None  # For access to data after transformation
         self.sixdValues = None  # For access to data after transformation
+        self.DEFAULTINTERVAL = 0.05
 
 
     '''
@@ -206,7 +206,7 @@ class draw_beamline:
         return xStd, yStd, xMean, yMean, x_axis
 
     
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = 1, defineLim = True, saveData = False, shape = {}, plot = True):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True, saveData = False, shape = {}, plot = True):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -253,6 +253,8 @@ class draw_beamline:
 
         if defineLim:
             maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
+        if interval <= 0:
+            interval = self.DEFAULTINTERVAL
 
         total_intervals = sum(int(segment.length // interval) + 1 for segment in beamSegments)
 
