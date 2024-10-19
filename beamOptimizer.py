@@ -33,8 +33,7 @@ import time
 
 
 class beamOptimizer():
-    def __init__(self, beamline, segmentVar: dict, 
-                 matrixVariables,objectives, startPoint = {}):
+    def __init__(self, beamline, matrixVariables):
         '''
         Constructor for the optimizer object. Object is used to optimize the electric current values
         for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
@@ -68,48 +67,17 @@ class beamOptimizer():
 
         '''
         ebeam = beam()
-        self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi} #  Methods included in class to return staistical information
+        #  Methods included in class to return staistical information, add to dictionary if additional methods are created
+        self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi}
         self.matrixVariables = matrixVariables
         self.beamline = beamline
         
         
 
-        self.segmentVar = segmentVar
-        checkSet = set()
-        self.variablesToOptimize = []
-        for item in self.segmentVar:
-            if (item < 0 or item >= len(beamline)):
-                raise IndexError
-            varItem = self.segmentVar.get(item)[0]
-            if varItem not in checkSet:
-                self.variablesToOptimize.append(varItem)
-                checkSet.add(varItem)
+        
+
 
         
-        self.plotMSE = []
-        self.plotIterate = []
-        self.trackVariables = []
-        self.iterationTrack = 0
-        self.trackGoals = {}
-
-        #  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
-        self.objectives = objectives
-        for key, value in self.objectives.items():
-            for goal in value:
-                if goal["measure"][1] in self.OBJECTIVEMETHODS:
-                    goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
-                self.trackGoals.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
-
-
-        self.variablesValues = [] 
-        self.bounds = []
-        for i in self.variablesToOptimize:
-            self.variablesValues.append(1) 
-            self.bounds.append((None, None))
-        for var in startPoint:
-            index = self.variablesToOptimize.index(var)
-            if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
-            if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
     
     def _optiSpeed(self, variableVals):
         '''
@@ -137,39 +105,43 @@ class beamOptimizer():
         
         
 
-
+        #  Loop through beamline indices
         for i in range(len(segments)):
+            #  Check if indice is in segmentVar
             if i in self.segmentVar:
                 try:
+                    #  Adjust the segment's variable value according to its mathematical relationship
                     yFunc = self.segmentVar.get(i)[1]
                     varIndex = self.variablesToOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the variable to use with 
                     newValue = yFunc(variableVals[varIndex])
                     param = self.segmentVar.get(i)[2]
-                    particles = np.array(segments[i].useMatrice(particles, **{param: newValue}))
+                    particles = np.array(segments[i].useMatrice(particles, **{param: newValue})) # Apply matrice transformation with changed segment variable value
                 except TypeError as e:
-                    raise ValueError(f"segment {i} has no paramter {param}")
+                    raise ValueError(f"segment {i} has no parameter {param}")
             else:
-                particles = np.array(segments[i].useMatrice(particles))  
+                particles = np.array(segments[i].useMatrice(particles))  #  apply matrice transformation with static segment values
+            #  Check if indice in objective dictionary
             if i in self.objectives:
                 for goalDict in self.objectives[i]:
+                    # add sum piece to calculate statistical accuracy with MSE
                     stat = (goalDict["measure"][1](particles, goalDict["measure"][0]))
-                    mse.append((stat-goalDict["goal"])**2)
+                    mse.append(((stat-goalDict["goal"])**2)*goalDict["weight"])
                     numGoals = numGoals+1
                     stringForm = "indice " + str(i) + ": " + goalDict["measure"][0] + " " + goalDict["measure"][1].__name__
-                    self.trackGoals[stringForm].append(stat)
+                    self.trackGoals[stringForm].append(stat) #  for plotting in calc()
 
-        difference = 0
+        #  Calculate MSE
         difference = (np.sum(mse))/numGoals
 
+        #  For plotting purposes in calc()
         self.trackVariables.append(variableVals)
         self.plotMSE.append(difference)
         self.plotIterate.append((self.iterationTrack) + 1)
         self.iterationTrack = self.iterationTrack + 1
 
-        # print("diff:" + str(difference))  #for testing
         return difference
     
-    def calc(self, method, plotProgress = False, plotBeam = False, printResults = False):
+    def calc(self, method, segmentVar, objectives, startPoint, plotProgress = False, plotBeam = False, printResults = False):
         '''
         optimizes beamline quadruple current values so particles' positional standard
         deviation is as close to target as possible
@@ -179,6 +151,54 @@ class beamOptimizer():
         result: OptimizeResult
             Object containing resulting information about optimization process and results
         '''
+        #  Variables for plotting purposes later
+        self.plotMSE = []
+        self.plotIterate = []
+        self.trackVariables = []
+        self.iterationTrack = 0
+        self.trackGoals = {}
+
+
+
+        #CREATE A SET, ADD VARAIBLES TO SET TO AVOID DUPES, ADD BACK TO A LIST DONT OVER COMPLICATE
+
+
+        #  Initialize set-list of variables to optimize
+        self.segmentVar = segmentVar
+        checkSet = set()
+        self.variablesToOptimize = []
+        for item in self.segmentVar:
+            if (item < 0 or item >= len(self.beamline)):
+                raise IndexError
+            varItem = self.segmentVar.get(item)[0]
+            if varItem not in checkSet:
+                self.variablesToOptimize.append(varItem)
+                checkSet.add(varItem)
+
+        #  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
+        self.objectives = objectives
+        for key, value in self.objectives.items():
+            for goal in value:
+                if goal["measure"][1] in self.OBJECTIVEMETHODS:
+                    goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
+                # else:
+                #     raise TypeError("no legal measurement ")
+                self.trackGoals.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
+
+
+        self.variablesValues = [] 
+        self.bounds = []
+        for i in self.variablesToOptimize:
+            self.variablesValues.append(1) 
+            self.bounds.append((None, None))
+        for var in startPoint:
+            index = self.variablesToOptimize.index(var)
+            if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
+            if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
+
+
+
+
         startTime = time.perf_counter()
         result = spo.minimize(self._optiSpeed, self.variablesValues, method=method, bounds=self.bounds)
         endTime = time.perf_counter()
@@ -200,15 +220,15 @@ class beamOptimizer():
             fig, ax = plt.subplots(2,1)
             handles = []
 
-            mseLine, =ax[0].plot(self.plotIterate, self.plotMSE, label = 'Mean Squared Error', color = 'black')
-            ax[0].set_xlabel('Iterations')
-            ax[0].set_yscale('log')
-            ax[0].set_ylabel('Mean Squared Error')
-            ax[0].set_title("MSE and objectives vs Iterations")
-            ax[0].tick_params(axis='y')
+            mseLine, =ax[1].plot(self.plotIterate, self.plotMSE, label = 'Mean Squared Error', color = 'black')
+            ax[1].set_xlabel('Iterations')
+            ax[1].set_yscale('log')
+            ax[1].set_ylabel('Mean Squared Error')
+            ax[1].set_title("MSE and objectives vs Iterations")
+            ax[1].tick_params(axis='y')
             handles.append(mseLine)
 
-            ax2 = ax[0].twinx()
+            ax2 = ax[1].twinx()
             mini = 0
             for i, key in enumerate(self.trackGoals):
                 valLine, = ax2.plot(self.plotIterate, self.trackGoals[key], label = key)
@@ -223,14 +243,14 @@ class beamOptimizer():
             tempTrackVari = np.array(self.trackVariables)
             handles = []
             for i in range(len(tempTrackVari[0])):
-                varLine, = ax[1].plot(self.plotIterate, tempTrackVari[:,i], label = self.variablesToOptimize[i])
+                varLine, = ax[0].plot(self.plotIterate, tempTrackVari[:,i], label = self.variablesToOptimize[i])
                 handles.append(varLine)
-            ax[1].set_xlabel('Iterations')
-            ax[1].set_ylabel('Variable values')
-            ax[1].set_title('Variable Values through each Iteration')
+            ax[0].set_xlabel('Iterations')
+            ax[0].set_ylabel('Variable values')
+            ax[0].set_title('Variable Values through each Iteration')
             timeLine = mlines.Line2D([], [], color = 'white', label=f'{round((endTime-startTime)/self.iterationTrack,4)} s/iteration')
             handles.append(timeLine)
-            ax[1].legend(handles = handles, loc = 'upper right')
+            ax[0].legend(handles = handles, loc = 'upper right')
 
            
             plt.tight_layout()
@@ -239,7 +259,8 @@ class beamOptimizer():
 
         if plotBeam:
             schem = draw_beamline()
-            schem.plotBeamPositionTransform(self.matrixVariables, self.beamline)
+            tempPart = self.matrixVariables
+            schem.plotBeamPositionTransform(tempPart, self.beamline)
 
         return result
    
