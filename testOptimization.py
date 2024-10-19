@@ -26,23 +26,23 @@ pBeam = beamtype.changeBeamType(line, "electron", 55)
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
-
-vals = {0: ["L", lambda num:num, "length"],
+vals = {2: ["L", lambda num:num, "length"],
         1: ["I", lambda num:num, "current"],
         3: ["I", lambda num:num, "current"],
         5: ["I", lambda num:num, "current"],
         7: ["I", lambda num:num, "current"]}
 
-starting = {"L": {"bounds": (0.00001,10), "start": 0.1},
-            "I": {"bounds": (0.00001,10), "start": 5}}
+starting = {"I": {"bounds": (0.00001,10), "start": 5},
+            "L": {"bounds": (0.00001, 1), "start": 0.1}}
 
-objectives = {9: [{"measure": ["x", "std"],"goal":1,"weight":1},{"measure": ["y", "std"],"goal":1,"weight":1}]}
+objectives = {9: [{"measure": ["y", "std"],"goal":1,"weight":1},
+                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
-test = beamOptimizer(line, vals, "COBYLA", matrixVariables, objectives, startPoint= starting)
+beam_dist = matrixVariables
+test = beamOptimizer(pBeam, matrixVariables)
 
-test = beamOptimizer(line, vals, "SLSQP", matrixVariables, objectives, startPoint= starting)
-
+result = test.calc("Nelder-Mead", vals, objectives, starting, plotProgress = True, plotBeam= True, printResults=True)
 
 
 
@@ -51,20 +51,3 @@ test = beamOptimizer(line, vals, "SLSQP", matrixVariables, objectives, startPoin
 # test = beamOptimizer(line, (1,3,5),1,1, [A,B], "Nelder-Mead", matrixVariables)
 
 
-result = test.calc(plotProgress = True, beamlinePlotParams={"interval": 0.05})
-
-
-# print("speed " + str(test.testSpeed(10)))
-# evals, evalType = test.testFuncEval(10)
-# print("evals " + str(evals) + ", " + evalType)
-# print("iterations " + str(test.testFuncIt(10)))
-
-line[1].current = result.x[0]
-line[3].current = result.x[1]
-line[5].current = result.x[1]
-line[7].current = result.x[2]
-schem.plotBeamPositionTransform(beam_dist, line, 0.05)
-
-print("Var" + str(test.variablesToOptimize))
-print("Current" + str(result.x))
-print("MSE:" + str(result.fun))
