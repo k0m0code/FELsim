@@ -26,11 +26,11 @@ pBeam = beamtype.changeBeamType(line, "electron", 55)
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 schem.plotBeamPositionTransform(beam_dist, line, 0.05)
 
-vals = {2: ["L", lambda num:num, "length"],
-        1: ["I", lambda num:num, "current"],
-        3: ["I", lambda num:num, "current"],
-        5: ["I", lambda num:num, "current"],
-        7: ["I", lambda num:num, "current"]}
+vals = {2: ["L","length", lambda num:num],
+        1: ["I", "current", lambda num:num],
+        3: ["I", "current", lambda num:num],
+        5: ["I", "current", lambda num:num*2],
+        7: ["I", "current", lambda num:num]}
 
 starting = {"I": {"bounds": (0.00001,10), "start": 5},
             "L": {"bounds": (0.00001, 1), "start": 0.1}}
@@ -42,7 +42,9 @@ matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
 beam_dist = matrixVariables
 test = beamOptimizer(pBeam, matrixVariables)
 
-result = test.calc("Nelder-Mead", vals, objectives, starting, plotProgress = True, plotBeam= True, printResults=True)
+result = test.calc("COBYLA", vals, objectives, starting, plotProgress = True, plotBeam= True, printResults=True)
+
+
 
 
 

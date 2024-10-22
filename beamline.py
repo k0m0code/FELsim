@@ -4,33 +4,44 @@ import numpy as np
 
 class beamline:
     def __init__(self):
-        c = 299792458.0  # Speed of light in vacuum (m/s)
-        q_e = 1.602176634e-19  # Elementary charge (C)
-        m_e = 9.1093837139e-31  # Electron Mass (kg)
-        m_p = 1.67262192595e-27  # Proton Mass (kg)
-
-        # Ion case requires to input an atomic number A and charge Z
-        # For instance 12C5+ (Carbon 12, with 5 electrons removed)
-        A = 12
-        Z = 5
-        m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
-        m_i = A * m_amu
-        q_i = Z * q_e
-
-        k_MeV = 1e-6 / q_e  # Conversion factor (MeV / J)
+        self.C = 299792458.0  # Speed of light in vacuum (m/s)
+        self.q_e = 1.602176634e-19  # Elementary charge (C)
+        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
+        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
+        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
+        
+        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
 
         #  [Mass (kg), charge (C), rest energy (MeV)]
-        self.PARTICLES = {"electron": [m_e, q_e, (m_e * c ** 2) * k_MeV],
-                          "proton": [m_p, q_e, (m_p * c ** 2) * k_MeV],
-                          "ion": [m_i, q_i, (m_i * c ** 2) * k_MeV]}
+        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
+                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
 
     def changeBeamType(self, beamSegments, particleType, kineticE):
         newBeamline = beamSegments
-        particleData = self.PARTICLES[particleType]
-        for seg in newBeamline:
-            seg.setMQE(particleData[0],particleData[1],particleData[2])
-            seg.setE(kineticE)
-        return newBeamline
+        try:
+            particleData = self.PARTICLES[particleType]
+            for seg in newBeamline:
+                seg.setMQE(particleData[0],particleData[1],particleData[2])
+                seg.setE(kineticE)
+            return newBeamline
+        except KeyError:
+            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
+            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
+            try:
+                isotopeData = particleType.split(",")
+                A = int(isotopeData[0])
+                Z = int(isotopeData[1])
+                m_i = A * self.m_amu
+                q_i = Z * self.q_e
+                meV = (m_i * self.C ** 2) * self.k_MeV
+
+                for seg in newBeamline:
+                    seg.setMQE(m_i, q_i, meV)
+                    seg.setE(kineticE)
+                return newBeamline
+            except:
+                raise TypeError("Invalid particle type/isotope")
+
 
 class lattice:
     #  by default every beam type is an electron beam type

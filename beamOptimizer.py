@@ -9,8 +9,10 @@ gpt"can you xplain the parameters of a constraint paramter in scipy.minimize"
 '''
 #  NOTE: nelder-mead method doesn't work if starting search point is zero (if variablesValues = [0,0,0...]
 #  NOTE: After testing, COBYLA and some other methods may try a test value of 0 for current, length, etc, that may throw back a difference of NAN
-#        (because beamline object divides by 0). Have to figure out how to bound variable values automatically so computer doesn't use weird values like 0, 
+#        (because beamline object divides by 0). Have to figure out how to bound x variable values automatically so computer doesn't use weird values like 0, 
 #        negative numbers (YOU MUST USE bounds for now so program doesn't use negative/zero numbers
+#  NOTE: "measure" in self.objectives has to be a function call that returns a single value with a parameter of a
+#         2d list of particles and each indice can only appear once as a key
 
 import scipy.optimize as spo
 from beamline import *
@@ -27,95 +29,62 @@ import time
 
 # For each indice of the beam segment in parameter, no proper error handling yet for invalid values, repeating indices with same objective, have to test...
 
-#  Currently can only optimize one variable for each segment indice, should we implement more than one variable inthe future?
+#  Currently can only optimize one x variable for each segment indice, should we implement more than one variable in the future?
 
-#   Do we begin plotting iterations at 0 or 1????
-
+#   Do we begin plotting iterations at 0 or 1???
 
 class beamOptimizer():
     def __init__(self, beamline, matrixVariables):
         '''
-        Constructor for the optimizer object. Object is used to optimize the electric current values
-        for quadruples in an accelerator beamline in order that desired particle x and y positional spread may be
-        acheived
+        Constructor for beamline and particle values to optimize over for given y objectives and x variables
 
         Parameters
         ----------
         beamline: list[beamline]
             list of beamline objects representing accelerator beam
-
-        segmentVar: list(int)
-            list of segmentVar representing the interval in the beamline we want to optimize 
-
-        stdxend: float
-            final standard deviation of particles' x position that we are targeting
-        stdyend: float
-            final standard deviation of particles' y position that we are targeting
-        start: list[float]
-            list of electrical current values for minimizing function to start optimizing from. 
-            Each nth value in list HAS corresponds to the nth qpd/qfd.
-        method: str
-            name of optimization method to use for desired values
         matrixVariables: np.array(list[float][float])
             2D numPy list of particle elements
-        xWeight: float, optional
-            number giving the algorithm more or less bias towards minimizing standard deviation goal difference for x position.
-            weight > 1 means more bias, weight < 1 means less bias
-        yWeight: float, optional
-            number giving the algorithm more or less bias towards minimizing standard deviation goal difference for y position.
-            weight > 1 means more bias, weight < 1 means less bias
-
         '''
         ebeam = beam()
         #  Methods included in class to return staistical information, add to dictionary if additional methods are created
         self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi}
+        
         self.matrixVariables = matrixVariables
         self.beamline = beamline
-        
-        
-
-        
-
-
-        
     
     def _optiSpeed(self, variableVals):
         '''
-        Simulates particle movement through a beamline, calculates positional standard deviation, 
-        and returns a chi-squared accuracy statistic. Function to call on for standard deviation
-        optimization.
+        Simulates particle movement through a beamline, calculates y objective accuracy statistic for 
+        particles after simulating with new x variables, and returns how accurate algorithm got by 
+        using mean squared error stat
 
         Parameters
         ----------
-        current: list[float]
-            test current value(s) for quadruples (IT IS ASSUMED THAT THE EACH nth 
-            ELEMENT OF current CORRESPONDS TO THE nth NUMBER OF a QPF/QPD)
+        variableVals: list[float]
+            test x value(s) to optimize, indice of each value corresponds to indice of variable in 
+            variablesToOptimize
 
         Returns
         -------
         difference: float
-            chi-squared statistic, it is the combined squared difference between 
-            target standard deviation and actual standard deviation devided by the 
-            target standard deviation. Weighted bias for x vs y stats also accounted for.
+            mean squared error statistic of how accurate all test objective values are to their goal
         '''
         particles = self.matrixVariables
         segments = self.beamline
         mse = []
         numGoals = 0
         
-        
-
         #  Loop through beamline indices
         for i in range(len(segments)):
-            #  Check if indice is in segmentVar
+            #  Check if indice is in segmentVar (x variable dictionary)
             if i in self.segmentVar:
                 try:
-                    #  Adjust the segment's variable value according to its mathematical relationship
-                    yFunc = self.segmentVar.get(i)[1]
-                    varIndex = self.variablesToOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the variable to use with 
+                    #  Adjust the segment's x variable value according to its mathematical relationship
+                    yFunc = self.segmentVar.get(i)[2]
+                    varIndex = self.variablesToOptimize.index(self.segmentVar.get(i)[0]) #  Get the index of the x variable to use with 
                     newValue = yFunc(variableVals[varIndex])
-                    param = self.segmentVar.get(i)[2]
-                    particles = np.array(segments[i].useMatrice(particles, **{param: newValue})) # Apply matrice transformation with changed segment variable value
+                    param = self.segmentVar.get(i)[1]
+                    particles = np.array(segments[i].useMatrice(particles, **{param: newValue})) # Apply matrice transformation with changed segment attribute value
                 except TypeError as e:
                     raise ValueError(f"segment {i} has no parameter {param}")
             else:
@@ -143,8 +112,29 @@ class beamOptimizer():
     
     def calc(self, method, segmentVar, objectives, startPoint, plotProgress = False, plotBeam = False, printResults = False):
         '''
-        optimizes beamline quadruple current values so particles' positional standard
-        deviation is as close to target as possible
+        optimizes beamline segment attribute values so y values are close to objective values as possible.
+        Post optimization plotting supported
+
+        Parameters
+        ----------
+        method: str
+            name of minimization method/algorithm
+        segmentVar: dict
+            dictionary, each key is an indice corresponding to its value of a list of 
+            x variable parameters 
+        objectives: dict
+            dictionary, each key is an indice corresponding to its value of a list of
+            y objectives. In each list are dictionaries corresponding to the parameters of that 
+            y objective 
+        startPoint: dict
+            dictionary, each key is an x variable corresponding to another dictionary of
+            that variables' bounds, starting search point, and other parameters
+        plotProgress: bool
+            plot x variable and y objective values as a function of iterations
+        plotBeam: bool
+            plot beamline simulation with new x variables post-optimization
+        printResults: bool
+            output data in terminal
 
         Returns
         -------
@@ -158,34 +148,39 @@ class beamOptimizer():
         self.iterationTrack = 0
         self.trackGoals = {}
 
-
-
-        #CREATE A SET, ADD VARAIBLES TO SET TO AVOID DUPES, ADD BACK TO A LIST DONT OVER COMPLICATE
-
-
-        #  Initialize set-list of variables to optimize
+        #  Initialize set-list of x variables to optimize
         self.segmentVar = segmentVar
         checkSet = set()
         self.variablesToOptimize = []
-        for item in self.segmentVar:
-            if (item < 0 or item >= len(self.beamline)):
+        #  Old x variable initialization, keep temporarily in case of bugs with new one. delete in future
+        #
+        # for item in self.segmentVar:
+        #     if (item < 0 or item >= len(self.beamline)):
+        #         raise IndexError
+        #     varItem = self.segmentVar.get(item)[0]
+        #     if varItem not in checkSet:
+        #         self.variablesToOptimize.append(varItem)
+        #         checkSet.add(varItem)
+        for indice in self.segmentVar:
+            if (indice < 0 or indice >= len(self.beamline)):
                 raise IndexError
-            varItem = self.segmentVar.get(item)[0]
-            if varItem not in checkSet:
-                self.variablesToOptimize.append(varItem)
-                checkSet.add(varItem)
+            checkSet.add(self.segmentVar.get(indice)[0])
+        self.variablesToOptimize = list(checkSet)
 
-        #  NOTE: "measure" has to be a function call that returns a single value with a parameter of a 2d list of particles, and each indice can only appear once as a key
+
+        #  Initialize objectives dictionary with measurement methods
         self.objectives = objectives
         for key, value in self.objectives.items():
             for goal in value:
-                if goal["measure"][1] in self.OBJECTIVEMETHODS:
+                if goal["measure"][1] in self.OBJECTIVEMETHODS and isinstance(goal["measure"][1], str):
                     goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
-                # else:
-                #     raise TypeError("no legal measurement ")
+                else:
+                    raise TypeError("Invalid method name: No such method name exists in OBJECTIVESMETHOD dict")
+                #  Used to keep track of data plotting through optimization
                 self.trackGoals.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
 
-
+        #  Create x variables' bounds and  start point list. 
+        #  Order corresponding to x variable order in variablesToOptimize
         self.variablesValues = [] 
         self.bounds = []
         for i in self.variablesToOptimize:
@@ -196,30 +191,32 @@ class beamOptimizer():
             if "start" in startPoint.get(var): self.variablesValues[index] = startPoint.get(var).get("start")
             if "bounds" in startPoint.get(var): self.bounds[index] = startPoint.get(var).get("bounds")
 
-
-
-
-        startTime = time.perf_counter()
+        # Time speed to minimize difference of objective function
+        startTime = time.perf_counter()  
         result = spo.minimize(self._optiSpeed, self.variablesValues, method=method, bounds=self.bounds)
         endTime = time.perf_counter()
 
+        # print out new values for each beam segment's attribute
         for indice in self.segmentVar:
                 variable = self.segmentVar.get(indice)[0]
                 index = self.variablesToOptimize.index(variable)
-                yFunc = self.segmentVar.get(indice)[1]
+                yFunc = self.segmentVar.get(indice)[2]
                 newVal = yFunc(result.x[index])
-                segAttr = self.segmentVar.get(indice)[2]
+                segAttr = self.segmentVar.get(indice)[1]
                 setattr(self.beamline[indice], segAttr, newVal)
                 if printResults:
                     print("\nindice " + str(indice) + " new " + segAttr + " value: " + str(newVal), end ="")
-
         if printResults:
-            print("\nFinal difference: " + str(result.fun) + "\n")
+            print("\nFinal difference: " + str(result.fun))
+            print("Total time: " + str(endTime-startTime) + " s")
+            print("Total iterations: " + str(self.iterationTrack) + "\n")
 
+        # Plot the progress of y objectives and x variables as a function of iterations
         if plotProgress:
             fig, ax = plt.subplots(2,1)
             handles = []
 
+            # plot MSE line
             mseLine, =ax[1].plot(self.plotIterate, self.plotMSE, label = 'Mean Squared Error', color = 'black')
             ax[1].set_xlabel('Iterations')
             ax[1].set_yscale('log')
@@ -228,6 +225,7 @@ class beamOptimizer():
             ax[1].tick_params(axis='y')
             handles.append(mseLine)
 
+            # Plot y goals
             ax2 = ax[1].twinx()
             mini = 0
             for i, key in enumerate(self.trackGoals):
@@ -240,6 +238,7 @@ class beamOptimizer():
             ax2.set_ylabel('Objective functions')
             ax2.legend(handles = handles, loc = 'upper right')
 
+            # Plot x variables + sec/iteration
             tempTrackVari = np.array(self.trackVariables)
             handles = []
             for i in range(len(tempTrackVari[0])):
@@ -256,7 +255,7 @@ class beamOptimizer():
             plt.tight_layout()
             plt.show()
 
-
+        # Plot beam simulation with new values
         if plotBeam:
             schem = draw_beamline()
             tempPart = self.matrixVariables
