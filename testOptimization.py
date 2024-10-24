@@ -32,8 +32,8 @@ vals = {2: ["L","length", lambda num:num],
         5: ["I", "current", lambda num:num*2],
         7: ["I", "current", lambda num:num]}
 
-starting = {"I": {"bounds": (0.00001,10), "start": 5},
-            "L": {"bounds": (0.00001, 1), "start": 0.1}}
+starting = {"I": {"bounds": (0,10), "start": 5},
+            "L": {"bounds": (0,1), "start": 0.1}}
 
 objectives = {9:[{"measure": ["y", "std"],"goal":1,"weight":1},
                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
