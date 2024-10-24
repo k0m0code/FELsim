@@ -35,14 +35,14 @@ vals = {2: ["L","length", lambda num:num],
 starting = {"I": {"bounds": (0.00001,10), "start": 5},
             "L": {"bounds": (0.00001, 1), "start": 0.1}}
 
-objectives = {9: [{"measure": ["y", "std"],"goal":1,"weight":1},
-                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
+objectives = {9:[{"measure": ["y", "std"],"goal":1,"weight":1},
+                 {"measure": ["x", "std"],"goal":1,"weight":1}]}
 
 matrixVariables = ebeam.gen_6d_gaussian(0,[1,.2,1,0.2,1,1],1000)
 beam_dist = matrixVariables
 test = beamOptimizer(pBeam, matrixVariables)
 
-result = test.calc("COBYLA", vals, objectives, starting, plotProgress = True, plotBeam= True, printResults=True)
+result = test.calc("Nelder-Mead", vals, starting, objectives, plotProgress = True, plotBeam= True, printResults=True)
 
 
 

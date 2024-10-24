@@ -110,7 +110,7 @@ class beamOptimizer():
 
         return difference
     
-    def calc(self, method, segmentVar, objectives, startPoint, plotProgress = False, plotBeam = False, printResults = False):
+    def calc(self, method, segmentVar, startPoint, objectives, plotProgress = False, plotBeam = False, printResults = False):
         '''
         optimizes beamline segment attribute values so y values are close to objective values as possible.
         Post optimization plotting supported
@@ -152,6 +152,7 @@ class beamOptimizer():
         self.segmentVar = segmentVar
         checkSet = set()
         self.variablesToOptimize = []
+        
         #  Old x variable initialization, keep temporarily in case of bugs with new one. delete in future
         #
         # for item in self.segmentVar:
@@ -172,9 +173,9 @@ class beamOptimizer():
         self.objectives = objectives
         for key, value in self.objectives.items():
             for goal in value:
-                if goal["measure"][1] in self.OBJECTIVEMETHODS and isinstance(goal["measure"][1], str):
+                if goal["measure"][1] in self.OBJECTIVEMETHODS:
                     goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
-                else:
+                elif isinstance(goal["measure"][1], str):
                     raise TypeError("Invalid method name: No such method name exists in OBJECTIVESMETHOD dict")
                 #  Used to keep track of data plotting through optimization
                 self.trackGoals.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
