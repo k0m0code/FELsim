@@ -11,6 +11,8 @@ from ebeam import beam
 import datetime
 from tqdm import tqdm
 
+#Note: plotBeamTransform may show rounded interval values slightly innacurate to actual lengths, but calculations are made with exact values, (rounded values only used for visualization)
+
 class draw_beamline:
     def __init__(self):
         '''
@@ -20,6 +22,7 @@ class draw_beamline:
         self.matrixVariables = None  # For access to data after transformation
         self.sixdValues = None  # For access to data after transformation
         self.DEFAULTINTERVAL = 0.05
+        self.DEFAULTINTERVALROUND = 3  # Number of decimal places p
 
 
     '''
@@ -202,7 +205,7 @@ class draw_beamline:
         yStd.append(np.std(matrixVariables[:,2]))
         xMean.append(np.mean(matrixVariables[:,0]))
         yMean.append(np.mean(matrixVariables[:,2]))
-        x_axis.append(round(x_axis[-1]+interval, 3))
+        x_axis.append(round(x_axis[-1]+interval, self.DEFAULTINTERVALROUND))
         return xStd, yStd, xMean, yMean, x_axis
 
     
