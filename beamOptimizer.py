@@ -94,6 +94,7 @@ class beamOptimizer():
                 for goalDict in self.objectives[i]:
                     # add sum piece to calculate statistical accuracy with MSE
                     stat = (goalDict["measure"][1](particles, goalDict["measure"][0]))
+                    goalDict["measured"] = stat
                     mse.append(((stat-goalDict["goal"])**2)*goalDict["weight"])
                     numGoals = numGoals+1
                     stringForm = "indice " + str(i) + ": " + goalDict["measure"][0] + " " + goalDict["measure"][1].__name__
@@ -168,7 +169,6 @@ class beamOptimizer():
             checkSet.add(self.segmentVar.get(indice)[0])
         self.variablesToOptimize = list(checkSet)
 
-
         #  Initialize objectives dictionary with measurement methods
         self.objectives = objectives
         for key, value in self.objectives.items():
@@ -198,6 +198,7 @@ class beamOptimizer():
         endTime = time.perf_counter()
 
         # print out new values for each beam segment's attribute
+        output = "\nx variables:"
         for indice in self.segmentVar:
                 variable = self.segmentVar.get(indice)[0]
                 index = self.variablesToOptimize.index(variable)
@@ -206,11 +207,16 @@ class beamOptimizer():
                 segAttr = self.segmentVar.get(indice)[1]
                 setattr(self.beamline[indice], segAttr, newVal)
                 if printResults:
-                    print("\nindice " + str(indice) + " new " + segAttr + " value: " + str(newVal), end ="")
+                    output += "\nindice " + str(indice) + " new " + segAttr + " value: " + str(newVal)
         if printResults:
-            print("\nFinal difference: " + str(result.fun))
-            print("Total time: " + str(endTime-startTime) + " s")
-            print("Total iterations: " + str(self.iterationTrack) + "\n")
+            output += "\n\ny objectives:\n"
+            for indice, value in self.objectives.items():
+                for obj in value:
+                    output += "indice " + str(indice) + ": " + obj["measure"][0] + " "  + obj["measure"][1].__name__ + " value of " + str(obj["measured"]) + "\n"
+            output += "Final difference: " + str(result.fun) + "\n"
+            output += "\nTotal time: " + str(endTime-startTime) + " s\n"
+            output +="Total iterations: " + str(self.iterationTrack) + "\n"
+            print(output)
 
         # Plot the progress of y objectives and x variables as a function of iterations
         if plotProgress:
