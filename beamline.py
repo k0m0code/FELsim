@@ -1,5 +1,5 @@
 #   Authors: Christian Komo, Niels Bidault
-
+from sympy import symbols, simplify, sqrt, cosh, sinh, cos, sin, Abs, Matrix
 import numpy as np
 
 class beamline:
@@ -129,11 +129,11 @@ class driftLattice(lattice):
             length = self.length
         M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
         return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
-                                 [0, 1, 0, 0, 0, 0],
-                                 [0, 0, 1, length, 0, 0],
-                                 [0, 0, 0, 1, 0, 0],
-                                 [0, 0, 0, 0, 1, M56],
-                                 [0, 0, 0, 0, 0, 1]])))
+                                                    [0, 1, 0, 0, 0, 0],
+                                                    [0, 0, 1, length, 0, 0],
+                                                    [0, 0, 0, 1, 0, 0],
+                                                    [0, 0, 0, 0, 1, M56],
+                                                    [0, 0, 0, 0, 0, 1]])))
     
     def __str__(self):
         return f"Drift beamline segment {self.length} m long"
@@ -145,6 +145,34 @@ class qpfLattice(lattice):
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
+
+    def getSymbolicMatrice(self):
+        l = symbols("L")
+        I = symbols("I")
+
+        self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
+        self.theta = sqrt(self.k)*l
+
+        M11 = cos(self.theta)
+        M12 = sin(self.theta)*(1/sqrt(self.k))
+        M21 = (-(sqrt(self.k)))*sin(self.theta)
+        M22 = cos(self.theta)
+        M33 = cosh(self.theta)
+        M34 = sinh(self.theta)*(1/sqrt(self.k))
+        M43 = sqrt(self.k)*sinh(self.theta)
+        M44 = cosh(self.theta)
+        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat =  Matrix([[M11, M12, 0, 0, 0, 0],
+                        [M21, M22, 0, 0, 0, 0],
+                        [0, 0, M33, M34, 0, 0],
+                        [0, 0, M43, M44, 0, 0],
+                        [0, 0, 0, 0, 1, M56],
+                        [0, 0, 0, 0, 0, 1]])
+        
+        return mat
+
+
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -190,6 +218,32 @@ class qpdLattice(lattice):
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
+        
+    def getSymbolicMatrice(self):
+        l = symbols("L")
+        I = symbols("I")
+
+        self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
+        self.theta = sqrt(self.k)*l
+
+        M11 = cosh(self.theta)
+        M12 = sinh(self.theta)*(1/sqrt(self.k))
+        M21 = sqrt(self.k)*sinh(self.theta)
+        M22 = cosh(self.theta)
+        M33 = cos(self.theta)
+        M34 = sin(self.theta)*(1/sqrt(self.k))
+        M43 = (-(sqrt(self.k)))*sin(self.theta)
+        M44 = cos(self.theta)
+        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat = Matrix([[M11, M12, 0, 0, 0, 0],
+                        [M21, M22, 0, 0, 0, 0],
+                        [0, 0, M33, M34, 0, 0],
+                        [0, 0, M43, M44, 0, 0],
+                        [0, 0, 0, 0, 1, M56],
+                        [0, 0, 0, 0, 0, 1]])
+        
+        return mat
 
     def useMatrice(self, values, length = -1, current = -1):
         if length <= 0:
