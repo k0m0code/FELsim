@@ -208,8 +208,33 @@ class draw_beamline:
         x_axis.append(round(x_axis[-1]+interval, self.DEFAULTINTERVALROUND))
         return xStd, yStd, xMean, yMean, x_axis
 
-    
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True, saveData = False, shape = {}, plot = True):
+    def createLabels(self, xaxis, spacing):
+        xLabels = []
+
+        defaultSpace = spacing
+        for i in range(len(xaxis)):
+            if i % defaultSpace == 0:
+                xLabels.append(xaxis[i])
+            else:
+                xLabels.append("")
+        return xLabels
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True, saveData = False, shape = {}, plot = True, spacing = 1):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -230,6 +255,8 @@ class draw_beamline:
             ex. shape, width, radius, length, origin
         plot: bool, optional
             Optional boolean variable to plot simulation or not
+        spacing: int, optional
+            Optional variable to choose spacing of x labels when plotting
 
 
 
@@ -325,7 +352,10 @@ class draw_beamline:
             plt.plot(x_axis, yMean, color = 'blue', label = 'y position mean')
             ax5.set_xticks(x_axis)
             plt.xlim(0,x_axis[-1])
-            ax5.set_xticklabels(x_axis,rotation=45,ha='right')
+
+            xTickLab = self.createLabels(x_axis, spacing)
+            ax5.set_xticklabels(xTickLab,rotation=45,ha='right')
+
             plt.tick_params(labelsize = 9)
             plt.xlabel("Distance from start of beam (m)")
             plt.ylabel("Standard deviation (mm)")
