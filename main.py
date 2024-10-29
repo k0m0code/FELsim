@@ -26,22 +26,24 @@ beamline = excel.create_beamline()
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 
-
-
+test = qpdLattice(2.4)
+mat = test.getSymbolicMatrice()
+equation = mat[0]
+print(equation.subs({I:2.3,l:1}))
 
 # ebeam
 ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 
-schem.plotBeamPositionTransform(beam_dist,beamline,1)
+# schem.plotBeamPositionTransform(beam_dist,beamline,0.1, spacing = 5)
 
-optimize = beamOptimizer(beamline, beam_dist)
-segmentVar = {1: ["I", "current", lambda num:num],
-              3: ["B", "current", lambda num:num]}
-objectives = {4: [{"measure": ["y", "alpha"],"goal":0,"weight":1},
-                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
-starting = {"I": {"bounds": (0,10), "start" :5}}
-optimize.calc("COBYQA", segmentVar, starting, objectives, True, True, True)
+# optimize = beamOptimizer(beamline, beam_dist)
+# segmentVar = {1: ["I", "current", lambda num:num],
+#               3: ["B", "current", lambda num:num]}
+# objectives = {4: [{"measure": ["y", "alpha"],"goal":0,"weight":1},
+#                   {"measure": ["x", "std"],"goal":1,"weight":1}]}
+# starting = {"I": {"bounds": (0,10), "start" :5}}
+# optimize.calc("COBYQA", segmentVar, starting, objectives, True, True, True)
 
 
 
