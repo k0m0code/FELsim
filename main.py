@@ -8,32 +8,41 @@ import sys
 import time
 import pandas as pd
 from beamOptimizer import *
+from AlgebriacOptimization import AlgebriacOpti
 
-pd.set_option('display.max_rows', None)
-# Create beamline from Excel file
-# path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
-path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path1)
-file_path = directory / 'Beamline_elements(1).xlsx'
-excel = ExcelElements(file_path)
-df = excel.get_dataframe()
-print(df)
+# pd.set_option('display.max_rows', None)
+# # Create beamline from Excel file
+# # path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
+# path1 = r"C:\Users\User\Documents\FELsim"
+# directory = Path(path1)
+# file_path = directory / 'Beamline_elements(1).xlsx'
+# excel = ExcelElements(file_path)
+# df = excel.get_dataframe()
+# print(df)
 
 
-#beamline
-beamline = excel.create_beamline()
-# if len(beamline) >= 5:
-#     beamline = beamline[:-5]
-schem = draw_beamline()
+# #beamline
+# beamline = excel.create_beamline()
+# # if len(beamline) >= 5:
+# #     beamline = beamline[:-5]
+# schem = draw_beamline()
 
 test = qpdLattice(2.4)
 mat = test.getSymbolicMatrice()
 equation = mat[0]
-print(equation.subs({I:2.3,l:1}))
+
+
 
 # ebeam
 ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
+
+alg = AlgebriacOpti()
+
+sig = alg.getSigmai(beam_dist)
+for i in sig:
+    print(i)
+
 
 # schem.plotBeamPositionTransform(beam_dist,beamline,0.1, spacing = 5)
 
