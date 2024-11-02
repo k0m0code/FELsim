@@ -28,7 +28,7 @@ schem = draw_beamline()
 
 
 seg = driftLattice(1)
-print(seg.getSymbolicMatrice(**{"length": "L"}))
+print(seg.getSymbolicMatrice())
 
 
 # ebeam
@@ -49,9 +49,10 @@ sec6 = qpfLattice(current = I)
 sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = I)
 sec9 = driftLattice(0.50)
-line = [sec1,sec2]
+line = [sec1,sec2,sec4]
 
-xvals = {0:{"length":"BRUHH"}}
+xvals = {1:{"current":"I1"},
+         2:{"current": "I2"}}
 ar = alg.getM(line, xvals)
 for row in ar.tolist():
     print(row)
