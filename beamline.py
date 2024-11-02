@@ -93,7 +93,10 @@ class lattice:
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
-    def useMatrice(self, values, matrice):
+    def getSymbolicMatrice(self):
+        raise NameError("getSymbolicMatrice not defined in child class")
+
+    def useMatrice(self, values, matrice = None):
         ''''
         Simulates the movement of given particles through its child segment
 
@@ -104,6 +107,8 @@ class lattice:
         matrice: np.array(list[float][float])
             6x6 matrice of child segment to simulate particle data with
         '''
+        if (matrice is None): 
+            raise NameError("useMatrice not defined in child class")
         newMatrix = []
         for array in values:
             tempArray = np.matmul(matrice, array)
@@ -121,6 +126,19 @@ class driftLattice(lattice):
         super().__init__(length, E0, Q, M, E)
         self.color = "white"
         
+    def getSymbolicMatrice(self, length = -1):
+        if length == -1: l = self.length
+        else: l = symbols(length)
+        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat = Matrix([[1, l, 0, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 1, l, 0, 0],
+                      [0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+        return mat
+    
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
     #values = np.array([[x, x', y, y', z, z'],...])
     #Note: 1x6 array is multiplied correctly with 6x6 array
@@ -146,9 +164,12 @@ class qpfLattice(lattice):
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
 
-    def getSymbolicMatrice(self):
-        l = symbols("L")
-        I = symbols("I")
+    def getSymbolicMatrice(self, length = -1, current = -1):
+        if current == -1: I = self.current
+        else: I = symbols(current)
+        if length == -1: l = self.length
+        else: l = symbols(length)
+        
 
         self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
         self.theta = sqrt(self.k)*l
@@ -219,9 +240,11 @@ class qpdLattice(lattice):
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
         
-    def getSymbolicMatrice(self):
-        l = symbols("L")
-        I = symbols("I")
+    def getSymbolicMatrice(self, length = -1, current = -1):
+        if current == -1: I = self.current
+        else: I = symbols(current)
+        if length == -1: l = self.length
+        else: l = symbols(length)
 
         self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
         self.theta = sqrt(self.k)*l
