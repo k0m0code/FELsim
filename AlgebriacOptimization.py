@@ -1,5 +1,6 @@
 from beamline import *
 from ebeam import *
+import sympy as sp
 
 class AlgebriacOpti():
     def __init__(self):
@@ -29,7 +30,7 @@ class AlgebriacOpti():
             sigmaI[i*2][i*2+1] = -(alphaEpsilon)
             sigmaI[i*2+1][i*2] = -(alphaEpsilon)
             sigmaI[i*2+1][i*2+1] = gamma*epsilon
-        return sigmaI
+        return sp.Matrix(sigmaI)
 
          
 
@@ -48,6 +49,14 @@ class AlgebriacOpti():
                     resultArr = resultArr*beamline[i].getSymbolicMatrice()
                 i = i - 1
         return resultArr
+    
+    def getSigmaF(self, m, sigmaI):
+         mTransposed = m.T
+         return m*sigmaI*mTransposed
+         
+    
+
+
                 
 
 
