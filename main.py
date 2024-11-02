@@ -10,27 +10,25 @@ import pandas as pd
 from beamOptimizer import *
 from AlgebriacOptimization import AlgebriacOpti
 
-# pd.set_option('display.max_rows', None)
-# # Create beamline from Excel file
-# # path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
-# path1 = r"C:\Users\User\Documents\FELsim"
-# directory = Path(path1)
-# file_path = directory / 'Beamline_elements(1).xlsx'
-# excel = ExcelElements(file_path)
-# df = excel.get_dataframe()
-# print(df)
+pd.set_option('display.max_rows', None)
+# Create beamline from Excel file
+# path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
+path1 = r"C:\Users\User\Documents\FELsim"
+directory = Path(path1)
+file_path = directory / 'Beamline_elements(1).xlsx'
+excel = ExcelElements(file_path)
+df = excel.get_dataframe()
 
 
-# #beamline
-# beamline = excel.create_beamline()
-# # if len(beamline) >= 5:
-# #     beamline = beamline[:-5]
-# schem = draw_beamline()
+#beamline
+beamline = excel.create_beamline()
+# if len(beamline) >= 5:
+#     beamline = beamline[:-5]
+schem = draw_beamline()
 
-test = qpdLattice(2.4)
-mat = test.getSymbolicMatrice()
-equation = mat[0]
 
+seg = driftLattice(1)
+print(seg.getSymbolicMatrice(**{"length": "L"}))
 
 
 # ebeam
@@ -38,10 +36,25 @@ ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
 
 alg = AlgebriacOpti()
-
 sig = alg.getSigmai(beam_dist)
-for i in sig:
-    print(i)
+
+
+I = 2.28
+sec1 = driftLattice(0.5)
+sec2 = qpfLattice(current = I)
+sec3 = driftLattice(0.25)
+sec4 = qpdLattice(current = I)
+sec5 = driftLattice(0.25)
+sec6 = qpfLattice(current = I)
+sec7 = driftLattice(0.25)
+sec8 = qpdLattice(current = I)
+sec9 = driftLattice(0.50)
+line = [sec1,sec2]
+
+xvals = {0:{"length":"BRUHH"}}
+ar = alg.getM(line, xvals)
+for row in ar.tolist():
+    print(row)
 
 
 # schem.plotBeamPositionTransform(beam_dist,beamline,0.1, spacing = 5)
