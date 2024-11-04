@@ -13,16 +13,16 @@ import sympy.plotting as plot
 
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
-# path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
+path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path1)
-file_path = directory / 'Beamline_elements(1).xlsx'
+directory = Path(path2)
+file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
 df = excel.get_dataframe()
 
 
 #beamline
-beamline = excel.create_beamline()
+beamlineUH = excel.create_beamline()
 # if len(beamline) >= 5:
 #     beamline = beamline[:-5]
 schem = draw_beamline()
@@ -30,14 +30,31 @@ schem = draw_beamline()
 
 # ebeam
 ebeam = beam()
-beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],1000)
+beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,1,1],10000)
 
 '''
 create beamline, get sigma i
 '''
 alg = AlgebriacOpti()
 sig = alg.getSigmai(beam_dist)
-I = 2.28
+
+'''
+Initial conditions, sigma_i for horizontal and vertical planes:
+'''
+print("Initial h-plane sigma_i[0] (eps * beta):"+str(sig[0]))
+print("Initial h-plane sigma_i[1] (-eps * alpha):"+str(sig[1]))
+print("Initial h-plane sigma_i[6] (-eps * alpha):"+str(sig[6]))
+print("Initial h-plane sigma_i[7] (eps * gamma):"+str(sig[7]))
+print("Initial v-plane sigma_i[12] (eps * beta):"+str(sig[14]))
+print("Initial v-plane sigma_i[13] (-eps * alpha):"+str(sig[15]))
+print("Initial v-plane sigma_i[18] (-eps * alpha):"+str(sig[20]))
+print("Initial v-plane sigma_i[19] (eps * gamma):"+str(sig[21]))
+'''
+We would like to compare this values with sigma_f, to try to have sigma_f = sigma_i for the h- and v-plane
+'''
+
+
+I = 3.56  # result obtained from testOptimization.py...
 sec1 = driftLattice(0.5)
 sec2 = qpfLattice(current = I)
 sec3 = driftLattice(0.25)
@@ -47,15 +64,30 @@ sec6 = qpfLattice(current = I)
 sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = I)
 sec9 = driftLattice(0.50)
-line = [sec1,sec2,sec3,sec4]
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+
+beamtype = beamline()
+line_E = beamtype.changeBeamType(line, "electron", 55)
+
+'''
+plotting
+'''
+schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5)
+
 
 '''
 create x values to optimize
-{segment paramter: variable name}
+{segment parameter: variable name}
 '''
 xvals = {
-         3: {"current":"I"},
-         1: {"current": "I"}}
+         1: {"current": "I"},
+         3: {"current": "I"},
+         5: {"current": "I"},
+         7: {"current": "I"}
+        }
+
+
+
 mAr = alg.getM(line, xvals)
 
 '''
@@ -65,27 +97,36 @@ for row in mAr.tolist():
     print(row)
 
 '''
-print values for sigmaF, annd plot each function
+print values for sigmaF, and plot each function
 '''
 sigmaf = alg.getSigmaF(mAr,sig)
+
 for row in sigmaf.tolist():
-    print(str(row) + "\n")
-plot.plot(sigmaf[1])
+    print("sigmaf:"+str(row) + "\n")
 
+nb_points = 1000  # number of point used in the simpy plot
 
+p1 = plot.plot(sigmaf[0], nb_of_points=nb_points, line_color='red', show=False) # find I so that this equals ~ 1
+p2 = plot.plot(sigmaf[1], nb_of_points=nb_points,line_color='blue', show=False) # find I so that this equals ~ 0
+p3 = plot.plot(sigmaf[7], nb_of_points=nb_points,line_color='green', show=False) # find I so that this equals ~ 0
+sig_i_0 = plot.plot(sig[0], line_color='red', show=False)
+sig_i_1 = plot.plot(sig[1], line_color='blue', show=False)
+sig_i_7 = plot.plot(sig[7], line_color='green', show=False)
 
+p1.append(p2[0])
+p1.append(p3[0])
+p1.append(sig_i_0[0])
+p1.append(sig_i_1[0])
+p1.append(sig_i_7[0])
 
-
-
-
-
-
-
-    
 '''
-plotting
+p1 is the figure for the horizontal plane
+We should have three figures (horizontal, vertical, longitudinal) next to each other
 '''
-# schem.plotBeamPositionTransform(beam_dist,beamline,0.1, spacing = 5)
+p1.show()
+
+
+
 
 '''
 optimizization example
