@@ -1,39 +1,47 @@
 #   Authors: Christian Komo, Niels Bidault
-
+from sympy import symbols, simplify, sqrt, cosh, sinh, cos, sin, Abs, Matrix
 import numpy as np
 
-#should I use the position that each beamline object takes up instead of its total length? -> Did not understand let's discuss about it
-#Give each beamline object its optional plot6d paramter at certain lengths into the beamline? -> Yes
 class beamline:
     def __init__(self):
+        self.C = 299792458.0  # Speed of light in vacuum (m/s)
+        self.q_e = 1.602176634e-19  # Elementary charge (C)
+        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
+        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
+        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
+        
+        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
+
         #  [Mass (kg), charge (C), rest energy (MeV)]
-        #
-        c = 299792458.0  # Speed of light in vacuum (m/s)
-        q_e = 1.602176634e-19  # Elementary charge (C)
-        m_e = 9.1093837139e-31  # Electron Mass (kg)
-        m_p = 1.67262192595e-27  # Proton Mass (kg)
-
-        # Ion case requires to input an atomic number A and charge Z
-        # For instance 12C5+ (Carbon 12, with 5 electrons removed)
-        A = 12
-        Z = 5
-        m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
-        m_i = A * m_amu
-        q_i = Z * q_e
-
-        k_MeV = 1e-6 / q_e  # Conversion factor (MeV / J)
-
-        self.PARTICLES = {"electron": [m_e, q_e, (m_e * c ** 2) * k_MeV],
-                          "proton": [m_p, q_e, (m_p * c ** 2) * k_MeV],
-                          "ion": [m_i, q_i, (m_i * c ** 2) * k_MeV]}
+        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
+                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
 
     def changeBeamType(self, beamSegments, particleType, kineticE):
         newBeamline = beamSegments
-        particleData = self.PARTICLES[particleType]
-        for seg in newBeamline:
-            seg.setMQE(particleData[0],particleData[1],particleData[2])
-            seg.setE(kineticE)
-        return newBeamline
+        try:
+            particleData = self.PARTICLES[particleType]
+            for seg in newBeamline:
+                seg.setMQE(particleData[0],particleData[1],particleData[2])
+                seg.setE(kineticE)
+            return newBeamline
+        except KeyError:
+            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
+            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
+            try:
+                isotopeData = particleType.split(",")
+                A = int(isotopeData[0])
+                Z = int(isotopeData[1])
+                m_i = A * self.m_amu
+                q_i = Z * self.q_e
+                meV = (m_i * self.C ** 2) * self.k_MeV
+
+                for seg in newBeamline:
+                    seg.setMQE(m_i, q_i, meV)
+                    seg.setE(kineticE)
+                return newBeamline
+            except:
+                raise TypeError("Invalid particle type/isotope")
+
 
 class lattice:
     #  by default every beam type is an electron beam type
@@ -85,7 +93,10 @@ class lattice:
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
-    def useMatrice(self, values, matrice):
+    def getSymbolicMatrice(self):
+        raise NameError("getSymbolicMatrice not defined in child class")
+
+    def useMatrice(self, values, matrice = None):
         ''''
         Simulates the movement of given particles through its child segment
 
@@ -96,6 +107,8 @@ class lattice:
         matrice: np.array(list[float][float])
             6x6 matrice of child segment to simulate particle data with
         '''
+        if (matrice is None): 
+            raise NameError("useMatrice not defined in child class")
         newMatrix = []
         for array in values:
             tempArray = np.matmul(matrice, array)
@@ -113,6 +126,19 @@ class driftLattice(lattice):
         super().__init__(length, E0, Q, M, E)
         self.color = "white"
         
+    def getSymbolicMatrice(self, length = -1):
+        if length == -1: l = self.length
+        else: l = symbols(length)
+        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat = Matrix([[1, l, 0, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 1, l, 0, 0],
+                      [0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+        return mat
+    
     #Matrix multiplecation, values is a 2 dimensional numPy array, each array is 6 elements long
     #values = np.array([[x, x', y, y', z, z'],...])
     #Note: 1x6 array is multiplied correctly with 6x6 array
@@ -121,11 +147,11 @@ class driftLattice(lattice):
             length = self.length
         M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
         return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
-                                 [0, 1, 0, 0, 0, 0],
-                                 [0, 0, 1, length, 0, 0],
-                                 [0, 0, 0, 1, 0, 0],
-                                 [0, 0, 0, 0, 1, M56],
-                                 [0, 0, 0, 0, 0, 1]])))
+                                                    [0, 1, 0, 0, 0, 0],
+                                                    [0, 0, 1, length, 0, 0],
+                                                    [0, 0, 0, 1, 0, 0],
+                                                    [0, 0, 0, 0, 1, M56],
+                                                    [0, 0, 0, 0, 0, 1]])))
     
     def __str__(self):
         return f"Drift beamline segment {self.length} m long"
@@ -137,6 +163,37 @@ class qpfLattice(lattice):
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
+
+    def getSymbolicMatrice(self, length = -1, current = -1):
+        if current == -1: I = self.current
+        else: I = symbols(current)
+        if length == -1: l = self.length
+        else: l = symbols(length)
+        
+
+        self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
+        self.theta = sqrt(self.k)*l
+
+        M11 = cos(self.theta)
+        M12 = sin(self.theta)*(1/sqrt(self.k))
+        M21 = (-(sqrt(self.k)))*sin(self.theta)
+        M22 = cos(self.theta)
+        M33 = cosh(self.theta)
+        M34 = sinh(self.theta)*(1/sqrt(self.k))
+        M43 = sqrt(self.k)*sinh(self.theta)
+        M44 = cosh(self.theta)
+        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat =  Matrix([[M11, M12, 0, 0, 0, 0],
+                        [M21, M22, 0, 0, 0, 0],
+                        [0, 0, M33, M34, 0, 0],
+                        [0, 0, M43, M44, 0, 0],
+                        [0, 0, 0, 0, 1, M56],
+                        [0, 0, 0, 0, 0, 1]])
+        
+        return mat
+
+
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -182,6 +239,34 @@ class qpdLattice(lattice):
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
+        
+    def getSymbolicMatrice(self, length = -1, current = -1):
+        if current == -1: I = self.current
+        else: I = symbols(current)
+        if length == -1: l = self.length
+        else: l = symbols(length)
+
+        self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
+        self.theta = sqrt(self.k)*l
+
+        M11 = cosh(self.theta)
+        M12 = sinh(self.theta)*(1/sqrt(self.k))
+        M21 = sqrt(self.k)*sinh(self.theta)
+        M22 = cosh(self.theta)
+        M33 = cos(self.theta)
+        M34 = sin(self.theta)*(1/sqrt(self.k))
+        M43 = (-(sqrt(self.k)))*sin(self.theta)
+        M44 = cos(self.theta)
+        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat = Matrix([[M11, M12, 0, 0, 0, 0],
+                        [M21, M22, 0, 0, 0, 0],
+                        [0, 0, M33, M34, 0, 0],
+                        [0, 0, M43, M44, 0, 0],
+                        [0, 0, 0, 0, 1, M56],
+                        [0, 0, 0, 0, 0, 1]])
+        
+        return mat
 
     def useMatrice(self, values, length = -1, current = -1):
         if length <= 0:
