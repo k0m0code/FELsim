@@ -104,7 +104,14 @@ sigmaf = alg.getSigmaF(mAr,sig)
 for row in sigmaf.tolist():
     print("sigmaf:"+str(row) + "\n")
 
-nb_points = 1000  # number of point used in the simpy plot
+nb_points = 1000  # number of point used in the simpy
+
+
+'''
+This figures are for testing purposes.
+The figure that is interesting should be the objective function as a function of the variable,
+for instance here, F(I) = abs(sigma_i(1,1) - sigma_f(1,1)) + abs(sigma_i(5,5)-sigma_f(5,5)), 
+'''
 
 p1 = plot.plot(sigmaf[0], nb_of_points=nb_points, line_color='red', show=False) # find I so that this equals ~ 1
 p2 = plot.plot(sigmaf[1], nb_of_points=nb_points,line_color='blue', show=False) # find I so that this equals ~ 0
@@ -119,10 +126,6 @@ p1.append(sig_i_0[0])
 p1.append(sig_i_1[0])
 p1.append(sig_i_7[0])
 
-'''
-p1 is the figure for the horizontal plane
-We should have three figures (horizontal, vertical, longitudinal) next to each other
-'''
 p1.show()
 
 
