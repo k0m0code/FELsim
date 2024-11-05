@@ -2,14 +2,13 @@ from beamline import *
 from ebeam import *
 import sympy as sp
 
-class AlgebriacOpti():
+class AlgebraicOpti():
     def __init__(self):
         self.DDOF = 1
         self.m = None
         self.sigmai = None
-        pass
 
-    def getSigmai(self, particles):
+    def getDistSigmai(self, particles):
         ebeam = beam()
         dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
         sigmaI = [[0,0,0,0,0,0],
@@ -18,7 +17,6 @@ class AlgebriacOpti():
                 [0,0,0,0,0,0],
                 [0,0,0,0,0,0],
                 [0,0,0,0,0,0]]
-        print(twiss)
         for i, axis in enumerate(['x', 'y', 'z']):
             ax = twiss.loc[axis]
             epsilon = ax["$\epsilon$ ($\pi$.mm.mrad)"]
@@ -31,9 +29,26 @@ class AlgebriacOpti():
             sigmaI[i*2+1][i*2] = -(alphaEpsilon)
             sigmaI[i*2+1][i*2+1] = gamma*epsilon
         return sp.Matrix(sigmaI)
-
-         
-
+    
+    def getTwissSigmai(self, xTwiss, yTwiss, zTwiss):
+        twiss = [xTwiss,yTwiss,zTwiss]
+        sigmaI = [[0,0,0,0,0,0],
+                [0,0,0,0,0,0],
+                [0,0,0,0,0,0],
+                [0,0,0,0,0,0],
+                [0,0,0,0,0,0],
+                [0,0,0,0,0,0]]
+        for i, axis in range(3):
+             ax = twiss[i]
+             epsilon = ax[0]
+             alphaEpsilon = -(ax[1]*epsilon)
+             betaEpsilon = ax[2]*epsilon
+             gammaEpsilon = ax[3]*epsilon
+             sigmaI[i*2][i*2] = betaEpsilon
+             sigmaI[i*2][i*2+1] = -(alphaEpsilon)
+             sigmaI[i*2+1][i*2] = -(alphaEpsilon)
+             sigmaI[i*2+1][i*2+1] = gammaEpsilon
+        return sigmaI
 
     def getM(self, beamline: list, xVar: dict):
         resultArr = None
@@ -53,26 +68,7 @@ class AlgebriacOpti():
     def getSigmaF(self, m, sigmaI):
          mTransposed = m.T
          return m*sigmaI*mTransposed
-         
+        
+    def findObj(self):
+         return
     
-
-
-                
-
-
-# import numpy as np
-# from sympy import symbols, Matrix
-
-# # Define your symbolic variables
-# a, b, c, d = symbols('a b c d')
-
-# # Create symbolic matrices
-# A = Matrix([[a, b], 
-#             [c, d]])
-# B = Matrix([[1, 2],
-#             [3, 4]])
-
-# # Perform matrix multiplication
-# C = A * B
-
-# print(C)  # This will print the resulting symbolic matrix
