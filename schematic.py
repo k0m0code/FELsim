@@ -242,7 +242,7 @@ class draw_beamline:
         ----------
         matrixvairables: np.array(list[float][float])
             A 6r x 10c 2d numpy array containing initial values of each electron's measurements
-        beamSegmeents: list[beamline]
+        beamSegments: list[beamline]
             Numpy array/list containing beamline objects which represent the beam
         interval: float
             Arbitrary number specifying interval for graph to take measurements at
