@@ -1,7 +1,9 @@
 #   Authors: Christian Komo, Niels Bidault
-from sympy import symbols, simplify, sqrt, cosh, sinh, cos, sin, Abs, Matrix
+from sympy import symbols, Matrix
+import sympy as sp
 import numpy as np
 
+#NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
 class beamline:
     def __init__(self):
         self.C = 299792458.0  # Speed of light in vacuum (m/s)
@@ -126,9 +128,9 @@ class driftLattice(lattice):
         super().__init__(length, E0, Q, M, E)
         self.color = "white"
         
-    def getSymbolicMatrice(self, length = -1):
-        if length == -1: l = self.length
-        else: l = symbols(length)
+    def getSymbolicMatrice(self, length = None):
+        if length is None: l = self.length
+        else: l = symbols(length, real = True)
         M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat = Matrix([[1, l, 0, 0, 0, 0],
@@ -164,24 +166,24 @@ class qpfLattice(lattice):
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
 
-    def getSymbolicMatrice(self, length = -1, current = -1):
-        if current == -1: I = self.current
-        else: I = symbols(current)
-        if length == -1: l = self.length
-        else: l = symbols(length)
+    def getSymbolicMatrice(self, length = None, current = None):
+        if current is None: I = self.current
+        else: I = symbols(current, real = True)
+        if length is None: l = self.length
+        else: l = symbols(length, real = True)
         
 
-        self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
-        self.theta = sqrt(self.k)*l
+        self.k = sp.Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
+        self.theta = sp.sqrt(self.k)*l
 
-        M11 = cos(self.theta)
-        M12 = sin(self.theta)*(1/sqrt(self.k))
-        M21 = (-(sqrt(self.k)))*sin(self.theta)
-        M22 = cos(self.theta)
-        M33 = cosh(self.theta)
-        M34 = sinh(self.theta)*(1/sqrt(self.k))
-        M43 = sqrt(self.k)*sinh(self.theta)
-        M44 = cosh(self.theta)
+        M11 = sp.cos(self.theta)
+        M12 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
+        M21 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
+        M22 = sp.cos(self.theta)
+        M33 = sp.cosh(self.theta)
+        M34 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
+        M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
+        M44 = sp.cosh(self.theta)
         M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat =  Matrix([[M11, M12, 0, 0, 0, 0],
@@ -240,23 +242,23 @@ class qpdLattice(lattice):
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
         
-    def getSymbolicMatrice(self, length = -1, current = -1):
-        if current == -1: I = self.current
-        else: I = symbols(current)
-        if length == -1: l = self.length
-        else: l = symbols(length)
+    def getSymbolicMatrice(self, length = None, current = None):
+        if current is None: I = self.current
+        else: I = symbols(current, real = True)
+        if length is None: l = self.length
+        else: l = symbols(length, real = True)
+        
+        self.k = sp.Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
+        self.theta = sp.sqrt(self.k)*l
 
-        self.k = Abs((self.Q*self.G*I)/(self.M*self.C*self.beta*self.gamma))
-        self.theta = sqrt(self.k)*l
-
-        M11 = cosh(self.theta)
-        M12 = sinh(self.theta)*(1/sqrt(self.k))
-        M21 = sqrt(self.k)*sinh(self.theta)
-        M22 = cosh(self.theta)
-        M33 = cos(self.theta)
-        M34 = sin(self.theta)*(1/sqrt(self.k))
-        M43 = (-(sqrt(self.k)))*sin(self.theta)
-        M44 = cos(self.theta)
+        M11 = sp.cosh(self.theta)
+        M12 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
+        M21 = sp.sqrt(self.k)*sp.sinh(self.theta)
+        M22 = sp.cosh(self.theta)
+        M33 = sp.cos(self.theta)
+        M34 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
+        M43 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
+        M44 = sp.cos(self.theta)
         M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat = Matrix([[M11, M12, 0, 0, 0, 0],
@@ -309,6 +311,34 @@ class dipole(lattice):
         self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (self.angle * np.pi / 180 / self.length)
         self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
 
+    def getSymbolicMatrice(self, length = None, angle = None):
+        if length is None: L = self.length
+        else: L = symbols(length, real = True)
+        if angle is None: a = self.angle
+        else: a = symbols(angle, real = True)
+
+        by = (self.M*self.C*self.beta*self.gamma / self.Q) * (a * sp.pi / 180 / L)
+        rho = self.M*self.C*self.beta*self.gamma / (self.Q * by)
+        theta = L / rho
+        C = sp.cos(theta)
+        S = sp.sin(theta)
+
+        M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1) / self.E)
+        M26 = S * (self.gamma / (self.gamma + 1) / self.E)
+        M51 = self.unitsF * (-S / (self.beta * self.C))
+        M52 = self.unitsF * (-rho * (1 - C) / (self.beta * self.C))
+        M56 = self.unitsF * (-rho * (L / rho - S) / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/g must be included
+
+        mat = Matrix([[C, rho * S, 0, 0, 0, M16],
+                      [-S / rho, C, 0, 0, 0, M26],
+                      [0, 0, 1, L, 0, 0],
+                      [0, 0, 0, 1, 0, 0],
+                      [M51, M52, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+        
+        return mat
+
+    
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -394,3 +424,4 @@ class dipole_wedge(lattice):
         return super().useMatrice(values, M)
     def __str__(self):
         return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature)"
+    
