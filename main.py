@@ -8,15 +8,17 @@ import sys
 import time
 import pandas as pd
 from beamOptimizer import *
-from AlgebriacOptimization import AlgebriacOpti
+from AlgebraicOptimization import AlgebraicOpti
 import sympy.plotting as plot
+import sympy as sp
 
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path2)
-file_path = directory / 'Beamline_elements.xlsx'
+directory = Path(path1)
+# file_path = directory / 'Beamline_elements.xlsx'
+file_path = directory / 'Beamline_elements(1).xlsx'
 excel = ExcelElements(file_path)
 df = excel.get_dataframe()
 
@@ -35,8 +37,8 @@ beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,1,1],10000)
 '''
 create beamline, get sigma i
 '''
-alg = AlgebriacOpti()
-sig = alg.getSigmai(beam_dist)
+alg = AlgebraicOpti()
+sig = alg.getDistSigmai(beam_dist)
 
 '''
 Initial conditions, sigma_i for horizontal and vertical planes:
@@ -52,7 +54,7 @@ print("Initial v-plane sigma_i[19] (eps * gamma):"+str(sig[21]))
 '''
 We would like to compare this values with sigma_f, to try to have sigma_f = sigma_i for the h- and v-plane
 '''
-
+print(sig)
 
 I = 3.56  # result obtained from testOptimization.py...
 sec1 = driftLattice(0.5)
@@ -72,7 +74,7 @@ line_E = beamtype.changeBeamType(line, "electron", 55)
 '''
 plotting
 '''
-schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5)
+# schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5)
 
 
 '''
@@ -89,20 +91,30 @@ xvals = {
 
 
 mAr = alg.getM(line, xvals)
+'''
+def objectives
+'''
+#epsilon, alpha, beta, gamma
+yObj = {'x': [0,0,0,0],'y': [0.999,0,0.02,0.23],'z': [0.9, 0.003, 1, 0.2]}
+finm = alg.findObj(line_E, xvals, yObj)
+print(finm[15])
+plot.plot(finm[15])
+I = sp.symbols("I", real = True)
+print(sp.solveset(finm[15], I, domain=sp.S.Reals))
 
 '''
 print out the M matrice of the beamline
 '''
-for row in mAr.tolist():
-    print(row)
+# for row in mAr.tolist():
+#     print(row)
 
 '''
 print values for sigmaF, and plot each function
 '''
 sigmaf = alg.getSigmaF(mAr,sig)
 
-for row in sigmaf.tolist():
-    print("sigmaf:"+str(row) + "\n")
+# for row in sigmaf.tolist():
+#     print("sigmaf:"+str(row) + "\n")
 
 nb_points = 1000  # number of point used in the simpy
 
@@ -112,7 +124,6 @@ This figures are for testing purposes.
 The figure that is interesting should be the objective function as a function of the variable,
 for instance here, F(I) = abs(sigma_i(1,1) - sigma_f(1,1)) + abs(sigma_i(5,5)-sigma_f(5,5)), 
 '''
-
 p1 = plot.plot(sigmaf[0], nb_of_points=nb_points, line_color='red', show=False) # find I so that this equals ~ 1
 p2 = plot.plot(sigmaf[1], nb_of_points=nb_points,line_color='blue', show=False) # find I so that this equals ~ 0
 p3 = plot.plot(sigmaf[7], nb_of_points=nb_points,line_color='green', show=False) # find I so that this equals ~ 0
@@ -150,3 +161,16 @@ Shape example
 # shape1 = {"shape": "circle", "radius": 5, "origin": (0,5)}
 # shape = {"shape": "rectangle", "length": 200, "width": 500, "origin": (10,-4)}
 # schem.plotBeamPositionTransform(beam_dist, beamline, 10, shape = shape)
+
+
+'''
+test
+'''
+# x = smp.symbols("x")
+# eq = x**2
+# xp = plot.plot(eq, show = False)
+# xp.show()
+# eq2 = eq - 5
+# xp2 = plot.plot(eq2, show = False)
+# xp.append(xp2[0])
+# xp.show()
