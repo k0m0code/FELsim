@@ -30,6 +30,7 @@ class AlgebraicOpti():
             sigmaI[i*2+1][i*2+1] = gamma*epsilon
         return sp.Matrix(sigmaI)
     
+    #[epsilon, alpha, beta, gamma]
     def getTwissSigmai(self, xTwiss, yTwiss, zTwiss):
         twiss = [xTwiss,yTwiss,zTwiss]
         sigmaI = [[0,0,0,0,0,0],
@@ -38,7 +39,7 @@ class AlgebraicOpti():
                 [0,0,0,0,0,0],
                 [0,0,0,0,0,0],
                 [0,0,0,0,0,0]]
-        for i, axis in range(3):
+        for i in range(3):
              ax = twiss[i]
              epsilon = ax[0]
              alphaEpsilon = -(ax[1]*epsilon)
@@ -48,7 +49,7 @@ class AlgebraicOpti():
              sigmaI[i*2][i*2+1] = -(alphaEpsilon)
              sigmaI[i*2+1][i*2] = -(alphaEpsilon)
              sigmaI[i*2+1][i*2+1] = gammaEpsilon
-        return sigmaI
+        return sp.Matrix(sigmaI)
 
     def getM(self, beamline: list, xVar: dict):
         resultArr = None
@@ -69,6 +70,20 @@ class AlgebraicOpti():
          mTransposed = m.T
          return m*sigmaI*mTransposed
         
-    def findObj(self):
-         return
+    def findObj(self, beamline, xVal, objec, startParticles = None):
+        sigi = None
+        if not startParticles is None:
+              sigi = self.getDistSigmai(startParticles)
+        else:
+            objList = []
+            for i, axis in enumerate(['x','y','z']):
+                objList.append(objec[axis])
+            sigi = self.getTwissSigmai(objList[0],objList[1],objList[2])
+        mMat = self.getM(beamline, xVal)
+        sigF = self.getSigmaF(mMat,sigi)
+        for i in range(len(sigF)):
+             sigF[i] = sigF[i] - sigi[i]
+        return sigF
+         
+
     
