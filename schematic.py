@@ -374,7 +374,7 @@ class draw_beamline:
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
-            colors = ['blue', 'red']
+            colors = ['dodgerblue', 'crimson']
             for i in range(0,2):
                 emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[0]])
                 beta = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[2]])
@@ -392,16 +392,17 @@ class draw_beamline:
             plt.tick_params(labelsize = 9)
             plt.xlabel("Distance from start of beam (m)")
             plt.ylabel("Envelope $E$ (mm)")
+            ax5.legend(loc='upper left')
 
             ax6 = ax5.twinx()
             for i in range(0, 2):
                 dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[4]])
                 ax6.plot(x_axis, dispersion,
                              color=colors[i], linestyle='--',
-                             label=r'$D_' + twiss_aggregated_df.index[i] + '$ (mm/keV)')
-            ax6.set_ylabel('Dispersion $D$ (mm/keV)')
+                             label=r'$D_' + twiss_aggregated_df.index[i] + '$ (m)')
+            ax6.set_ylabel('Dispersion $D$ (m)')
 
-            plt.legend()
+            ax6.legend(loc='upper right')
 
             #  Create visual representation of beamline segments
             ymin, ymax = ax5.get_ylim()

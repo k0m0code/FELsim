@@ -53,25 +53,45 @@ class beam:
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
         label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm/keV)",
-                       r"$\phi$ (deg)"]
+                       r"$D^{\prime}$ (mm/keV)", r"$\phi$ (deg)"]
         label_axes = ["x", "y", "z"]
 
         twiss_data = []
 
         for i in range(3):
-            emittance = np.sqrt(
-                dist_cov[2 * i, 2 * i] * dist_cov[2 * i + 1, 2 * i + 1] - dist_cov[2 * i, 2 * i + 1] ** 2)
-            alpha = - dist_cov[2 * i, 2 * i + 1] / emittance
-            beta = dist_cov[2 * i, 2 * i] / emittance
-            gamma = dist_cov[2 * i + 1, 2 * i + 1] / emittance
-            D = dist_cov[2 * i, 2 * i] / dist_cov[4, 4]
+
+            covar = dist_cov[2 * i, 2 * i + 1]
+            var = dist_cov[2 * i, 2 * i]
+            var_prime = dist_cov[2 * i + 1, 2 * i + 1]
+            delta_energy = dist_cov[4, 4]
+            covar_dispersion = dist_cov[2 * i, 4]
+            covar_dispersion_prime = dist_cov[2 * i + 1, 4]
+
+            dispersion = covar_dispersion / delta_energy
+            dispersion_prime = covar_dispersion_prime / delta_energy
+            if i == 2:
+                emittance = np.sqrt(var * var_prime - covar ** 2)
+                alpha = - covar / emittance
+                beta = var / emittance
+                gamma = var_prime / emittance
+                dispersion = 0
+                dispersion_prime = 0
+            else:
+                alpha_emittance = - covar + covar_dispersion * covar_dispersion_prime / delta_energy
+                beta_emittance = var - (covar_dispersion ** 2) / delta_energy
+                gamma_emittance = var_prime - (covar_dispersion_prime ** 2) / delta_energy
+                emittance = np.sqrt(beta_emittance * gamma_emittance - alpha_emittance ** 2)
+                alpha = alpha_emittance / emittance
+                beta = beta_emittance / emittance
+                gamma = gamma_emittance / emittance
+
             phi = (90 /np.pi) * np.arctan2(2 * alpha, gamma - beta) / 2
             if phi > 0:
                 phi = phi - 90
             else:
                 phi = phi + 90
 
-            twiss_data.append([emittance, alpha, beta, gamma, D, phi])
+            twiss_data.append([emittance, alpha, beta, gamma, dispersion, dispersion_prime, phi])
 
         twiss = pd.DataFrame(twiss_data, columns=label_twiss, index=label_axes[:3])
 
@@ -212,7 +232,7 @@ class beam:
         dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=ddof)
         std6 = []
         std1 = []
-        for i, axis in enumerate(['x', 'y', 'z']):
+        for i, axis in enumerate(twiss.index):
             # Access Twiss parameters for the current axis
             twiss_axis = twiss.loc[axis]
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=1, num_pts=num_pts)
@@ -232,7 +252,7 @@ class beam:
         y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Energy $\Delta$ $E$ (keV)',
                     r'Position $y$ (mm)']
         
-        for i, axis in enumerate(['x', 'y', 'z']):
+        for i, axis in enumerate(twiss.index):
             twiss_axis = twiss.loc[axis]
 
             # Access Twiss parameters for the current axis

@@ -34,9 +34,21 @@ line_E = beamtype.changeBeamType(beamlineUH, "electron", 45)
 
 
 
-# ebeam
+'''
+Beam Properties initialization
+'''
 ebeam = beam()
-beam_dist = ebeam.gen_6d_gaussian(0,[1,0.9,1,0.1,1,1],int(1e3))
+nb_particles = int(1e3)
+x_std = 1  # (mm)
+x_prime_std = 0.1  # (mrad)
+y_std = 1  # (mm)
+y_prime_std = 0.1  # (mrad)
+energy_std = 10  # (10 ** -3) (dE / E)
+tof_std = 100  # (10 ** -3) (dToF / T)
+
+beam_dist = ebeam.gen_6d_gaussian(0,
+                                  [x_std,x_prime_std,y_std,y_prime_std,energy_std,tof_std],
+                                  nb_particles)
 
 
 schem.plotBeamPositionTransform(beam_dist, line_E, 0.1)
