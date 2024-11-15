@@ -280,11 +280,13 @@ class draw_beamline:
         plot6dValues = {0: result}
         twiss_aggregated_df = pd.DataFrame(
             {axis: {label: [] for label in twiss.index} for axis in twiss.columns}
-        )
+        )  # Create twiss dataframe for particles
+        # Add initial twiss values
         for i, axis in enumerate(twiss.index):
             twiss_axis = twiss.loc[axis]
             for label, value in twiss_axis.items():
                 twiss_aggregated_df.at[axis, label].append(value)
+
         x_axis = [0]
         maxVals = [0, 0, 0, 0, 0, 0]
         minVals = [0, 0, 0, 0, 0, 0]
@@ -315,6 +317,7 @@ class draw_beamline:
                     result = ebeam.getXYZ(matrixVariables)
                     twiss = result[3]
                     plot6dValues.update({x_axis[-1]: result})
+
                     # Aggregate the beam properties results together in a single pandas frame
                     for i, axis in enumerate(twiss.index):
                         twiss_axis = twiss.loc[axis]
