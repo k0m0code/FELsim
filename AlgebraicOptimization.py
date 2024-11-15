@@ -30,7 +30,7 @@ class AlgebraicOpti():
             sigmaI[i*2+1][i*2+1] = gamma*epsilon
         return sp.Matrix(sigmaI)
     
-    #[epsilon, alpha, beta, gamma]
+    #[epsilon, alpha, beta, gamma] for each axis
     def getTwissSigmai(self, xTwiss, yTwiss, zTwiss):
         twiss = [xTwiss,yTwiss,zTwiss]
         sigmaI = [[0,0,0,0,0,0],
@@ -83,7 +83,7 @@ class AlgebraicOpti():
         sigF = self.getSigmaF(mMat,sigi)
         for i in range(len(sigF)):
              sigF[i] = sigF[i] - sigi[i]
-        return sigF
+        return sigF # return the objective functions, solutions at zeros
          
 
     

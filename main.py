@@ -16,7 +16,7 @@ pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path2)
+directory = Path(path1)
 # file_path = directory / 'Beamline_elements.xlsx'
 file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
@@ -60,7 +60,7 @@ print("Initial v-plane sigma_i[19] (eps * gamma):"+str(sig[21]))
 '''
 We would like to compare this values with sigma_f, to try to have sigma_f = sigma_i for the h- and v-plane
 '''
-print(sig)
+# print(sig)
 
 I = 3.56  # result obtained from testOptimization.py...
 sec1 = driftLattice(0.5)
@@ -72,7 +72,8 @@ sec6 = qpfLattice(current = I)
 sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = I)
 sec9 = driftLattice(0.50)
-line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+# line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+line = [sec2]
 
 beamtype = beamline()
 line_E = beamtype.changeBeamType(line, "electron", 55)
@@ -88,7 +89,7 @@ create x values to optimize
 {segment parameter: variable name}
 '''
 xvals = {
-         1: {"current": "I"},
+         0: {"current": "I"},
          3: {"current": "I"},
          5: {"current": "I"},
          7: {"current": "I"}
@@ -106,7 +107,7 @@ finm = alg.findObj(line_E, xvals, yObj)
 print(finm[15])
 plot.plot(finm[15])
 I = sp.symbols("I", real = True)
-print(sp.solveset(finm[15], I, domain=sp.S.Reals))
+print(sp.solveset(finm[15], I, domain=sp.S.Reals)) # not finding a solution, maybe too complex
 
 '''
 print out the M matrice of the beamline
