@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
 from matplotlib.widgets import Slider
+import pandas as pd
 import csv
 import numpy as np
 from beamline import *
@@ -168,6 +169,10 @@ class draw_beamline:
         return maxval, minval
 
     def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
+
+        # Not used anymore
+        # To be removed
+        # Due to the use of pandas frame from the 6d distribution, we do no need to recalculate the standard devs
         '''
         Append updated values to five different arrays, used for plotBeamPositionTransform
 
@@ -269,15 +274,18 @@ class draw_beamline:
         '''
 
         # Initialize values
-        initialx = matrixVariables[:, 0]
-        initialy = matrixVariables[:, 2]
-        xStd = [np.std(initialx)]
-        yStd = [np.std(initialy)]
-        xMean = [np.mean(initialx)]
-        yMean = [np.mean(initialy)]
-        x_axis = [0]
         ebeam = beam()
-        plot6dValues = {0: (ebeam.getXYZ(matrixVariables))}
+        result = ebeam.getXYZ(matrixVariables)
+        twiss = result[3]
+        plot6dValues = {0: result}
+        twiss_aggregated_df = pd.DataFrame(
+            {axis: {label: [] for label in twiss.index} for axis in twiss.columns}
+        )
+        for i, axis in enumerate(twiss.index):
+            twiss_axis = twiss.loc[axis]
+            for label, value in twiss_axis.items():
+                twiss_aggregated_df.at[axis, label].append(value)
+        x_axis = [0]
         maxVals = [0, 0, 0, 0, 0, 0]
         minVals = [0, 0, 0, 0, 0, 0]
 
@@ -299,11 +307,19 @@ class draw_beamline:
                     # Perform calculations to plot later on
                     # Use each segment's array to transform particles
                     matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length=interval))
-                    xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, interval,
-                                                                         matrixVariables)
+                    x_axis.append(round(x_axis[-1] + interval, self.DEFAULTINTERVALROUND))
+
                     if defineLim:
                         maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
-                    plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
+
+                    result = ebeam.getXYZ(matrixVariables)
+                    twiss = result[3]
+                    plot6dValues.update({x_axis[-1]: result})
+                    # Aggregate the beam properties results together in a single pandas frame
+                    for i, axis in enumerate(twiss.index):
+                        twiss_axis = twiss.loc[axis]
+                        for label, value in twiss_axis.items():
+                            twiss_aggregated_df.at[axis, label].append(value)
 
                     # Update the progress bar
                     pbar.update(1)
@@ -312,11 +328,19 @@ class draw_beamline:
                 if intTrack > 0:
                     # Use remainder length once when it's smaller than interval
                     matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length=intTrack))
-                    xStd, yStd, xMean, yMean, x_axis = self.appendToList(xStd, yStd, xMean, yMean, x_axis, intTrack,
-                                                                         matrixVariables)
+                    x_axis.append(round(x_axis[-1] + intTrack, self.DEFAULTINTERVALROUND))
+
                     if defineLim:
                         maxVals, minVals = self.checkMinMax(matrixVariables, maxVals, minVals)
-                    plot6dValues.update({x_axis[-1]: (ebeam.getXYZ(matrixVariables))})
+
+                    result = ebeam.getXYZ(matrixVariables)
+                    twiss = result[3]
+                    plot6dValues.update({x_axis[-1]: result})
+                    # Aggregate the beam properties results together in a single pandas frame
+                    for i, axis in enumerate(twiss.index):
+                        twiss_axis = twiss.loc[axis]
+                        for label, value in twiss_axis.items():
+                            twiss_aggregated_df.at[axis, label].append(value)
 
                     # Update the progress bar for the remaining part
                     pbar.update(1)
@@ -325,7 +349,11 @@ class draw_beamline:
             #  Optionally save standard deviation and mean data
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
             for i in range(len(x_axis)):
-                self.csvWriteData(name, x_axis[i], xStd[i], yStd[i], xMean[i], yMean[i])
+                # Redo this
+                # Use twiss_aggregated_df.at[axis, label]
+                # Save data only at the end of the simulation
+                # Find a way to display the all the elements of the pandas frame
+                self.csvWriteData(name, twiss_aggregated_df.at[twiss_aggregated_df.index[0], twiss_aggregated_df.keys()[0]])
 
         #  Testing purposes
         self.matrixVariables = matrixVariables
@@ -343,13 +371,18 @@ class draw_beamline:
             #  Plot inital 6d scatter data
             matrix = plot6dValues.get(0)
             ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
-        
+
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
-            plt.plot(x_axis, xStd, label = 'x position std')
-            plt.plot(x_axis, yStd, label = "y position std")
-            plt.plot(x_axis, xMean, color = 'red', label = 'x position mean')
-            plt.plot(x_axis, yMean, color = 'blue', label = 'y position mean')
+            colors = ['blue', 'red']
+            for i in range(0,2):
+                emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[0]])
+                beta = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[2]])
+                envelope = (10 ** 3) * np.sqrt(emittance * beta)
+                plt.plot(x_axis, envelope,
+                         color=colors[i], linestyle='-',
+                         label=r'$E_' + twiss_aggregated_df.index[i] + '$ (mm)')
+
             ax5.set_xticks(x_axis)
             plt.xlim(0,x_axis[-1])
 
@@ -358,7 +391,16 @@ class draw_beamline:
 
             plt.tick_params(labelsize = 9)
             plt.xlabel("Distance from start of beam (m)")
-            plt.ylabel("Standard deviation (mm)")
+            plt.ylabel("Envelope $E$ (mm)")
+
+            ax6 = ax5.twinx()
+            for i in range(0, 2):
+                dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[4]])
+                ax6.plot(x_axis, dispersion,
+                             color=colors[i], linestyle='--',
+                             label=r'$D_' + twiss_aggregated_df.index[i] + '$ (mm/keV)')
+            ax6.set_ylabel('Dispersion $D$ (mm/keV)')
+
             plt.legend()
 
             #  Create visual representation of beamline segments

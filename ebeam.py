@@ -52,7 +52,8 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$\phi$ (deg)"]
+        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm/keV)",
+                       r"$\phi$ (deg)"]
         label_axes = ["x", "y", "z"]
 
         twiss_data = []
@@ -63,9 +64,14 @@ class beam:
             alpha = - dist_cov[2 * i, 2 * i + 1] / emittance
             beta = dist_cov[2 * i, 2 * i] / emittance
             gamma = dist_cov[2 * i + 1, 2 * i + 1] / emittance
-            phi = 90 * np.arctan2(2 * alpha, gamma - beta) / np.pi
+            D = dist_cov[2 * i, 2 * i] / dist_cov[4, 4]
+            phi = (90 /np.pi) * np.arctan2(2 * alpha, gamma - beta) / 2
+            if phi > 0:
+                phi = phi - 90
+            else:
+                phi = phi + 90
 
-            twiss_data.append([emittance, alpha, beta, gamma, phi])
+            twiss_data.append([emittance, alpha, beta, gamma, D, phi])
 
         twiss = pd.DataFrame(twiss_data, columns=label_twiss, index=label_axes[:3])
 
@@ -223,7 +229,7 @@ class beam:
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
         x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Time $\Delta$ $t$ (ns)', r'Position $x$ (mm)']
-        y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Energy $\Delta$ $E$ (keV)',
+        y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Energy $\Delta$ $E$ (keV)',
                     r'Position $y$ (mm)']
         
         for i, axis in enumerate(['x', 'y', 'z']):

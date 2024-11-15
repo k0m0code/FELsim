@@ -16,9 +16,9 @@ pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path1)
+directory = Path(path2)
 # file_path = directory / 'Beamline_elements.xlsx'
-file_path = directory / 'Beamline_elements(1).xlsx'
+file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
 df = excel.get_dataframe()
 
@@ -28,11 +28,17 @@ beamlineUH = excel.create_beamline()
 # if len(beamline) >= 5:
 #     beamline = beamline[:-5]
 schem = draw_beamline()
+beamtype = beamline()
+line_E = beamtype.changeBeamType(beamlineUH, "electron", 45)
+
 
 
 # ebeam
 ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,1,1],10000)
+
+
+schem.plotBeamPositionTransform(beam_dist, line_E, 10)
 
 '''
 create beamline, get sigma i

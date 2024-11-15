@@ -308,8 +308,8 @@ class dipole(lattice):
         super().__init__(length, E0, Q, M, E)
         self.color = "forestgreen"
         self.angle = angle # degrees
-        self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (self.angle * np.pi / 180 / self.length)
-        self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
+        #self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (self.angle * np.pi / 180 / self.length)
+        #self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
 
     def getSymbolicMatrice(self, length = None, angle = None):
         if length is None: L = self.length
@@ -355,9 +355,9 @@ class dipole(lattice):
             angle = angle[0]
 
         # Rectangular dipole
-        by = (self.M*self.C*self.beta*self.gamma / self.Q) * (angle * np.pi / 180 / length)
+        By = (self.M*self.C*self.beta*self.gamma / self.Q) * (angle * np.pi / 180 / length)
 
-        rho = self.M*self.C*self.beta*self.gamma / (self.Q * by)
+        rho = self.M*self.C*self.beta*self.gamma / (self.Q * By)
         theta = length / rho
         C = np.cos(theta)
         S = np.sin(theta)
@@ -367,7 +367,7 @@ class dipole(lattice):
         M26 = S * (self.gamma / (self.gamma + 1) / self.E)
         M51 = self.unitsF * (-S / (self.beta * self.C))
         M52 = self.unitsF * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.unitsF * (-rho * (L / rho - S) / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/g must be included
+        M56 = self.unitsF * (-rho * (L / rho - S) / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/gamma must be included
 
         M = np.array([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
