@@ -248,8 +248,8 @@ class beam:
         axlist = [ax1,ax2,ax3]
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
-        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Time $\Delta$ $t$ (ns)', r'Position $x$ (mm)']
-        y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Energy $\Delta$ $E$ (keV)',
+        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t / T_{\text{RF}}$ $(10^{-3})$', r'Position $x$ (mm)']
+        y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Relative Energy $\Delta E / E_0$ $(10^{-3})$',
                     r'Position $y$ (mm)']
         
         for i, axis in enumerate(twiss.index):

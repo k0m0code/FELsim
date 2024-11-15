@@ -64,6 +64,7 @@ class lattice:
         self.Q = Q  # (C)
         self.M = M  # (kg)
         self.C = 299792458  # Celerity (m/s)
+        self.f = 2856 * (10 ** 6)  # RF frequency (Hz)
         self.gamma = (1 + (self.E / self.E0))
         self.beta = np.sqrt(1 - (1 / (self.gamma ** 2)))
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
@@ -131,7 +132,7 @@ class driftLattice(lattice):
     def getSymbolicMatrice(self, length = None):
         if length is None: l = self.length
         else: l = symbols(length, real = True)
-        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat = Matrix([[1, l, 0, 0, 0, 0],
                       [0, 1, 0, 0, 0, 0],
@@ -147,7 +148,7 @@ class driftLattice(lattice):
     def useMatrice(self, values, length = -1):
         if length <= 0:
             length = self.length
-        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = (length * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
         return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
                                                     [0, 1, 0, 0, 0, 0],
                                                     [0, 0, 1, length, 0, 0],
@@ -184,7 +185,7 @@ class qpfLattice(lattice):
         M34 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
         M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
         M44 = sp.cosh(self.theta)
-        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat =  Matrix([[M11, M12, 0, 0, 0, 0],
                         [M21, M22, 0, 0, 0, 0],
@@ -222,7 +223,7 @@ class qpfLattice(lattice):
         M34 = np.sinh(self.theta)*(1/np.sqrt(self.k))
         M43 = np.sqrt(self.k)*np.sinh(self.theta)
         M44 = np.cosh(self.theta)
-        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = (length * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         return super().useMatrice(values, np.array([[M11, M12, 0, 0, 0, 0],
                                                     [M21, M22, 0, 0, 0, 0],
@@ -259,7 +260,7 @@ class qpdLattice(lattice):
         M34 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
         M43 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
         M44 = sp.cos(self.theta)
-        M56 = self.unitsF * (l / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
 
         mat = Matrix([[M11, M12, 0, 0, 0, 0],
                         [M21, M22, 0, 0, 0, 0],
@@ -291,7 +292,7 @@ class qpdLattice(lattice):
         M34 = np.sin(self.theta)*(1/np.sqrt(self.k))
         M43 = (-(np.sqrt(self.k)))*np.sin(self.theta)
         M44 = np.cos(self.theta)
-        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = length * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
 
         return super().useMatrice(values, (np.array([[M11, M12, 0, 0, 0, 0],
                                                     [M21, M22, 0, 0, 0, 0],
