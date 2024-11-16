@@ -350,13 +350,21 @@ class draw_beamline:
 
         if saveData:
             #  Optionally save standard deviation and mean data
-            name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
+            name = "simulator-data-" + datetime.datetime.now().strftime(
+                '%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') + ".csv"
+
             for i in range(len(x_axis)):
                 # Redo this
                 # Use twiss_aggregated_df.at[axis, label]
                 # Save data only at the end of the simulation
                 # Find a way to display the all the elements of the pandas frame
-                self.csvWriteData(name, twiss_aggregated_df.at[twiss_aggregated_df.index[0], twiss_aggregated_df.keys()[0]])
+                for ind, axis in enumerate(twiss_aggregated_df.index):
+                    twiss_axis = twiss_aggregated_df.loc[axis]
+                    for label, list in twiss_axis.items():
+                        list[i]
+
+                self.csvWriteData(name,
+                                  twiss_aggregated_df.at[twiss_aggregated_df.index[0], twiss_aggregated_df.keys()[0]])
 
         #  Testing purposes
         self.matrixVariables = matrixVariables
@@ -424,23 +432,29 @@ class draw_beamline:
                 rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
                 ax5.add_patch(rectangle)
                 blockstart += seg.length
-            
+
+            #  Important to leave tight_layout before scrollbar creation
+            plt.suptitle("Beamline Simulation")
+            plt.tight_layout()
+
             #   Scroll bar creation and function
-            scrollax = plt.axes([0.079,0.01,0.905,0.01], facecolor = 'lightgoldenrodyellow')
-            scrollbar = Slider(scrollax, 'scroll', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
+            dimensions = ax5.get_position().bounds
+            scrollax = plt.axes([dimensions[0], 0.01, dimensions[2], 0.01], facecolor='lightgoldenrodyellow')
+            scrollbar = Slider(scrollax, 'z: 0', 0, x_axis[-1], valinit=0, valstep=np.array(x_axis))
+            scrollbar.valtext.set_visible(False)
+
             def update_scroll(val):
                 matrix = plot6dValues.get(scrollbar.val)
                 ax1.clear()
                 ax2.clear()
                 ax3.clear()
                 ax4.clear()
-                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+                scrollbar.label.set_text("z: " + str(val))
+                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1, ax2, ax3, ax4, maxVals, minVals,
+                              defineLim, shape)
                 fig.canvas.draw_idle()
+
             scrollbar.on_changed(update_scroll)
-            
-            #  Title and ploting
-            plt.suptitle("Beamline Simulation")
-            plt.tight_layout()
             plt.show()
 
         return twiss_aggregated_df

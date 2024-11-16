@@ -100,7 +100,7 @@ z_dpw1 =1.697921
 Plotting results
 '''
 
-twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedB_line_optimization, 1.0)
+twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedB_line_optimization, 0.01)
 
 print(twiss_aggregated_df)
 
