@@ -35,10 +35,10 @@ line_E = beamtype.changeBeamType(beamlineUH, "electron", 45)
 
 # ebeam
 ebeam = beam()
-beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,1,1],10000)
+beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],10000)
 
 
-schem.plotBeamPositionTransform(beam_dist, line_E, 10)
+# schem.plotBeamPositionTransform(beam_dist, line_E, 10)
 
 '''
 create beamline, get sigma i
@@ -60,7 +60,7 @@ print("Initial v-plane sigma_i[19] (eps * gamma):"+str(sig[21]))
 '''
 We would like to compare this values with sigma_f, to try to have sigma_f = sigma_i for the h- and v-plane
 '''
-# print(sig)
+print(sig)
 
 I = 3.56  # result obtained from testOptimization.py...
 sec1 = driftLattice(0.5)
@@ -72,8 +72,8 @@ sec6 = qpfLattice(current = I)
 sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = I)
 sec9 = driftLattice(0.50)
-# line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
-line = [sec2]
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+# line = [sec1, sec2]
 
 beamtype = beamline()
 line_E = beamtype.changeBeamType(line, "electron", 55)
@@ -89,10 +89,10 @@ create x values to optimize
 {segment parameter: variable name}
 '''
 xvals = {
-         0: {"current": "I"},
-         3: {"current": "I"},
+         1: {"current": "I"},
          5: {"current": "I"},
-         7: {"current": "I"}
+         3: {"current": "I"},
+         7: {"current": "I"},
         }
 
 
@@ -103,11 +103,13 @@ def objectives
 '''
 #epsilon, alpha, beta, gamma
 yObj = {'x': [0,0,0,0],'y': [0.999,0,0.02,0.23],'z': [0.9, 0.003, 1, 0.2]}
-finm = alg.findObj(line_E, xvals, yObj)
-print(finm[15])
-plot.plot(finm[15])
+finm = alg.findObj(line_E, xvals, yObj, beam_dist)
+print("equation:" + str(finm[21]))
+plot.plot(finm[21], xlim = (0,10), ylim = (-1,10))
 I = sp.symbols("I", real = True)
-print(sp.solveset(finm[15], I, domain=sp.S.Reals)) # not finding a solution, maybe too complex
+print(sp.nsolve(finm[21], I, 1))
+print(sp.RootOf(finm[21], 1))
+# print(sp.all_roots(sp.poly(finm[21], I)))
 
 '''
 print out the M matrice of the beamline
