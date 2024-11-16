@@ -106,31 +106,7 @@ class draw_beamline:
 
         return x_transform, y_transform
 
-    def csvWriteData(self, name, distance, std_x, std_y, mean_x, mean_y):
-        '''
-        Appends particle data to a csv file
-
-        Parameters
-        ----------
-        name: str
-            Name of csv file
-        distance: float
-            Length into the beamline element data is measured at
-        std_x: float
-            standard deviation measurement of x position
-        std_y: float
-            standard deviation measurement of y position
-        mean_x: float
-            average particle x position
-        mean_y: float
-            average particle y position
-        '''
-        with open(name, 'a', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile)
-            if csvfile.tell() == 0:
-                csvwriter.writerow(['distance (mm)','x position standard deviaton (mm)', 'y position standard deviation (mm)', 'x position mean (mm)', 'y position mean (mm)'])
-            csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
-
+    
     def checkMinMax(self, matrixVariables, maxval, minval):
         '''
         Updates max and min values of a set of particles in a beamline. Used for finding and
@@ -168,50 +144,7 @@ class draw_beamline:
                 minval[i] = minimum
         return maxval, minval
 
-    def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
-
-        # Not used anymore
-        # To be removed
-        # Due to the use of pandas frame from the 6d distribution, we do no need to recalculate the standard devs
-        '''
-        Append updated values to five different arrays, used for plotBeamPositionTransform
-
-        Parameters
-        ----------
-        xStd: list[float]
-            standard deviation of particles' x position for each distance interval
-        yStd: list[float]
-            standard deviation of particles' y position for each distance interval
-        xMean: list[float]
-            average of particles' x position for each distance interval
-        yMean: list[float]
-            average of particles' y position for each distance interval
-        x_axis: list[float]
-            contains distance intervals to measure particle data over
-        interval: float
-            the amount between each distance interval
-        matrixVariables: np.array(list[float][float])
-            2D numPy list of particle elements to measure data from
-
-        Returns
-        -------
-        xStd: list[float]
-            updated standard deviation of x position list
-        yStd: list[float]
-            updated standard deviation of y position list
-        xMean: list[float]
-            updated average of x position list
-        yMean: list[float]
-            updated average of y positiion list
-        x[axis]: list[float]
-            updated distance interval list
-        '''
-        xStd.append(np.std(matrixVariables[:,0]))
-        yStd.append(np.std(matrixVariables[:,2]))
-        xMean.append(np.mean(matrixVariables[:,0]))
-        yMean.append(np.mean(matrixVariables[:,2]))
-        x_axis.append(round(x_axis[-1]+interval, self.DEFAULTINTERVALROUND))
-        return xStd, yStd, xMean, yMean, x_axis
+    
 
     def createLabels(self, xaxis, spacing):
         xLabels = []
@@ -225,7 +158,49 @@ class draw_beamline:
         return xLabels
 
 
+    def csvWriteData(self, name, distance, std_x, std_y, mean_x, mean_y):
+        '''
+        Appends particle data to a csv file
 
+        Parameters
+        ----------
+        name: str
+            Name of csv file
+        distance: float
+            Length into the beamline element data is measured at
+        std_x: float
+            standard deviation measurement of x position
+        std_y: float
+            standard deviation measurement of y position
+        mean_x: float
+            average particle x position
+        mean_y: float
+            average particle y position
+        '''
+        with open(name, 'a', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            if csvfile.tell() == 0:
+                csvwriter.writerow(['distance (mm)','x position standard deviaton (mm)', 'y position standard deviation (mm)', 'x position mean (mm)', 'y position mean (mm)'])
+            csvwriter.writerow([distance, std_x, std_y, mean_x, mean_y])
+
+    def foo(self, name, twiss, x_axis):
+        with open(name, 'a', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            if csvfile.tell() == 0:
+                labels = []
+                for lab in twiss:
+                    labels.append(lab)
+                csvwriter.writerow(labels)
+            for i in range(len(x_axis)):
+            # Redo this
+            # Use twiss_aggregated_df.at[axis, label]
+            # Save data only at the end of the simulation
+            # Find a way to display the all the elements of the pandas frame
+
+                for ind, axis in enumerate(twiss_aggregated_df.index):
+                        twiss_axis = twiss_aggregated_df.loc[axis]
+                        for label, list in twiss_axis.items():
+                            list[i]
 
 
 
@@ -348,14 +323,22 @@ class draw_beamline:
                     # Update the progress bar for the remaining part
                     pbar.update(1)
 
+        print(twiss_aggregated_df)
         if saveData:
             #  Optionally save standard deviation and mean data
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
+            
             for i in range(len(x_axis)):
                 # Redo this
                 # Use twiss_aggregated_df.at[axis, label]
                 # Save data only at the end of the simulation
                 # Find a way to display the all the elements of the pandas frame
+                for ind, axis in enumerate(twiss_aggregated_df.index):
+                        twiss_axis = twiss_aggregated_df.loc[axis]
+                        for label, list in twiss_axis.items():
+                            list[i]
+                            
+
                 self.csvWriteData(name, twiss_aggregated_df.at[twiss_aggregated_df.index[0], twiss_aggregated_df.keys()[0]])
 
         #  Testing purposes
@@ -416,21 +399,26 @@ class draw_beamline:
                 rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
                 ax5.add_patch(rectangle)
                 blockstart += seg.length
+
+            #  Important to leave tight_layout before scrollbar creation
+            plt.suptitle("Beamline Simulation")
+            plt.tight_layout()
             
             #   Scroll bar creation and function
-            scrollax = plt.axes([0.079,0.01,0.905,0.01], facecolor = 'lightgoldenrodyellow')
-            scrollbar = Slider(scrollax, 'scroll', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
+            dimensions = ax5.get_position().bounds
+            scrollax = plt.axes([dimensions[0],0.01,dimensions[2],0.01], facecolor = 'lightgoldenrodyellow')
+            scrollbar = Slider(scrollax, 'z: 0', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
+            scrollbar.valtext.set_visible(False)
             def update_scroll(val):
                 matrix = plot6dValues.get(scrollbar.val)
                 ax1.clear()
                 ax2.clear()
                 ax3.clear()
                 ax4.clear()
+                scrollbar.label.set_text("z: " + str(val))
                 ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
                 fig.canvas.draw_idle()
             scrollbar.on_changed(update_scroll)
             
-            #  Title and ploting
-            plt.suptitle("Beamline Simulation")
-            plt.tight_layout()
+            #  Ploting
             plt.show()
