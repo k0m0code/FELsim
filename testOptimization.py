@@ -7,30 +7,30 @@ import numpy as np
 ebeam = beam()
 schem = draw_beamline()
 
-I = 3.56
+Ia = 3.56
 sec1 = driftLattice(0.5)
-sec2 = qpfLattice(current = I)
+sec2 = qpfLattice(current = Ia)
 sec3 = driftLattice(0.25)
-sec4 = qpdLattice(current = I)
+sec4 = qpdLattice(current = Ia)
 sec5 = driftLattice(0.25)
-sec6 = qpfLattice(current = I)
+sec6 = qpfLattice(current = Ia)
 sec7 = driftLattice(0.25)
-sec8 = qpdLattice(current = I)
+sec8 = qpdLattice(current = Ia)
 sec9 = driftLattice(0.50)
 sec10 = dipole(length=0.0889, angle=1.5)
-line = [sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9, sec10]
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
 
 beamtype = beamline()
-pBeam = beamtype.changeBeamType(line, "electron", 45)
+pBeam = beamtype.changeBeamType(line, "electron", 40)
 
-beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,1,1],1000)
-schem.plotBeamPositionTransform(beam_dist, pBeam, 0.05)
+beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,2.856,1],1000)
+schem.plotBeamPositionTransform(beam_dist, pBeam, 0.01)
 
 vals = {
-        0: ["I", "current", lambda num:num],
-        2: ["I", "current", lambda num:num],
-        4: ["I", "current", lambda num:num],
-        6: ["I", "current", lambda num:num]
+        1: ["I", "current", lambda num:num],
+        3: ["I", "current", lambda num:num],
+        5: ["I", "current", lambda num:num],
+        7: ["I", "current", lambda num:num]
         }
 
 starting = {"I": {"bounds": (0,10), "start": 5}}

@@ -149,13 +149,15 @@ class driftLattice(lattice):
         if length <= 0:
             length = self.length
         M56 = (length * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
         return super().useMatrice(values,(np.array([[1, length, 0, 0, 0, 0],
                                                     [0, 1, 0, 0, 0, 0],
                                                     [0, 0, 1, length, 0, 0],
                                                     [0, 0, 0, 1, 0, 0],
                                                     [0, 0, 0, 0, 1, M56],
                                                     [0, 0, 0, 0, 0, 1]])))
-    
+
+
     def __str__(self):
         return f"Drift beamline segment {self.length} m long"
 
@@ -308,9 +310,8 @@ class dipole(lattice):
     def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
         super().__init__(length, E0, Q, M, E)
         self.color = "forestgreen"
-        self.angle = angle # degrees
-        #self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (self.angle * np.pi / 180 / self.length)
-        #self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
+        self.angle = angle  # degrees
+        self.length_total = length
 
     def getSymbolicMatrice(self, length = None, angle = None):
         if length is None: L = self.length
@@ -324,11 +325,11 @@ class dipole(lattice):
         C = sp.cos(theta)
         S = sp.sin(theta)
 
-        M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1) / self.E)
-        M26 = S * (self.gamma / (self.gamma + 1) / self.E)
-        M51 = self.unitsF * (-S / (self.beta * self.C))
-        M52 = self.unitsF * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.unitsF * (-rho * (L / rho - S) / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/g must be included
+        M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1))
+        M26 = S * (self.gamma / (self.gamma + 1))
+        M51 = self.f * (-S / (self.beta * self.C))
+        M52 = self.f * (-rho * (1 - C) / (self.beta * self.C))
+        M56 = self.f * (-rho * (L / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/g must be included
 
         mat = Matrix([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
@@ -355,24 +356,27 @@ class dipole(lattice):
         if isinstance(angle, np.ndarray):
             angle = angle[0]
 
+        print(angle)
         # Rectangular dipole
-        By = (self.M*self.C*self.beta*self.gamma / self.Q) * (angle * np.pi / 180 / length)
+        By = (self.M*self.C*self.beta*self.gamma / self.Q) * (angle * np.pi / 180 / self.length_total)
 
         rho = self.M*self.C*self.beta*self.gamma / (self.Q * By)
+        #rho = (M * C * beta * gamma) / (Q * (angle * np.pi / 180 / self.length_total))
+
         theta = length / rho
         C = np.cos(theta)
         S = np.sin(theta)
         L = length
 
-        M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1) / self.E)
-        M26 = S * (self.gamma / (self.gamma + 1) / self.E)
-        M51 = self.unitsF * (-S / (self.beta * self.C))
-        M52 = self.unitsF * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.unitsF * (-rho * (L / rho - S) / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/gamma must be included
+        M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1))
+        M26 = S * (self.gamma / (self.gamma + 1))
+        M51 = self.f * (-S / (self.beta * self.C))
+        M52 = self.f * (-rho * (1 - C) / (self.beta * self.C))
+        M56 = self.f * (-rho * (L / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/gamma must be included
 
         M = np.array([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
-                      [0, 0, 1, L, 0, 0],
+                      [0, 0, 1, length, 0, 0],
                       [0, 0, 0, 1, 0, 0],
                       [M51, M52, 0, 0, 1, M56],
                       [0, 0, 0, 0, 0, 1]])
@@ -387,8 +391,8 @@ class dipole_wedge(lattice):
         super().__init__(length, E0, Q, M, E)
         self.color = "lightgreen"
         self.angle = angle
-        self.By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * np.pi / 180 / dipole_length)
-        self.rho = self.M*self.C*self.beta*self.gamma / (self.Q * self.By)
+        self.dipole_length = dipole_length
+        self.dipole_angle = dipole_angle
         self.gap = 0.01  # hard-edge fringe field gap (m)
 
     '''
@@ -401,18 +405,21 @@ class dipole_wedge(lattice):
             length = self.length
         if angle < 0:
             angle = self.angle
+        dipole_angle = self.dipole_angle
+        dipole_length = self.dipole_length
 
         #   TEMPORARY PURPOSES
         if isinstance(angle, np.ndarray):
             angle = angle[0]
 
         # Hard edge model for the wedge magnets
-        R = self.rho
-        k = np.abs((self.Q * self.By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
+        By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * np.pi / 180 / dipole_length)
+        R = self.M*self.C*self.beta*self.gamma / (self.Q * By)
+        k = np.abs((self.Q * By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
         eta = (self.angle * np.pi / 180) * length / self.length # Verify
         E = (length * k) / ((np.cos(eta)) ** 2)
         T = np.tan(eta)
-        M56 = self.unitsF * (length / (self.E0 * self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = self.f * (length / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         M = np.array([[1, 0, 0, 0, 0, 0],
                       [-T / R, 1, 0, 0, 0, 0],
@@ -420,7 +427,6 @@ class dipole_wedge(lattice):
                       [0, 0, -(T + E / 3) / R, 1, 0, 0],
                       [0, 0, 0, 0, 1, M56],
                       [0, 0, 0, 0, 0, 1]])
-
 
         return super().useMatrice(values, M)
     def __str__(self):

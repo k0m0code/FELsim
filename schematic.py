@@ -23,7 +23,7 @@ class draw_beamline:
         self.matrixVariables = None  # For access to data after transformation
         self.sixdValues = None  # For access to data after transformation
         self.DEFAULTINTERVAL = 0.05
-        self.DEFAULTINTERVALROUND = 3  # Number of decimal places p
+        self.DEFAULTINTERVALROUND = 5  # Number of decimal places p
 
 
     '''
@@ -304,10 +304,10 @@ class draw_beamline:
             for i in range(len(beamSegments)):
                 # Loop through each beamline object in beamSegments array
                 intTrack = beamSegments[i].length
-
                 while intTrack >= interval:
                     # Perform calculations to plot later on
                     # Use each segment's array to transform particles
+
                     matrixVariables = np.array(beamSegments[i].useMatrice(matrixVariables, length=interval))
                     x_axis.append(round(x_axis[-1] + interval, self.DEFAULTINTERVALROUND))
 
@@ -319,7 +319,7 @@ class draw_beamline:
                     plot6dValues.update({x_axis[-1]: result})
 
                     # Aggregate the beam properties results together in a single pandas frame
-                    for i, axis in enumerate(twiss.index):
+                    for j, axis in enumerate(twiss.index):
                         twiss_axis = twiss.loc[axis]
                         for label, value in twiss_axis.items():
                             twiss_aggregated_df.at[axis, label].append(value)
@@ -340,7 +340,7 @@ class draw_beamline:
                     twiss = result[3]
                     plot6dValues.update({x_axis[-1]: result})
                     # Aggregate the beam properties results together in a single pandas frame
-                    for i, axis in enumerate(twiss.index):
+                    for j, axis in enumerate(twiss.index):
                         twiss_axis = twiss.loc[axis]
                         for label, value in twiss_axis.items():
                             twiss_aggregated_df.at[axis, label].append(value)
@@ -377,14 +377,22 @@ class draw_beamline:
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
-            colors = ['dodgerblue', 'crimson']
+            colors = ['dodgerblue', 'crimson','yellow','green']
             for i in range(0,2):
                 emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[0]])
                 beta = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[2]])
                 envelope = (10 ** 3) * np.sqrt(emittance * beta)
-                plt.plot(x_axis, envelope,
+                ax5.plot(x_axis, envelope,
                          color=colors[i], linestyle='-',
                          label=r'$E_' + twiss_aggregated_df.index[i] + '$ (mm)')
+
+            #for i in range(0, 4):
+            #    dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[2], twiss_aggregated_df.keys()[i]])
+            #    ax5.plot(x_axis, dispersion,
+            #                 color=colors[i], linestyle='-',
+            #                 label=twiss_aggregated_df.keys()[i])
+            ax5.set_ylabel('Dispersion $D$ (m)')
+
 
             ax5.set_xticks(x_axis)
             plt.xlim(0,x_axis[-1])
@@ -434,3 +442,5 @@ class draw_beamline:
             plt.suptitle("Beamline Simulation")
             plt.tight_layout()
             plt.show()
+
+        return twiss_aggregated_df

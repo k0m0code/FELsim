@@ -52,8 +52,9 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm/keV)",
-                       r"$D^{\prime}$ (mm/keV)", r"$\phi$ (deg)"]
+        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (m)",
+                       r"$D^{\prime}$ (rad)", r"$\phi$ (deg)"]
+
         label_axes = ["x", "y", "z"]
 
         twiss_data = []
@@ -63,9 +64,9 @@ class beam:
             covar = dist_cov[2 * i, 2 * i + 1]
             var = dist_cov[2 * i, 2 * i]
             var_prime = dist_cov[2 * i + 1, 2 * i + 1]
-            delta_energy = dist_cov[4, 4]
-            covar_dispersion = dist_cov[2 * i, 4]
-            covar_dispersion_prime = dist_cov[2 * i + 1, 4]
+            delta_energy = dist_cov[5, 5]
+            covar_dispersion = dist_cov[2 * i, 5]
+            covar_dispersion_prime = dist_cov[2 * i + 1, 5]
 
             dispersion = covar_dispersion / delta_energy
             dispersion_prime = covar_dispersion_prime / delta_energy
@@ -249,8 +250,11 @@ class beam:
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
         x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t / T_{\text{RF}}$ $(10^{-3})$', r'Position $x$ (mm)']
-        y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Relative Energy $\Delta E / E_0$ $(10^{-3})$',
+        y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Relative Energy $\Delta W / W_0$ $(10^{-3})$',
                     r'Position $y$ (mm)']
+
+        label_twiss_z = ["$\epsilon$ ($\pi$.$10^{-6}$)", r"$\alpha$", r"$\beta$", r"$\gamma$", r"$D$ (m)",
+                       r"$D^{\prime}$ (mrad)", r"$\phi$ (deg)"]
         
         for i, axis in enumerate(twiss.index):
             twiss_axis = twiss.loc[axis]
@@ -265,7 +269,20 @@ class beam:
             ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
             ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
 
-            twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
+            if i == 2:
+                j = 0
+                twiss_txt = ''
+                for label, value in twiss_axis.items():
+                    if j == 0:
+                        space = ''
+                    else:
+                        space = '\n'
+                    twiss_txt = twiss_txt + space + f'{label_twiss_z[j]}: {np.round(value, 2)}'
+                    j = j + 1
+                    if j == 4:
+                        break
+            else:
+                twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
             props = dict(boxstyle='round', facecolor='lavender', alpha=0.5)
             ax.text(0.01, 0.97, twiss_txt, transform=ax.transAxes, fontsize=8,
                     verticalalignment='top', bbox=props)
@@ -326,6 +343,9 @@ class beam:
     plots 6d and twiss data with only particle distribution data
     '''
     def plot_6d(self, dist_6d, title):
+        #
+        # Not used anymore and remove?
+        #
 
         num_pts = 60  # Used for implicit plot of the ellipse
         ddof = 1  # Unbiased Bessel correction for standard deviation calculation
