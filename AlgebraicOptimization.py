@@ -2,6 +2,11 @@ from beamline import *
 from ebeam import *
 import sympy as sp
 
+'''
+helpful resources
+https://stackoverflow.com/questions/38104025/sympy-solveset-returns-conditionset-when-it-should-be-returning-a-numerical
+'''
+
 class AlgebraicOpti():
     def __init__(self):
         self.DDOF = 1
@@ -69,21 +74,23 @@ class AlgebraicOpti():
     def getSigmaF(self, m, sigmaI):
          mTransposed = m.T
          return m*sigmaI*mTransposed
-        
+    
+
+    #  LINEAR EQUATIONs TO OPTIMIZE TO STARTING y TWISS CONDITIONS AS POSSIBLE    
     def findObj(self, beamline, xVal, objec, startParticles = None):
         sigi = None
         if not startParticles is None:
               sigi = self.getDistSigmai(startParticles)
         else:
             objList = []
-            for i, axis in enumerate(['x','y','z']):
+            for ind, axis in enumerate(['x','y','z']):
                 objList.append(objec[axis])
             sigi = self.getTwissSigmai(objList[0],objList[1],objList[2])
         mMat = self.getM(beamline, xVal)
-        sigF = self.getSigmaF(mMat,sigi)
-        for i in range(len(sigF)):
-             sigF[i] = sigF[i] - sigi[i]
-        return sigF # return the objective functions, solutions at zeros
+        sigObg = self.getSigmaF(mMat,sigi)
+        for i in range(len(sigObg)):
+             sigObg[i] = sigObg[i] - sigi[i]
+        return sigObg # return the objective functions, solutions at zeros
          
 
     
