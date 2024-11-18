@@ -418,8 +418,8 @@ class draw_beamline:
                 dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[4]])
                 ax6.plot(x_axis, dispersion,
                              color=colors[i], linestyle='--',
-                             label=r'$D_' + twiss_aggregated_df.index[i] + '$ (m)')
-            ax6.set_ylabel('Dispersion $D$ (m)')
+                             label=r'$D_' + twiss_aggregated_df.index[i] + '$ (mm)')
+            ax6.set_ylabel('Dispersion $D$ (mm)')
 
             ax6.legend(loc='upper right')
 

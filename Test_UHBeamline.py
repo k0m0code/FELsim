@@ -18,8 +18,9 @@ Energy spread between 0.1 to 0.5 %
 Bunch length 1 ps (1 deg) to 2 ps (2 deg) 
 '''
 ebeam = beam()
-f = 2856 * (10 ** 6)
-nb_particles = int(1e3)
+f = 2856 * (10 ** 6)  # Accelerator RF frequency (Hz)
+
+nb_particles = int(1e4)
 
 bunch_spread = 1  # std in pico-second
 tof_std = bunch_spread * (10 ** -9) * f  # (10 ** -3) (dToF / T)
@@ -61,47 +62,72 @@ print('Beamline nb of Elements: ' + str(len(line_UH)))
 Use optimization tools on segments of the UH beamline to the lattice values
 '''
 n = 66
-truncatedA_line_optimization = line_UH[:-66]
+
 truncatedB_line_optimization = line_UH[:-92]
 
+#Initial conditions
+twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedB_line_optimization, 1, plot=False)
+alpha_x = twiss_aggregated_df.at[twiss_aggregated_df.index[0], twiss_aggregated_df.keys()[1]]
+alpha_y = twiss_aggregated_df.at[twiss_aggregated_df.index[1], twiss_aggregated_df.keys()[1]]
+beta_x = twiss_aggregated_df.at[twiss_aggregated_df.index[0], twiss_aggregated_df.keys()[2]]
+beta_y = twiss_aggregated_df.at[twiss_aggregated_df.index[1], twiss_aggregated_df.keys()[2]]
+
+print('alpha x:' + str(alpha_x[-1]))
+print('alpha y:' + str(alpha_y[-1]))
+print('beta x:' + str(beta_x[-1]))
+print('beta y:' + str(beta_y[-1]))
+
+
+truncatedA_line_optimization = line_UH[:-75]
+twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedA_line_optimization, 1, plot=True)
+
+
+truncated_line1 = line_UH[:-88]
+
+truncated_line1.append(qpfLattice(current = 3.816604, length=0.0889/2))
+schem.plotBeamPositionTransform(beam_dist, truncated_line1, 1, plot=True)
+
 j=0
-for element in truncatedB_line_optimization:
-    print(line_UH[j])
+for element in truncated_line1:
+    print(str(j) + str(truncated_line1[j]))
     j += 1
+
+vals = {
+        1: ["Ia", "current", lambda num:num],
+        3: ["Ib", "current", lambda num:num],
+        }
+
+starting = {"Ia": {"bounds": (0,10), "start": 2.6},
+            "Ib": {"bounds": (0,10), "start": 4.6}}
+
+objectives = {10:[{"measure": ["x", "alpha"],"goal":1,"weight":1},
+                 {"measure": ["y", "alpha"],"goal":0,"weight":1}]}
+
+test = beamOptimizer(truncated_line1, beam_dist)
+
+result = test.calc("Nelder-Mead", vals, starting, objectives, plotProgress = True, plotBeam= True, printResults=True)
+'''
+‘Nelder-Mead’, ‘Powell’, ‘CG’, ‘BFGS’, ‘Newton-CG’, 
+‘L-BFGS-B’, ‘TNC’, ‘COBYLA’, ‘COBYQA’, ‘SLSQP’
+‘trust-constr’, 'dogleg’, ‘trust-ncg’, ‘trust-exact’ ‘trust-krylov’ 
+'''
+
 
 # Custom line
 I = 3.56
 sec_qpf = qpfLattice(current = I)
 sec_qpd = qpdLattice(current = I)
-sec_drift = driftLattice(0.50)
+sec_drift = driftLattice(0.02)
 sec_dipole = dipole(length=0.0889, angle=1.5)
-sec_wedge = dipole_wedge(length=0.01, angle=0, dipole_length=0.0889,dipole_angle=1.5)
+sec_wedge = dipole_wedge(length=0.01, angle=5, dipole_length=0.0889,dipole_angle=5)
+sec_wedge2 = dipole_wedge(length=0.01, angle=5, dipole_length=0.0889,dipole_angle=5)
 
-line_test = [truncatedB_line_optimization,
-            dipole_wedge(length=0.01, angle=0, dipole_length=0.0889,dipole_angle=1.5),
-            dipole(length=0.0889, angle=1.5),
-            dipole_wedge(length=0.01, angle=0, dipole_length=0.0889,dipole_angle=1.5),
-            driftLattice(0.50),
-            qpfLattice(current = I),
-            driftLattice(0.50),
-            dipole_wedge(length=0.01, angle=0, dipole_length=0.0889, dipole_angle=1.5),
-            dipole(length=0.0889, angle=1.5),
-            dipole_wedge(length=0.01, angle=0, dipole_length=0.0889, dipole_angle=1.5),
-            driftLattice(0.50),
-            qpdLattice(current = I),
-            driftLattice(0.50),
-            qpfLattice(current = I),
-            driftLattice(0.50),
-            qpdLattice(current = I),
-            driftLattice(0.50)]
+sec_qpd = qpdLattice(current = 3.56)
+line_test = [sec_wedge, sec_drift,sec_wedge2]
 
-z_dpw1 =1.697921
 '''
 Plotting results
 '''
 
-twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedB_line_optimization, 0.01)
 
-print(twiss_aggregated_df)
-
-#schem.plotBeamPositionTransform(beam_dist, line_test, 0.1)
+schem.plotBeamPositionTransform(beam_dist, line_test, 0.001)

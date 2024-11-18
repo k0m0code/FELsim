@@ -52,31 +52,29 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (m)",
-                       r"$D^{\prime}$ (rad)", r"$\phi$ (deg)"]
+        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm)",
+                       r"$D^{\prime}$ (mrad)", r"$\phi$ (deg)"]
 
         label_axes = ["x", "y", "z"]
 
         twiss_data = []
 
+        delta_energy = dist_cov[5, 5]
         for i in range(3):
 
             covar = dist_cov[2 * i, 2 * i + 1]
             var = dist_cov[2 * i, 2 * i]
             var_prime = dist_cov[2 * i + 1, 2 * i + 1]
-            delta_energy = dist_cov[5, 5]
             covar_dispersion = dist_cov[2 * i, 5]
             covar_dispersion_prime = dist_cov[2 * i + 1, 5]
 
-            dispersion = covar_dispersion / delta_energy
-            dispersion_prime = covar_dispersion_prime / delta_energy
             if i == 2:
                 emittance = np.sqrt(var * var_prime - covar ** 2)
                 alpha = - covar / emittance
                 beta = var / emittance
                 gamma = var_prime / emittance
-                dispersion = 0
-                dispersion_prime = 0
+                dispersion = 0.0
+                dispersion_prime = 0.0
             else:
                 alpha_emittance = - covar + covar_dispersion * covar_dispersion_prime / delta_energy
                 beta_emittance = var - (covar_dispersion ** 2) / delta_energy
@@ -85,6 +83,8 @@ class beam:
                 alpha = alpha_emittance / emittance
                 beta = beta_emittance / emittance
                 gamma = gamma_emittance / emittance
+                dispersion = covar_dispersion / np.sqrt(delta_energy)
+                dispersion_prime = covar_dispersion_prime / np.sqrt(delta_energy)
 
             phi = (90 /np.pi) * np.arctan2(2 * alpha, gamma - beta) / 2
             if phi > 0:

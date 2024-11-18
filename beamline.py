@@ -218,14 +218,19 @@ class qpfLattice(lattice):
         self.theta = np.sqrt(self.k)*length
 
         M11 = np.cos(self.theta)
-        M12 = np.sin(self.theta)*(1/np.sqrt(self.k))
         M21 = (-(np.sqrt(self.k)))*np.sin(self.theta)
         M22 = np.cos(self.theta)
         M33 = np.cosh(self.theta)
-        M34 = np.sinh(self.theta)*(1/np.sqrt(self.k))
         M43 = np.sqrt(self.k)*np.sinh(self.theta)
         M44 = np.cosh(self.theta)
         M56 = (length * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        if current == 0:
+            M12 = length
+            M34 = length
+        else:
+            M34 = np.sinh(self.theta) * (1 / np.sqrt(self.k))
+            M12 = np.sin(self.theta) * (1 / np.sqrt(self.k))
 
         return super().useMatrice(values, np.array([[M11, M12, 0, 0, 0, 0],
                                                     [M21, M22, 0, 0, 0, 0],
@@ -283,18 +288,24 @@ class qpdLattice(lattice):
         if isinstance(current, np.ndarray):
             current = current[0]
 
+
+
         self.k = np.abs((self.Q*self.G*current)/(self.M*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
 
         M11 = np.cosh(self.theta)
-        M12 = np.sinh(self.theta)*(1/np.sqrt(self.k))
         M21 = np.sqrt(self.k)*np.sinh(self.theta)
         M22 = np.cosh(self.theta)
         M33 = np.cos(self.theta)
-        M34 = np.sin(self.theta)*(1/np.sqrt(self.k))
         M43 = (-(np.sqrt(self.k)))*np.sin(self.theta)
         M44 = np.cos(self.theta)
         M56 = length * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
+        if current == 0:
+            M12 = length
+            M34 = length
+        else:
+            M34 = np.sin(self.theta) * (1 / np.sqrt(self.k))
+            M12 = np.sinh(self.theta) * (1 / np.sqrt(self.k))
 
         return super().useMatrice(values, (np.array([[M11, M12, 0, 0, 0, 0],
                                                     [M21, M22, 0, 0, 0, 0],
@@ -329,7 +340,7 @@ class dipole(lattice):
         M26 = S * (self.gamma / (self.gamma + 1))
         M51 = self.f * (-S / (self.beta * self.C))
         M52 = self.f * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.f * (-rho * (L / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/g must be included
+        M56 = self.f * (-rho * (L / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat = Matrix([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
@@ -356,7 +367,6 @@ class dipole(lattice):
         if isinstance(angle, np.ndarray):
             angle = angle[0]
 
-        print(angle)
         # Rectangular dipole
         By = (self.M*self.C*self.beta*self.gamma / self.Q) * (angle * np.pi / 180 / self.length_total)
 
@@ -372,7 +382,7 @@ class dipole(lattice):
         M26 = S * (self.gamma / (self.gamma + 1))
         M51 = self.f * (-S / (self.beta * self.C))
         M52 = self.f * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.f * (-rho * (L / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))  # Verify if L/gamma must be included
+        M56 = self.f * (-rho * (L / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         M = np.array([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
