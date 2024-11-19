@@ -72,8 +72,11 @@ sec6 = qpfLattice(current = I)
 sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = I)
 sec9 = driftLattice(0.50)
-line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
-# line = [sec1, sec2]
+sec10 = dipole_wedge(0.01)
+sec11 = dipole()
+sec12 = dipole_wedge(0.01)
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9,sec10,sec11,sec12]
+# line = [sec10, sec2]
 
 beamtype = beamline()
 line_E = beamtype.changeBeamType(line, "electron", 55)
@@ -108,7 +111,8 @@ print("equation:" + str(finm[21]))
 plot.plot(finm[21], xlim = (0,10), ylim = (-1,10))
 I = sp.symbols("I", real = True)
 print(sp.nsolve(finm[21], I, 1))
-print(sp.RootOf(finm[21], 1))
+print(sp.Poly(finm[21]).nroots())
+# print(sp.nroots(finm[21], 1))
 # print(sp.all_roots(sp.poly(finm[21], I)))
 
 '''
@@ -133,7 +137,7 @@ This figures are for testing purposes.
 The figure that is interesting should be the objective function as a function of the variable,
 for instance here, F(I) = abs(sigma_i(1,1) - sigma_f(1,1)) + abs(sigma_i(5,5)-sigma_f(5,5)), 
 '''
-p1 = plot.plot(sigmaf[0], nb_of_points=nb_points, line_color='red', show=False) # find I so that this equals ~ 1
+p1 = plot.plot(sigmaf[0], nb_of_points=nb_points, line_color='red', show=False, xlim = (0,6), ylim = (-1,20)) # find I so that this equals ~ 1
 p2 = plot.plot(sigmaf[1], nb_of_points=nb_points,line_color='blue', show=False) # find I so that this equals ~ 0
 p3 = plot.plot(sigmaf[7], nb_of_points=nb_points,line_color='green', show=False) # find I so that this equals ~ 0
 sig_i_0 = plot.plot(sig[0], line_color='red', show=False)
