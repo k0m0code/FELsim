@@ -180,14 +180,19 @@ class qpfLattice(lattice):
         self.theta = sp.sqrt(self.k)*l
 
         M11 = sp.cos(self.theta)
-        M12 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
         M21 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
         M22 = sp.cos(self.theta)
         M33 = sp.cosh(self.theta)
-        M34 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
         M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
         M44 = sp.cosh(self.theta)
         M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        if I == 0:
+            M12 = l
+            M34 = l
+        else:
+            M34 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
+            M12 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
 
         mat =  Matrix([[M11, M12, 0, 0, 0, 0],
                         [M21, M22, 0, 0, 0, 0],
@@ -260,14 +265,19 @@ class qpdLattice(lattice):
         self.theta = sp.sqrt(self.k)*l
 
         M11 = sp.cosh(self.theta)
-        M12 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
         M21 = sp.sqrt(self.k)*sp.sinh(self.theta)
         M22 = sp.cosh(self.theta)
         M33 = sp.cos(self.theta)
-        M34 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
         M43 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
         M44 = sp.cos(self.theta)
         M56 = l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
+
+        if I == 0:
+            M12 = l
+            M34 = l
+        else:
+            M34 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
+            M12 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
 
         mat = Matrix([[M11, M12, 0, 0, 0, 0],
                         [M21, M22, 0, 0, 0, 0],
@@ -287,8 +297,6 @@ class qpdLattice(lattice):
         #   Necessary because code had problems working with numpy arrays
         if isinstance(current, np.ndarray):
             current = current[0]
-
-
 
         self.k = np.abs((self.Q*self.G*current)/(self.M*self.C*self.beta*self.gamma))
         self.theta = np.sqrt(self.k)*length
@@ -330,7 +338,7 @@ class dipole(lattice):
         if angle is None: a = self.angle
         else: a = symbols(angle, real = True)
 
-        by = (self.M*self.C*self.beta*self.gamma / self.Q) * (a * sp.pi / 180 / L)
+        by = (self.M*self.C*self.beta*self.gamma / self.Q) * (a * sp.pi / 180 / self.length_total)
         rho = self.M*self.C*self.beta*self.gamma / (self.Q * by)
         theta = L / rho
         C = sp.cos(theta)
@@ -371,7 +379,6 @@ class dipole(lattice):
         By = (self.M*self.C*self.beta*self.gamma / self.Q) * (angle * np.pi / 180 / self.length_total)
 
         rho = self.M*self.C*self.beta*self.gamma / (self.Q * By)
-        #rho = (M * C * beta * gamma) / (Q * (angle * np.pi / 180 / self.length_total))
 
         theta = length / rho
         C = np.cos(theta)
@@ -405,6 +412,33 @@ class dipole_wedge(lattice):
         self.dipole_angle = dipole_angle
         self.gap = 0.01  # hard-edge fringe field gap (m)
 
+
+    def getSymbolicMatrice(self, length = None, angle = None):
+        if length is None: L = self.length
+        else: L = symbols(length, real = True)
+        if angle is None: a = self.angle
+        else: a = symbols(angle, real = True)
+        dipole_angle = self.dipole_angle
+        dipole_length = self.dipole_length
+
+        # Hard edge model for the wedge magnets
+        By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * sp.pi / 180 / dipole_length)
+        R = self.M*self.C*self.beta*self.gamma / (self.Q * By)
+        k = sp.Abs((self.Q * By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
+        eta = (a * sp.pi / 180) * L / self.length # Verify
+        E = (L * k) / ((sp.cos(eta)) ** 2)
+        T = sp.tan(eta)
+        M56 = self.f * (L / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat = Matrix([[1, 0, 0, 0, 0, 0],
+                      [-T / R, 1, 0, 0, 0, 0],
+                      [0, 0, 1, 0, 0, 0],
+                      [0, 0, -(T + E / 3) / R, 1, 0, 0],
+                      [0, 0, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+        
+        return mat
+
     '''
     performs a transformation to a 2d np array made of 1x6 variable matrices
 
@@ -426,7 +460,7 @@ class dipole_wedge(lattice):
         By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * np.pi / 180 / dipole_length)
         R = self.M*self.C*self.beta*self.gamma / (self.Q * By)
         k = np.abs((self.Q * By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
-        eta = (self.angle * np.pi / 180) * length / self.length # Verify
+        eta = (angle * np.pi / 180) * length / self.length # Verify
         E = (length * k) / ((np.cos(eta)) ** 2)
         T = np.tan(eta)
         M56 = self.f * (length / (self.C * self.beta * self.gamma * (self.gamma + 1)))
