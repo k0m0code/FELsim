@@ -42,3 +42,14 @@ def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariabl
         yMean.append(np.mean(matrixVariables[:,2]))
         x_axis.append(round(x_axis[-1]+interval, self.DEFAULTINTERVALROUND))
         return xStd, yStd, xMean, yMean, x_axis
+
+
+#  Old x variable initialization for beamOptimizer calc(), keep temporarily in case of bugs with new one. delete in future
+        #
+        # for item in self.segmentVar:
+        #     if (item < 0 or item >= len(self.beamline)):
+        #         raise IndexError
+        #     varItem = self.segmentVar.get(item)[0]
+        #     if varItem not in checkSet:
+        #         self.variablesToOptimize.append(varItem)
+        #         checkSet.add(varItem)
