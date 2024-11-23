@@ -1,6 +1,8 @@
 from beamline import *
 from ebeam import *
 import sympy as sp
+import sys
+from tqdm import tqdm
 
 '''
 helpful resources
@@ -12,6 +14,9 @@ class AlgebraicOpti():
         self.DDOF = 1
         self.m = None
         self.sigmai = None
+        self.CURRENTRANGE = 10
+        self.ROOTINTERVAL = 0.5
+        self.MINCHECK = 0.00001
 
     def getDistSigmai(self, particles):
         ebeam = beam()
@@ -77,20 +82,57 @@ class AlgebraicOpti():
     
 
     #  LINEAR EQUATIONs TO OPTIMIZE TO STARTING y TWISS CONDITIONS AS POSSIBLE    
-    def findObj(self, beamline, xVal, objec, startParticles = None):
+    def findObj(self, beamline, xVal, objec = None, startParticles = None):
         sigi = None
         if not startParticles is None:
               sigi = self.getDistSigmai(startParticles)
-        else:
+        elif not objec is None:
             objList = []
             for ind, axis in enumerate(['x','y','z']):
                 objList.append(objec[axis])
             sigi = self.getTwissSigmai(objList[0],objList[1],objList[2])
+        else:
+             raise ValueError("Please enter objec or startParticles parameter")
         mMat = self.getM(beamline, xVal)
         sigObg = self.getSigmaF(mMat,sigi)
         for i in range(len(sigObg)):
              sigObg[i] = sigObg[i] - sigi[i]
+
+
         return sigObg # return the objective functions, solutions at zeros
          
-
+    #NOTE: only created to find roots for only one variable that exists in the 
+    #equation
+    '''
+    returns the roots of a complex equation within the object's preset constraints,
+    function to be used when finding current amplitude value for a sigmaf equation
     
+    Parameters
+    ----------
+    equation: sympy.add
+        sympy equation to find roots at
+
+    Returns
+    -------
+    rootList: list[float]
+        estimated list of zeros of equation in specified interval
+    '''
+    def getRoots(self, equation):
+            rootSet = set()
+            ind = self.MINCHECK
+            tempSet = equation.free_symbols
+            var = tempSet.pop()
+            total_intervals = self.CURRENTRANGE
+            with tqdm(total=total_intervals, desc="Finding roots...",
+                  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+                while ind <= self.CURRENTRANGE:
+                    try:
+                        val = sp.nsolve(equation, var ,ind)
+                        if val > 0:
+                            rootSet.add(val)
+                    except ValueError:
+                        pass
+                    pbar.update(self.ROOTINTERVAL)
+                    ind = ind + self.ROOTINTERVAL
+            rootList = list(rootSet)
+            return rootList
