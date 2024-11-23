@@ -45,6 +45,8 @@ create beamline, get sigma i
 '''
 alg = AlgebraicOpti()
 sig = alg.getDistSigmai(beam_dist)
+twiss = ebeam.cal_twiss(beam_dist)[2]
+print(twiss)
 
 '''
 Initial conditions, sigma_i for horizontal and vertical planes:
@@ -76,7 +78,7 @@ sec10 = dipole_wedge(0.01)
 sec11 = dipole()
 sec12 = dipole_wedge(0.01)
 line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9,sec10,sec11,sec12]
-# line = [sec10, sec2]
+# line = [sec2]
 
 beamtype = beamline()
 line_E = beamtype.changeBeamType(line, "electron", 55)
@@ -107,11 +109,15 @@ def objectives
 #epsilon, alpha, beta, gamma
 yObj = {'x': [0,0,0,0],'y': [0.999,0,0.02,0.23],'z': [0.9, 0.003, 1, 0.2]}
 finm = alg.findObj(line_E, xvals, yObj, beam_dist)
-print("equation:" + str(finm[21]))
-plot.plot(finm[21], xlim = (0,10), ylim = (-1,10))
-I = sp.symbols("I", real = True)
-print(sp.nsolve(finm[21], I, 1))
-print(sp.Poly(finm[21]).nroots())
+print("equation:" + str(finm[1,1]))
+print(finm[1,1].dtype)
+print(alg.getRoots(finm[1,1]))
+
+plot.plot(finm[1,1], xlim = (0,10), ylim = (-1,10))
+sett = finm[1,1].free_symbols
+# I = sett.pop()
+print(sp.nsolve(finm[1,1], sett.pop(), 1))
+print(sp.Poly(finm[1,1]).nroots())
 # print(sp.nroots(finm[21], 1))
 # print(sp.all_roots(sp.poly(finm[21], I)))
 
