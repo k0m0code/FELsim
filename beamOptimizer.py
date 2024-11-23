@@ -154,15 +154,6 @@ class beamOptimizer():
         checkSet = set()
         self.variablesToOptimize = []
         
-        #  Old x variable initialization, keep temporarily in case of bugs with new one. delete in future
-        #
-        # for item in self.segmentVar:
-        #     if (item < 0 or item >= len(self.beamline)):
-        #         raise IndexError
-        #     varItem = self.segmentVar.get(item)[0]
-        #     if varItem not in checkSet:
-        #         self.variablesToOptimize.append(varItem)
-        #         checkSet.add(varItem)
         for indice in self.segmentVar:
             if (indice < 0 or indice >= len(self.beamline)):
                 raise IndexError
