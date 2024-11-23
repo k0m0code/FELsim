@@ -146,7 +146,7 @@ class draw_beamline:
 
     
 
-    def createLabels(self, xaxis, spacing):
+    def _createLabels(self, xaxis, spacing):
         xLabels = []
 
         defaultSpace = spacing
@@ -159,7 +159,7 @@ class draw_beamline:
 
 
     
-    def csvWriteData(self, name, twiss, x_axis):
+    def _csvWriteData(self, name, twiss, x_axis):
         with open(name, 'a', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             if csvfile.tell() == 0:
@@ -176,17 +176,6 @@ class draw_beamline:
                             data.append(list[i])
                 csvwriter.writerow(data)
                             
-
-
-
-
-
-
-
-
-
-
-
 
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True, saveData = False, shape = {}, plot = True, spacing = 1):
@@ -302,7 +291,7 @@ class draw_beamline:
         if saveData:
             #  Optionally save standard deviation and mean data
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"
-            self.csvWriteData(name, twiss_aggregated_df, x_axis)
+            self._csvWriteData(name, twiss_aggregated_df, x_axis)
             
         #  Testing purposes
         self.matrixVariables = matrixVariables
@@ -336,7 +325,7 @@ class draw_beamline:
             ax5.set_xticks(x_axis)
             plt.xlim(0,x_axis[-1])
 
-            xTickLab = self.createLabels(x_axis, spacing)
+            xTickLab = self._createLabels(x_axis, spacing)
             ax5.set_xticklabels(xTickLab,rotation=45,ha='right')
 
             plt.tick_params(labelsize = 9)
