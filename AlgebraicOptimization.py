@@ -142,5 +142,4 @@ class AlgebraicOpti():
             rootList = list(rootSet)
             return rootList
     
-    # def getRootsMulti(self, equation):
-         
+    # def ge
