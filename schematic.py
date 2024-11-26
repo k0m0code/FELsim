@@ -287,7 +287,7 @@ class draw_beamline:
                     # Update the progress bar for the remaining part
                     pbar.update(1)
 
-        print(twiss_aggregated_df)
+        
         if saveData:
             #  Optionally save standard deviation and mean data
             name = "simulator-data-" + datetime.datetime.now().strftime('%Y-%m-%d') + "_" + datetime.datetime.now().strftime('%H_%M_%S') +".csv"

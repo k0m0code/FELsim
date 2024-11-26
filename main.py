@@ -94,9 +94,9 @@ create x values to optimize
 {segment parameter: variable name}
 '''
 xvals = {
-         1: {"current": "I"},
+         1: {"current": "I2"},
          5: {"current": "I"},
-         3: {"current": "I"},
+         3: {"current": "I2"},
          7: {"current": "I"},
         }
 
@@ -108,16 +108,20 @@ def objectives
 '''
 #epsilon, alpha, beta, gamma
 yObj = {'x': [0,0,0,0],'y': [0.999,0,0.02,0.23],'z': [0.9, 0.003, 1, 0.2]}
-finm = alg.findObj(line_E, xvals, yObj, beam_dist)
-print("equation:" + str(finm[1,1]))
-print(finm[1,1].dtype)
-print(alg.getRoots(finm[1,1]))
+finm = alg.findObj(line_E, xvals, startParticles= beam_dist)
+print("equation:" + str(finm[2,2]))
+print(alg.getRootsUni(finm[2,2]))
+newEq = sp.Eq(finm[2,2], 0)
+sett = finm[2,2].free_symbols
+I = sett.pop()
+I2 = sett.pop()
+plot.plot_implicit(newEq,(I, -5, 5), (I2, -5, 5))
+p = plot.plot3d(finm[2,2], (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
 
-plot.plot(finm[1,1], xlim = (0,10), ylim = (-1,10))
-sett = finm[1,1].free_symbols
-# I = sett.pop()
-print(sp.nsolve(finm[1,1], sett.pop(), 1))
-print(sp.Poly(finm[1,1]).nroots())
+
+
+print(sp.nsolve(finm[2,2], (I, I2), (1,1)))
+# print(sp.Poly(finm[1,1]).nroots())
 # print(sp.nroots(finm[21], 1))
 # print(sp.all_roots(sp.poly(finm[21], I)))
 

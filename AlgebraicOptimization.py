@@ -12,8 +12,6 @@ https://stackoverflow.com/questions/38104025/sympy-solveset-returns-conditionset
 class AlgebraicOpti():
     def __init__(self):
         self.DDOF = 1
-        self.m = None
-        self.sigmai = None
         self.CURRENTRANGE = 10
         self.ROOTINTERVAL = 0.5
         self.MINCHECK = 0.00001
@@ -60,7 +58,7 @@ class AlgebraicOpti():
              sigmaI[i*2+1][i*2] = -(alphaEpsilon)
              sigmaI[i*2+1][i*2+1] = gammaEpsilon
         return sp.Matrix(sigmaI)
-
+ 
     def getM(self, beamline: list, xVar: dict):
         resultArr = None
         try:
@@ -76,12 +74,16 @@ class AlgebraicOpti():
                 i = i - 1
         return resultArr
     
+    '''
+    returns linear equations representing propogation of the beam
+    '''  
     def getSigmaF(self, m, sigmaI):
          mTransposed = m.T
          return m*sigmaI*mTransposed
     
 
-    #  LINEAR EQUATIONs TO OPTIMIZE TO STARTING y TWISS CONDITIONS AS POSSIBLE    
+    #  LINEAR EQUATIONs TO OPTIMIZE TO STARTING y TWISS CONDITIONS AS POSSIBLE 
+    
     def findObj(self, beamline, xVal, objec = None, startParticles = None):
         sigi = None
         if not startParticles is None:
@@ -93,6 +95,8 @@ class AlgebraicOpti():
             sigi = self.getTwissSigmai(objList[0],objList[1],objList[2])
         else:
              raise ValueError("Please enter objec or startParticles parameter")
+        if (not objec is None) and (not startParticles is None):
+             raise ValueError("Please enter one parameter for either objec or startParticles only")
         mMat = self.getM(beamline, xVal)
         sigObg = self.getSigmaF(mMat,sigi)
         for i in range(len(sigObg)):
@@ -104,8 +108,9 @@ class AlgebraicOpti():
     #NOTE: only created to find roots for only one variable that exists in the 
     #equation
     '''
-    returns the roots of a complex equation within the object's preset constraints,
-    function to be used when finding current amplitude value for a sigmaf equation
+    returns the roots of a complex equation using the multi-start method,
+    function to be used when finding current amplitude value for a sigmaf equation. 
+    Function intended for univariate equations
     
     Parameters
     ----------
@@ -117,7 +122,7 @@ class AlgebraicOpti():
     rootList: list[float]
         estimated list of zeros of equation in specified interval
     '''
-    def getRoots(self, equation):
+    def getRootsUni(self, equation):
             rootSet = set()
             ind = self.MINCHECK
             tempSet = equation.free_symbols
@@ -136,3 +141,6 @@ class AlgebraicOpti():
                     ind = ind + self.ROOTINTERVAL
             rootList = list(rootSet)
             return rootList
+    
+    # def getRootsMulti(self, equation):
+         
