@@ -117,7 +117,7 @@ class lattice:
             tempArray = np.matmul(matrice, array)
             newMatrix.append(tempArray.tolist())
         return newMatrix #  return 2d list
-
+    
 class driftLattice(lattice):
     def __init__(self, length: float, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
         '''
@@ -157,6 +157,33 @@ class driftLattice(lattice):
                                                     [0, 0, 0, 0, 1, M56],
                                                     [0, 0, 0, 0, 0, 1]])))
 
+    def testSymbol(self, length = None, numeric = False):
+        mat = Matrix([[1, l, 0, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 1, l, 0, 0],
+                      [0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+
+        if numeric:
+            return np.array([[1, length, 0, 0, 0, 0],
+                                                    [0, 1, 0, 0, 0, 0],
+                                                    [0, 0, 1, length, 0, 0],
+                                                    [0, 0, 0, 1, 0, 0],
+                                                    [0, 0, 0, 0, 1, M56],
+                                                    [0, 0, 0, 0, 0, 1]])
+
+        if length is None: l = self.length
+        else: l = symbols(length, real = True)
+        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+        mat = Matrix([[1, l, 0, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 1, l, 0, 0],
+                      [0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 1, M56],
+                      [0, 0, 0, 0, 0, 1]])
+        return mat
 
     def __str__(self):
         return f"Drift beamline segment {self.length} m long"

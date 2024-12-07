@@ -12,9 +12,10 @@ https://stackoverflow.com/questions/38104025/sympy-solveset-returns-conditionset
 class AlgebraicOpti():
     def __init__(self):
         self.DDOF = 1
+        self.MINCHECK = 0.00001
         self.CURRENTRANGE = 10
         self.ROOTINTERVAL = 0.5
-        self.MINCHECK = 0.00001
+        
 
     def getDistSigmai(self, particles):
         ebeam = beam()
@@ -142,5 +143,27 @@ class AlgebraicOpti():
             rootList = list(rootSet)
             return rootList
     
-    # def getRootsMulti(self, equation):
-         
+    # create class variable to have a obvious x-y = 0 line 
+    def getRootsMulti(self, equation):
+        ans = None
+        rootSet = set()
+        sett = equation.free_symbols
+        x = sett.pop()
+        y = sett.pop()
+        checkLine = sp.Eq(x-y, 0)
+        ind = self.MINCHECK
+        total_intervals = self.CURRENTRANGE
+        with tqdm(total=total_intervals, desc="Finding roots...",
+                  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+            while ind <= self.CURRENTRANGE:
+                try:
+                    ans = sp.nsolve((equation, checkLine), (x, y), (ind, ind))
+                    if (ans[0] > 0 and ans[1] > 0):
+                        tup = tuple(tuple(row) for row in ans.tolist())
+                        rootSet.add(tup)
+                except ValueError:
+                    pass
+                pbar.update(self.ROOTINTERVAL)
+                ind = ind + self.ROOTINTERVAL
+        ansList = list(rootSet)
+        return ansList

@@ -14,9 +14,10 @@ import sympy as sp
 
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
+path3 = r"/Users/christiankomo/Desktop/Documents/FELsim"
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FEL_sim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path1)
+directory = Path(path3)
 # file_path = directory / 'Beamline_elements.xlsx'
 file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
@@ -78,7 +79,7 @@ sec10 = dipole_wedge(0.01)
 sec11 = dipole()
 sec12 = dipole_wedge(0.01)
 line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9,sec10,sec11,sec12]
-# line = [sec2]
+# line = [sec1,sec2,sec3,sec4,sec5,sec6]
 
 beamtype = beamline()
 line_E = beamtype.changeBeamType(line, "electron", 55)
@@ -94,10 +95,10 @@ create x values to optimize
 {segment parameter: variable name}
 '''
 xvals = {
-         1: {"current": "I2"},
-         5: {"current": "I"},
+         1: {"current": "I"},
          3: {"current": "I2"},
-         7: {"current": "I"},
+         5: {"current": "I"},
+         7: {"current": "I2"}
         }
 
 
@@ -109,18 +110,24 @@ def objectives
 #epsilon, alpha, beta, gamma
 yObj = {'x': [0,0,0,0],'y': [0.999,0,0.02,0.23],'z': [0.9, 0.003, 1, 0.2]}
 finm = alg.findObj(line_E, xvals, startParticles= beam_dist)
-print("equation:" + str(finm[2,2]))
-print(alg.getRootsUni(finm[2,2]))
-newEq = sp.Eq(finm[2,2], 0)
-sett = finm[2,2].free_symbols
+eq = finm[2,3]
+print("equation:" + str(eq))
+# print(alg.getRootsUni(finm[2,2]))
+newEq = sp.Eq(eq, 0)
+sett = eq.free_symbols
 I = sett.pop()
 I2 = sett.pop()
-plot.plot_implicit(newEq,(I, -5, 5), (I2, -5, 5))
-p = plot.plot3d(finm[2,2], (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
+testEq = sp.Eq(I - I2, 0)
+p = plot.plot3d(eq, (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
 
+print(alg.getRootsMulti(newEq))
 
+# print(sp.nsolve((newEq, testEq), (I, I2), (7,7)))
+p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10),show = False)
+p2 = plot.plot_implicit(testEq,(I, -10, 10), (I2, -10, 10),show = False)
+p1.append(p2[0])
+p1.show()
 
-print(sp.nsolve(finm[2,2], (I, I2), (1,1)))
 # print(sp.Poly(finm[1,1]).nroots())
 # print(sp.nroots(finm[21], 1))
 # print(sp.all_roots(sp.poly(finm[21], I)))
