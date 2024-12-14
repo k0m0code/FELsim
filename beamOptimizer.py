@@ -153,22 +153,26 @@ class beamOptimizer():
         self.segmentVar = segmentVar
         checkSet = set()
         self.variablesToOptimize = []
-        
         for indice in self.segmentVar:
             if (indice < 0 or indice >= len(self.beamline)):
-                raise IndexError
+                raise IndexError(str(indice) + " is out of bounds for segmentVar dictionary")
             checkSet.add(self.segmentVar.get(indice)[0])
+        #  This entire program relies on checking the indice of the variables in this list-set.
+        #  A little sketch, will work for now but better implementation is needed
         self.variablesToOptimize = list(checkSet)
 
         #  Initialize objectives dictionary with measurement methods
         self.objectives = objectives
         for key, value in self.objectives.items():
+            if (key not in range(len(self.beamline))):
+                raise TypeError("Invalid indice: indice " + str(key) + " in objectives dict is out of bounds" )
             for goal in value:
                 if goal["measure"][1] in self.OBJECTIVEMETHODS:
                     goal["measure"][1] = self.OBJECTIVEMETHODS[goal["measure"][1]]
                 elif isinstance(goal["measure"][1], str):
                     raise TypeError("Invalid method name: No such method name exists in OBJECTIVESMETHOD dict")
                 #  Used to keep track of data plotting through optimization
+                #  Very rudementary, since looking for plotting of an objective relies on finding the same string name. Will have to improve in future
                 self.trackGoals.update({"indice " + str(key) + ": " + goal["measure"][0] + " "  + goal["measure"][1].__name__: []})
 
         #  Create x variables' bounds and  start point list. 

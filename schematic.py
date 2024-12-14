@@ -175,8 +175,24 @@ class draw_beamline:
                             list = twiss.at[axis, lab]
                             data.append(list[i])
                 csvwriter.writerow(data)
-                            
-
+                      
+    def setEqualAxisScaling(self, maxVals, minVals):
+        if maxVals[0] > maxVals[2]:
+            maxVals[2] = maxVals[0]
+        else:
+            maxVals[0] = maxVals[2]
+        if maxVals[1] > maxVals[3]:
+            maxVals[3] = maxVals[1]
+        else:
+            maxVals[1] = maxVals[3]
+        if minVals[0] < minVals[2]:
+            minVals[2] = minVals[0]
+        else:
+            minVals[0] = minVals[2]
+        if minVals[1] < minVals[3]:
+            minVals[3] = minVals[1]
+        else:
+            minVals[1] = minVals[3]
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True, saveData = False, shape = {}, plot = True, spacing = 1):
         '''
@@ -296,6 +312,7 @@ class draw_beamline:
         #  Testing purposes
         self.matrixVariables = matrixVariables
         self.sixdValues = plot6dValues
+        self.setEqualAxisScaling(maxVals, minVals)
 
         if plot:
             #  Configure graph shape

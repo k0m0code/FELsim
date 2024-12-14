@@ -18,29 +18,30 @@ sec7 = driftLattice(0.25)
 sec8 = qpdLattice(current = Ia)
 sec9 = driftLattice(0.50)
 sec10 = dipole(length=0.0889, angle=1.5)
-line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9]
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9,sec10]
 
 beamtype = beamline()
 pBeam = beamtype.changeBeamType(line, "electron", 40)
 
 beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,2.856,1],1000)
-schem.plotBeamPositionTransform(beam_dist, pBeam, 0.01)
+schem.plotBeamPositionTransform(beam_dist, pBeam, 0.01, spacing = 10)
 
 vals = {
         1: ["I", "current", lambda num:num],
-        3: ["I", "current", lambda num:num],
+        3: ["I2", "current", lambda num:num],
         5: ["I", "current", lambda num:num],
-        7: ["I", "current", lambda num:num]
+        7: ["I2", "current", lambda num:num]
         }
 
-starting = {"I": {"bounds": (0,10), "start": 5}}
+starting = {"I": {"bounds": (0,10), "start": 3},
+            "I2": {"bounds": (0,10), "start": 3}}
 
-objectives = {8:[{"measure": ["y", "std"],"goal":1,"weight":1},
+objectives = {9:[{"measure": ["y", "std"],"goal":1,"weight":1},
                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
 
 test = beamOptimizer(line, beam_dist)
 
-result = test.calc("Nelder-Mead", vals, starting, objectives, plotProgress = True, plotBeam= True, printResults=True)
+result = test.calc("Nelder-Mead", vals, starting, objectives, plotProgress = True, plotBeam= True)
 
 
 

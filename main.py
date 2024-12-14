@@ -39,7 +39,7 @@ ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,1,1,1,1,1],10000)
 
 
-# schem.plotBeamPositionTransform(beam_dist, line_E, 10)
+schem.plotBeamPositionTransform(beam_dist, line_E, 10, defineLim = True)
 
 '''
 create beamline, get sigma i
@@ -78,8 +78,8 @@ sec9 = driftLattice(0.50)
 sec10 = dipole_wedge(0.01)
 sec11 = dipole()
 sec12 = dipole_wedge(0.01)
-line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9,sec10,sec11,sec12]
-# line = [sec1,sec2,sec3,sec4,sec5,sec6]
+# line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8,sec9,sec10,sec11,sec12]
+line = [sec1,sec2,sec3,sec4,sec5,sec6,sec7,sec8]
 
 beamtype = beamline()
 line_E = beamtype.changeBeamType(line, "electron", 55)
@@ -87,7 +87,7 @@ line_E = beamtype.changeBeamType(line, "electron", 55)
 '''
 plotting
 '''
-# schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5)
+schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5, defineLim=False)
 
 
 '''
@@ -101,6 +101,13 @@ xvals = {
          7: {"current": "I2"}
         }
 
+xvals = {
+         1: {"current": "x"},
+         3: {"current": "y"},
+         5: {"current": "x"},
+         7: {"current": "y"}
+        }
+
 
 
 mAr = alg.getM(line, xvals)
@@ -111,7 +118,7 @@ def objectives
 yObj = {'x': [0,0,0,0],'y': [0.999,0,0.02,0.23],'z': [0.9, 0.003, 1, 0.2]}
 finm = alg.findObj(line_E, xvals, startParticles= beam_dist)
 eq = finm[2,3]
-print("equation:" + str(eq))
+print("equation:" + str(sp.latex(eq)))
 # print(alg.getRootsUni(finm[2,2]))
 newEq = sp.Eq(eq, 0)
 sett = eq.free_symbols
@@ -201,6 +208,4 @@ test
 # xp = plot.plot(eq, show = False)
 # xp.show()
 # eq2 = eq - 5
-# xp2 = plot.plot(eq2, show = False)
-# xp.append(xp2[0])
-# xp.show()
+# xp2 = plot.plot(eq2, show = Fal

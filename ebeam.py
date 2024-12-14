@@ -262,6 +262,7 @@ class beam:
             # Access Twiss parameters for the current axis
             ax = axlist[i]
             if defineLim:
+                # ax.axis('equal')
                 ax.set_xlim(minVals[2*i], maxVals[2*i])
                 ax.set_ylim(minVals[2*i + 1], maxVals[2*i + 1])
 
@@ -327,6 +328,7 @@ class beam:
         else:
             ax4.scatter(xyPart[0], xyPart[1], s=15,alpha = 0.7)
         if defineLim:
+            # ax4.axis('equal')
             ax4.set_xlim(minVals[0], maxVals[0])
             ax4.set_ylim(minVals[2], maxVals[2])
         ax4.scatter(withinArea[0], withinArea[1], s=15, alpha=0.7, color = "blue")
