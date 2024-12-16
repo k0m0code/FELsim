@@ -194,7 +194,8 @@ class draw_beamline:
         else:
             minVals[1] = minVals[3]
 
-    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True, saveData = False, shape = {}, plot = True, spacing = 1):
+    def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
+                                   saveData = False, shape = {}, plot = True, spacing = 1, matchScaling = True):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -217,6 +218,9 @@ class draw_beamline:
             Optional boolean variable to plot simulation or not
         spacing: int, optional
             Optional variable to choose spacing of x labels when plotting
+        matchScaling: bool, optional
+            Whether to have same x' vs x and y' vs y axis scaling or not.
+            defineLim must be True for same scaling setting to work
 
 
 
@@ -312,7 +316,8 @@ class draw_beamline:
         #  Testing purposes
         self.matrixVariables = matrixVariables
         self.sixdValues = plot6dValues
-        self.setEqualAxisScaling(maxVals, minVals)
+        if matchScaling and defineLim:
+            self.setEqualAxisScaling(maxVals, minVals)
 
         if plot:
             #  Configure graph shape
