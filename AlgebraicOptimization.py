@@ -15,6 +15,7 @@ class AlgebraicOpti():
         self.MINCHECK = 0.00001
         self.CURRENTRANGE = 10
         self.ROOTINTERVAL = 0.5
+        self.DOMAIN = (0.00001,10)
         
 
     def getDistSigmai(self, particles):
@@ -75,87 +76,131 @@ class AlgebraicOpti():
                 i = i - 1
         return resultArr
     
-    '''
-    returns linear equations representing propogation of the beam
-    '''  
-    def getSigmaF(self, m, sigmaI):
-         mTransposed = m.T
-         return m*sigmaI*mTransposed
+    def getSigmaF(self, transferM, sigmaI):
+        '''
+        returns linear equations representing final beam matrix
+        '''  
+        mTransposed = transferM.T
+        return transferM*sigmaI*mTransposed
     
 
     #  LINEAR EQUATIONs TO OPTIMIZE TO STARTING y TWISS CONDITIONS AS POSSIBLE 
-    
-    def findObj(self, beamline, xVal, objec = None, startParticles = None):
+    #  assumed that particles/ twiss are begiging beamline parameters
+    def findSymmetricObjective(self, beamline, xVar, startParticles = None, twiss = None, latex = False):
+        '''
+        returns the transformed beam matrix from beamline and twiss/particle parameters.
+
+        Parameters
+        ----------
+        beamline: list[beamline]
+            list of beamline objects representing accelerator beam
+        xVar: dict
+            dictionary of beamline element indices and their parameter values to optimize
+        startParticles = np.array(list[float][float])
+            2D numPy list of particle elements
+        twiss: dict
+            twiss values for each dimensional plane
+        latex: bool
+            whether to return equations in Latex form
+
+        Returns
+        -------
+        latexList: list[list[str]]
+            6x6 2D list of equations in latesx form represented as strings
+        sigObg: sympy.Matrix
+            6x6 2D Symypy matrix of equations representing transformed beam matrix
+        '''
         sigi = None
         if not startParticles is None:
               sigi = self.getDistSigmai(startParticles)
-        elif not objec is None:
+        elif not twiss is None:
             objList = []
             for ind, axis in enumerate(['x','y','z']):
-                objList.append(objec[axis])
+                objList.append(twiss[axis])
             sigi = self.getTwissSigmai(objList[0],objList[1],objList[2])
         else:
-             raise ValueError("Please enter objec or startParticles parameter")
-        if (not objec is None) and (not startParticles is None):
-             raise ValueError("Please enter one parameter for either objec or startParticles only")
-        mMat = self.getM(beamline, xVal)
+             raise ValueError("Please enter twiss or startParticles parameter")
+        if (not twiss is None) and (not startParticles is None):
+             raise ValueError("Please enter one parameter for either twiss or startParticles only")
+        mMat = self.getM(beamline, xVar)
         sigObg = self.getSigmaF(mMat,sigi)
         for i in range(len(sigObg)):
              sigObg[i] = sigObg[i] - sigi[i]
 
-
-        return sigObg # return the objective functions, solutions at zeros
+        if latex:
+            latexList = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+            for i in range(len(latexList)):
+                for ii in range(len(latexList[i])):
+                    latexList[i][ii] = sp.latex(sigObg[i,ii])
+            return latexList
+        return sigObg  # return the objective functions, solutions at zeros
          
     #NOTE: only created to find roots for only one variable that exists in the 
     #equation
-    '''
-    returns the roots of a complex equation using the multi-start method,
-    function to be used when finding current amplitude value for a sigmaf equation. 
-    Function intended for univariate equations
-    
-    Parameters
-    ----------
-    equation: sympy.add
-        sympy equation to find roots at
-
-    Returns
-    -------
-    rootList: list[float]
-        estimated list of zeros of equation in specified interval
-    '''
     def getRootsUni(self, equation):
-            rootSet = set()
-            ind = self.MINCHECK
-            tempSet = equation.free_symbols
-            var = tempSet.pop()
-            total_intervals = self.CURRENTRANGE
-            with tqdm(total=total_intervals, desc="Finding roots...",
-                  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
-                while ind <= self.CURRENTRANGE:
-                    try:
-                        val = sp.nsolve(equation, var ,ind)
-                        if val > 0:
-                            rootSet.add(val)
-                    except ValueError:
-                        pass
-                    pbar.update(self.ROOTINTERVAL)
-                    ind = ind + self.ROOTINTERVAL
-            rootList = list(rootSet)
-            return rootList
+        '''
+        returns the roots of a complex equation using the multi-start method,
+        function to be used when finding segment parameter values for a sigmaf equation. 
+        Function intended for univariate equations
+        
+        Parameters
+        ----------
+        equation: sympy.add
+            sympy equation to find roots at
+
+        Returns
+        -------
+        rootList: list[float]
+            estimated list of zeros of equation in specified interval
+        '''
+        rootSet = set()
+        ind = self.DOMAIN[0]
+        tempSet = equation.free_symbols
+        var = tempSet.pop()
+        total_intervals = self.DOMAIN[1]
+        with tqdm(total=total_intervals, desc="Finding roots...",
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+            while ind <= self.DOMAIN[1]:
+                try:
+                    val = sp.nsolve(equation, var ,ind)
+                    if val > 0:
+                        rootSet.add(val)
+                except ValueError:
+                    pass
+                pbar.update(self.ROOTINTERVAL)
+                ind = ind + self.ROOTINTERVAL
+        rootList = list(rootSet)
+        return rootList
     
     # create class variable to have a obvious x-y = 0 line 
     def getRootsMulti(self, equation):
+        '''
+        returns the roots of a complex implicit equation using the multi-start method, that is, where
+        the implicit equation equals x - y = 0.
+        Function to be used when finding segment parameter values for a sigmaf equation. 
+        Function intended for bivariate implicit equations
+        
+        Parameters
+        ----------
+        equation: sympy.add
+            sympy equation to find roots at
+
+        Returns
+        -------
+        rootList: list[tuple]
+            estimated list of zero pairs of equation in specified interval
+        '''
         ans = None
         rootSet = set()
         sett = equation.free_symbols
         x = sett.pop()
         y = sett.pop()
         checkLine = sp.Eq(x-y, 0)
-        ind = self.MINCHECK
-        total_intervals = self.CURRENTRANGE
+        ind = self.DOMAIN[0]
+        total_intervals = self.DOMAIN[1]
         with tqdm(total=total_intervals, desc="Finding roots...",
                   bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
-            while ind <= self.CURRENTRANGE:
+            while ind <= self.DOMAIN[1]:
                 try:
                     ans = sp.nsolve((equation, checkLine), (x, y), (ind, ind))
                     if (ans[0] > 0 and ans[1] > 0):
@@ -165,5 +210,5 @@ class AlgebraicOpti():
                     pass
                 pbar.update(self.ROOTINTERVAL)
                 ind = ind + self.ROOTINTERVAL
-        ansList = list(rootSet)
-        return ansList
+        rootList = list(rootSet)
+        return rootList
