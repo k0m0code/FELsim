@@ -1,4 +1,5 @@
 from beamline import *
+from schematic import draw_beamline
 from ebeam import *
 import sympy as sp
 import sys
@@ -84,11 +85,14 @@ class AlgebraicOpti():
         return transferM*sigmaI*mTransposed
     
 
-    #  LINEAR EQUATIONs TO OPTIMIZE TO STARTING y TWISS CONDITIONS AS POSSIBLE 
-    #  assumed that particles/ twiss are begiging beamline parameters
-    def findSymmetricObjective(self, beamline, xVar, startParticles = None, twiss = None, latex = False):
+  
+    #  assumed that particles/ twiss are beginning beamline parameters
+
+    # is it possible to have multiple parameter variables for a single beam element? 
+    def findSymmetricObjective(self, beamline, xVar, startParticles = None, twiss = None, plotBeam = None, latex = False):
         '''
-        returns the transformed beam matrix from beamline and twiss/particle parameters.
+        returns the final sigma beam matrix from beamline and twiss/particle parameters. 
+        final sigma matrix made as to return a symmetric beamline regarding each twiss parameter
 
         Parameters
         ----------
@@ -100,6 +104,8 @@ class AlgebraicOpti():
             2D numPy list of particle elements
         twiss: dict
             twiss values for each dimensional plane
+        plotBeam: list
+            indice address of equation in final sigma matrix to plot
         latex: bool
             whether to return equations in Latex form
 
@@ -127,6 +133,27 @@ class AlgebraicOpti():
         for i in range(len(sigObg)):
              sigObg[i] = sigObg[i] - sigi[i]
 
+        #invariants: must use startParticles
+        if plotBeam is not None:
+            eq = sigObg[plotBeam[0], plotBeam[1]]
+            roots = None
+            variables = None
+            try:
+                roots, variables = self.getRootsUni(eq)
+            except ValueError:
+                try:
+                    roots, variables = self.getRootsMulti(eq)
+                except ValueError:
+                    raise ValueError("Too many variables in equation to find roots")
+            #  The root pair used is the first one in the list, might make this more noticable to change
+            usedRoot = roots[0]
+            for i in xVar:
+                for paramName, key in xVar[i].items():
+                    variableIndex = variables.index(key)
+                    setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
+            schem = draw_beamline()
+            schem.plotBeamPositionTransform(startParticles,beamline)
+        
         if latex:
             latexList = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
             for i in range(len(latexList)):
@@ -156,6 +183,8 @@ class AlgebraicOpti():
         rootSet = set()
         ind = self.DOMAIN[0]
         tempSet = equation.free_symbols
+        if not len(tempSet) == 1:
+            raise ValueError("Wrong amount of variables, please use univariate equation")
         var = tempSet.pop()
         total_intervals = self.DOMAIN[1]
         with tqdm(total=total_intervals, desc="Finding roots...",
@@ -170,13 +199,17 @@ class AlgebraicOpti():
                 pbar.update(self.ROOTINTERVAL)
                 ind = ind + self.ROOTINTERVAL
         rootList = list(rootSet)
-        return rootList
+        nameList = [var.name]
+        return rootList, nameList
     
-    # create class variable to have a obvious x-y = 0 line 
+
+    # problems with x = int and y = int: the starting point is at 5 for both of these. If a negative value
+    # is detected and thrown out, despite maybe another postive solution existing, could be discarded
+
+    # could implement looking at more starting points in the future than just at 5,5
     def getRootsMulti(self, equation):
         '''
-        returns the roots of a complex implicit equation using the multi-start method, that is, where
-        the implicit equation equals x - y = 0.
+        returns the roots of an implicit equation.
         Function to be used when finding segment parameter values for a sigmaf equation. 
         Function intended for bivariate implicit equations
         
@@ -191,24 +224,68 @@ class AlgebraicOpti():
             estimated list of zero pairs of equation in specified interval
         '''
         ans = None
+        SEARCHPOINT = (5,5)
         rootSet = set()
         sett = equation.free_symbols
+        if not len(sett) == 2:
+            raise ValueError("Wrong amount of variables, please use bivariate equation")
+        
+        
+        #  This is necessary so that the solutions given in rootList and variable order
+        #  in nameList are the matched accordingly
         x = sett.pop()
         y = sett.pop()
-        checkLine = sp.Eq(x-y, 0)
-        ind = self.DOMAIN[0]
-        total_intervals = self.DOMAIN[1]
-        with tqdm(total=total_intervals, desc="Finding roots...",
+        variableOrder = (x,y)
+        nameList = []
+        for i in variableOrder:
+            nameList.append(i.name)
+
+        # checkLine = sp.Eq(y-x, 0)
+        # ind = self.DOMAIN[0]
+        # total_intervals = self.DOMAIN[1]
+        # with tqdm(total=total_intervals, desc="Finding roots...",
+        #           bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+        #     while ind <= total_intervals:
+        #         try:
+        #             ans = sp.nsolve((equation, checkLine), (x, y), (ind, ind))
+        #             if (ans[0] > 0 and ans[1] > 0):
+        #                 tup = tuple(tuple(row) for row in ans.tolist())
+        #                 rootSet.add(tup)
+        #         except ValueError:
+        #             pass
+        #         pbar.update(self.ROOTINTERVAL)
+        #         ind = ind + self.ROOTINTERVAL
+
+        searchRange = 10 
+        with tqdm(total=searchRange*2, desc="Finding roots...",
                   bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
-            while ind <= self.DOMAIN[1]:
+               
+            while (searchRange > 0):
                 try:
-                    ans = sp.nsolve((equation, checkLine), (x, y), (ind, ind))
+                    # checkLine = sp.Eq(searchSlope*y-x, 0)
+                    checkLine = sp.Eq(y, searchRange)
+                    ans = sp.nsolve((equation, checkLine), variableOrder, SEARCHPOINT)
                     if (ans[0] > 0 and ans[1] > 0):
-                        tup = tuple(tuple(row) for row in ans.tolist())
-                        rootSet.add(tup)
+                            tup = tuple(row[0] for row in ans.tolist())
+                            rootSet.add(tup)
                 except ValueError:
                     pass
-                pbar.update(self.ROOTINTERVAL)
-                ind = ind + self.ROOTINTERVAL
+                searchRange = searchRange - 1
+                pbar.update(1)
+
+            searchRange = 10
+            while (searchRange > 0):
+                try:
+                    # checkLine = sp.Eq(searchSlope*y-x, 0)
+                    checkLine = sp.Eq(x, searchRange)
+                    ans = sp.nsolve((equation, checkLine), variableOrder, SEARCHPOINT)
+                    if (ans[0] > 0 and ans[1] > 0):
+                            tup = tuple(row[0] for row in ans.tolist())
+                            rootSet.add(tup)
+                except ValueError:
+                    pass
+                searchRange = searchRange - 1
+                pbar.update(1)
+
         rootList = list(rootSet)
-        return rootList
+        return rootList, nameList

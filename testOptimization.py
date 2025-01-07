@@ -40,8 +40,9 @@ objectives = {9:[{"measure": ["y", "std"],"goal":1,"weight":1},
                  {"measure": ["x", "std"],"goal":1,"weight":1}]}
 
 test = beamOptimizer(line, beam_dist)
-
+for i in line: print(i)
 result = test.calc("Nelder-Mead", vals, starting, objectives, plotProgress = True, plotBeam= True)
+for i in line: print(i)
 
 
 

@@ -1,47 +1,113 @@
-def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
+''' old ebeam func'''
+# '''
+# plots 6d and twiss data with only particle distribution data
+# '''
+# import matplotlib.pyplot as plt
+# import sympy as sp
+# import numpy as np
+# def plot_6d(self, dist_6d, title):
+#     #
+#     # Not used anymore and remove?
+#     #
 
-        # Not used anymore
-        # To be removed
-        # Due to the use of pandas frame from the 6d distribution, we do no need to recalculate the standard devs
-        '''
-        Append updated values to five different arrays, used for plotBeamPositionTransform
+#     num_pts = 60  # Used for implicit plot of the ellipse
+#     ddof = 1  # Unbiased Bessel correction for standard deviation calculation
 
-        Parameters
-        ----------
-        xStd: list[float]
-            standard deviation of particles' x position for each distance interval
-        yStd: list[float]
-            standard deviation of particles' y position for each distance interval
-        xMean: list[float]
-            average of particles' x position for each distance interval
-        yMean: list[float]
-            average of particles' y position for each distance interval
-        x_axis: list[float]
-            contains distance intervals to measure particle data over
-        interval: float
-            the amount between each distance interval
-        matrixVariables: np.array(list[float][float])
-            2D numPy list of particle elements to measure data from
+#     dist_avg, dist_cov, twiss = self.cal_twiss(dist_6d, ddof=ddof)
 
-        Returns
-        -------
-        xStd: list[float]
-            updated standard deviation of x position list
-        yStd: list[float]
-            updated standard deviation of y position list
-        xMean: list[float]
-            updated average of x position list
-        yMean: list[float]
-            updated average of y positiion list
-        x[axis]: list[float]
-            updated distance interval list
-        '''
-        xStd.append(np.std(matrixVariables[:,0]))
-        yStd.append(np.std(matrixVariables[:,2]))
-        xMean.append(np.mean(matrixVariables[:,0]))
-        yMean.append(np.mean(matrixVariables[:,2]))
-        x_axis.append(round(x_axis[-1]+interval, self.DEFAULTINTERVALROUND))
-        return xStd, yStd, xMean, yMean, x_axis
+#     # Define SymPy symbols for plotting
+#     x_sym, y_sym = sp.symbols('x y')
+
+#     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    
+#     x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Energy $\Delta$ $E$ (keV)', r'Position $x$ (mm)']
+#     y_labels = [r'Phase $x^{\prime}$ (mm)', r'Phase $y^{\prime}$ (mm)', r'Time $\Delta$ $t$ (ns)',
+#                 r'Position $y$ (mm)']
+
+#     for i, axis in enumerate(['x', 'y', 'z']):
+
+#         # Access Twiss parameters for the current axis
+#         twiss_axis = twiss.loc[axis]
+
+#         # Plot the contour where Z = 0 (the ellipse)
+#         ax = axes[i // 2, i % 2]
+#         ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
+#         X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=1, num_pts=num_pts)
+#         ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
+#         X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
+#         ax.contour(X, Y, Z, levels=[0], colors='black', linestyles='--')
+
+#         # Construct the text string from the Twiss parameters
+#         twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
+#         props = dict(boxstyle='round', facecolor='lavender', alpha=0.5)
+#         ax.text(0.05, 0.95, twiss_txt, transform=ax.transAxes, fontsize=12,
+#                 verticalalignment='top', bbox=props)
+
+#         ax.set_title(f'{axis} - Phase Space')
+#         ax.set_xlabel(x_labels[i])
+#         ax.set_ylabel(y_labels[i])
+#         ax.grid(True)
+
+#     # Plot for 'x, y - Space'
+#     ax = axes[(i + 1) // 2, (i + 1) % 2]
+#     ax.scatter(dist_6d[:, 0], dist_6d[:, 2], s=15, alpha=0.7)
+
+#     ax.set_title(f'x, y - Space')
+#     ax.set_xlabel(x_labels[i + 1])
+#     ax.set_ylabel(y_labels[i + 1])
+#     ax.grid(True)
+
+#     plt.suptitle(title)
+#     plt.tight_layout()
+#     plt.show()
+
+'''
+old schematic function
+'''
+# def appendToList(self, xStd, yStd, xMean, yMean, x_axis, interval, matrixVariables):
+
+#         # Not used anymore
+#         # To be removed
+#         # Due to the use of pandas frame from the 6d distribution, we do no need to recalculate the standard devs
+#         '''
+#         Append updated values to five different arrays, used for plotBeamPositionTransform
+
+#         Parameters
+#         ----------
+#         xStd: list[float]
+#             standard deviation of particles' x position for each distance interval
+#         yStd: list[float]
+#             standard deviation of particles' y position for each distance interval
+#         xMean: list[float]
+#             average of particles' x position for each distance interval
+#         yMean: list[float]
+#             average of particles' y position for each distance interval
+#         x_axis: list[float]
+#             contains distance intervals to measure particle data over
+#         interval: float
+#             the amount between each distance interval
+#         matrixVariables: np.array(list[float][float])
+#             2D numPy list of particle elements to measure data from
+
+#         Returns
+#         -------
+#         xStd: list[float]
+#             updated standard deviation of x position list
+#         yStd: list[float]
+#             updated standard deviation of y position list
+#         xMean: list[float]
+#             updated average of x position list
+#         yMean: list[float]
+#             updated average of y positiion list
+#         x[axis]: list[float]
+#             updated distance interval list
+#         '''
+#         xStd.append(np.std(matrixVariables[:,0]))
+#         yStd.append(np.std(matrixVariables[:,2]))
+#         xMean.append(np.mean(matrixVariables[:,0]))
+#         yMean.append(np.mean(matrixVariables[:,2]))
+#         x_axis.append(round(x_axis[-1]+interval, self.DEFAULTINTERVALROUND))
+#         return xStd, yStd, xMean, yMean, x_axis
 
 
 '''Old x variable initialization for beamOptimizer calc(), keep temporarily in case of bugs with new one. delete in future'''

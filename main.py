@@ -39,8 +39,8 @@ line_E = beamtype.changeBeamType(beamlineUH, "electron", 45)
 ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,[1,0.1,1,0.1,2856 * (10 ** 6) * (10 ** -9),1],10000)
 
-
-schem.plotBeamPositionTransform(beam_dist, line_E, 10, defineLim = True)
+shape = {"shape": "rectangle", "length": 3, "width": 4, "origin": (0,0)}
+# schem.plotBeamPositionTransform(beam_dist, line_E, 0.1, defineLim = True)
 
 '''
 create beamline, get sigma i
@@ -87,7 +87,7 @@ line_E = beamtype.changeBeamType(line, "electron", 55)
 '''
 plotting
 '''
-schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5, defineLim=False)
+# schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5, defineLim=False, shape = shape)
 
 
 '''
@@ -95,38 +95,38 @@ create x values to optimize
 {segment parameter: variable name}
 '''
 xVar = {
-         1: {"current": "I2"},
-         3: {"current": "I"},
-         5: {"current": "I2"},
-         7: {"current": "I"}
+         1: {"current": "I"},
+         3: {"current": "I2"},
+         5: {"current": "I"},
+         7: {"current": "I2"}
         }
 
 
 
-
 mAr = alg.getM(line, xVar)
-finm = alg.findSymmetricObjective(line_E, xVar, startParticles= beam_dist)
-print(type(finm))
-eq = finm[0,0]
-# print("equation:" + str(eq))
-newEq = sp.Eq(eq, 0)
+address = [3,2]
+finm = alg.findSymmetricObjective(line_E, xVar, startParticles= beam_dist,plotBeam=address)
+for i in line_E: print(i)
+eq = finm[3,2]
+# print(eq)
 sett = eq.free_symbols
 I = sett.pop()
 I2 = sett.pop()
-testEq = sp.Eq(I - I2, 0)
-p = plot.plot3d(eq, (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
-
-solutions = alg.getRootsMulti(newEq)
+# p = plot.plot3d(eq, (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
+newEq = sp.Eq(eq, 0)
+# p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10))
+# print(alg.getRootsUni(eq))
+solutions, var = alg.getRootsMulti(eq)
+print(var)
 print(solutions)
-print(type(solutions[0]))
-print(type(solutions[0][0][0]))
-line_E[1].current = solutions[0][0][0]
-line_E[3].current = solutions[0][0][0]
-line_E[5].current = solutions[0][0][0]
-line_E[6].current = solutions[0][0][0]
-schem.plotBeamPositionTransform(beam_dist,line_E,0.1, spacing = 5, defineLim=False)
+schem.plotBeamPositionTransform(beam_dist,line_E)
+line_E[1].current = solutions[0][0]
+line_E[3].current = solutions[0][0]
+line_E[5].current = solutions[0][0]
+line_E[6].current = solutions[0][0]
+# schem.plotBeamPositionTransform(beam_dist,line_E, spacing = 5, defineLim=False)
 
-
+newEq = sp.Eq(eq, 0)
 p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10),show = False)
 p2 = plot.plot_implicit(testEq,(I, -10, 10), (I2, -10, 10),show = False)
 p1.append(p2[0])
@@ -204,5 +204,4 @@ test
 # eq = x**2
 # xp = plot.plot(eq, show = False)
 # xp.show()
-# eq2 = eq - 5
-# xp2 = plot.plot(eq2, show = Fal
+# eq2 = eq -

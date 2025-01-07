@@ -97,7 +97,7 @@ class lattice:
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
     
     def getSymbolicMatrice(self, **kwargs):
-        raise NameError("getSymbolicMatrice not defined in child class")
+        raise NotImplementedError("getSymbolicMatrice not defined in child class")
     
     #unfortuately, cannot check whether the kwargs exist in the segments function or not alreay\dy
     def useMatrice(self, val, **kwargs):
@@ -208,7 +208,7 @@ class qpfLattice(lattice):
         return mat
     
     def __str__(self):
-        return f"QPF beamline segment {self.length} mm long"
+        return f"QPF beamline segment {self.length} mm long and a current of {self.current} amps"
 
 
 class qpdLattice(lattice):
@@ -262,14 +262,13 @@ class qpdLattice(lattice):
         return mat
 
     def __str__(self):
-        return f"QPD beamline segment {self.length} m long"
+        return f"QPD beamline segment {self.length} m long and a current of {self.current} amps"
 
 class dipole(lattice):
     def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
         super().__init__(length, E0, Q, M, E)
         self.color = "forestgreen"
         self.angle = angle  # degrees
-        self.length_total = length
     
     def getSymbolicMatrice(self, numeric = False, length = None, angle = None):
         l = None
@@ -287,7 +286,7 @@ class dipole(lattice):
             if numeric: a = angle  # angle should be number
             else: a = symbols(angle, real = True)  # angle should be string
 
-        by = (self.M*self.C*self.beta*self.gamma / self.Q) * (a * sp.pi / 180 / self.length_total)
+        by = (self.M*self.C*self.beta*self.gamma / self.Q) * (a * sp.pi / 180 / self.length)
         rho = self.M*self.C*self.beta*self.gamma / (self.Q * by)
         theta = l / rho
         C = sp.cos(theta)
@@ -309,7 +308,7 @@ class dipole(lattice):
         return mat
 
     def __str__(self):
-        return f"Horizontal dipole magnet segment {self.length} m long (curvature)"
+        return f"Horizontal dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
 
 class dipole_wedge(lattice):
     def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
@@ -358,4 +357,4 @@ class dipole_wedge(lattice):
         return mat
 
     def __str__(self):
-        return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature)"
+        return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
