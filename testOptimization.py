@@ -30,7 +30,8 @@ vals = {
         1: ["I", "current", lambda num:num],
         3: ["I2", "current", lambda num:num],
         5: ["I", "current", lambda num:num],
-        7: ["I2", "current", lambda num:num]
+        7: ["I2", "current", lambda num:num],
+        8: ["L", "length", lambda num:num]
         }
 
 starting = {"I": {"bounds": (0,10), "start": 3},

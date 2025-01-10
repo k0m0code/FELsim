@@ -95,16 +95,16 @@ create x values to optimize
 {segment parameter: variable name}
 '''
 xVar = {
-         1: {"current": "I"},
-         3: {"current": "I2"},
-         5: {"current": "I"},
-         7: {"current": "I2"}
+        1: {"current":"I"},
+        3: {"current": "I2"},
+        5: {"current": "I"},
+        # 7: {"current": "I2"}
         }
 
 
 
-mAr = alg.getM(line, xVar)
-address = [3,2]
+address = [0,1]
+schem.plotBeamPositionTransform(beam_dist,line_E,0.015)
 finm = alg.findSymmetricObjective(line_E, xVar, startParticles= beam_dist,plotBeam=address)
 for i in line_E: print(i)
 eq = finm[3,2]
@@ -128,8 +128,8 @@ line_E[6].current = solutions[0][0]
 
 newEq = sp.Eq(eq, 0)
 p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10),show = False)
-p2 = plot.plot_implicit(testEq,(I, -10, 10), (I2, -10, 10),show = False)
-p1.append(p2[0])
+# p2 = plot.plot_implicit(testEq,(I, -10, 10), (I2, -10, 10),show = False)
+# p1.append(p2[0])
 p1.show()
 
 # print(sp.Poly(finm[1,1]).nroots())

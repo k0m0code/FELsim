@@ -24,6 +24,7 @@ class draw_beamline:
         self.sixdValues = None  # For access to data after transformation
         self.DEFAULTINTERVAL = 0.05
         self.DEFAULTINTERVALROUND = 5  # Number of decimal places p
+        self.DEFAULTSPACINGPERCENTAGE = 0.02  # percent of total beamline length before adding plot tick
 
 
     '''
@@ -195,7 +196,7 @@ class draw_beamline:
             minVals[1] = minVals[3]
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
-                                   saveData = False, shape = {}, plot = True, spacing = 1, matchScaling = True):
+                                   saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -216,8 +217,8 @@ class draw_beamline:
             ex. shape, width, radius, length, origin
         plot: bool, optional
             Optional boolean variable to plot simulation or not
-        spacing: int, optional
-            Optional variable to choose spacing of x labels when plotting
+        spacing: bool, optional
+            Optional variable to optimize spacing of x labels when plotting for readibility
         matchScaling: bool, optional
             Whether to have same x' vs x and y' vs y axis scaling or not.
             defineLim must be True for same scaling setting to work
@@ -347,8 +348,20 @@ class draw_beamline:
             ax5.set_xticks(x_axis)
             plt.xlim(0,x_axis[-1])
 
-            xTickLab = self._createLabels(x_axis, spacing)
-            ax5.set_xticklabels(xTickLab,rotation=45,ha='right')
+            #  Auto space x tick labels for readibility
+            if spacing:
+                totalLen = x_axis[-1]
+                lastTick = x_axis[0]
+                xTickLab = [lastTick]
+                for tick in x_axis[1:]: 
+                    if (tick - lastTick)/totalLen > self.DEFAULTSPACINGPERCENTAGE:
+                        xTickLab.append(tick)
+                        lastTick = tick
+                    else:
+                        xTickLab.append("")
+                ax5.set_xticklabels(xTickLab,rotation=45,ha='right')
+            else:
+                ax5.set_xticklabels(x_axis,rotation=45,ha='right')
 
             plt.tick_params(labelsize = 9)
             plt.xlabel("Distance from start of beam (m)")

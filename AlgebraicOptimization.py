@@ -4,6 +4,7 @@ from ebeam import *
 import sympy as sp
 import sys
 from tqdm import tqdm
+import warnings
 
 '''
 helpful resources
@@ -89,6 +90,8 @@ class AlgebraicOpti():
     #  assumed that particles/ twiss are beginning beamline parameters
 
     # is it possible to have multiple parameter variables for a single beam element? 
+
+    # if values plotted, should we return them or print them?
     def findSymmetricObjective(self, beamline, xVar, startParticles = None, twiss = None, plotBeam = None, latex = False):
         '''
         returns the final sigma beam matrix from beamline and twiss/particle parameters. 
@@ -125,34 +128,58 @@ class AlgebraicOpti():
                 objList.append(twiss[axis])
             sigi = self.getTwissSigmai(objList[0],objList[1],objList[2])
         else:
-             raise ValueError("Please enter twiss or startParticles parameter")
+             raise ValueError(
+                 "Please enter twiss or startParticles parameter")
         if (not twiss is None) and (not startParticles is None):
-             raise ValueError("Please enter one parameter for either twiss or startParticles only")
+             raise ValueError(
+                 "Please enter one parameter for either twiss or startParticles only")
         mMat = self.getM(beamline, xVar)
         sigObg = self.getSigmaF(mMat,sigi)
         for i in range(len(sigObg)):
              sigObg[i] = sigObg[i] - sigi[i]
-
-        #invariants: must use startParticles
+        
+        #   PLEASE REMOVE FLAG AND CLEAN CODE UP
+        #  Plotting found optimized values
+        if plotBeam and twiss is not None:
+            raise ValueError(
+                 "plotBeam cannot be used with twiss parameter")
         if plotBeam is not None:
+            flag = True
             eq = sigObg[plotBeam[0], plotBeam[1]]
+            numVar = eq.free_symbols
             roots = None
             variables = None
-            try:
+            
+            if len(numVar) == 1: 
                 roots, variables = self.getRootsUni(eq)
-            except ValueError:
+                roots = [roots]
+            elif len(numVar) == 2:
+                roots, variables = self.getRootsMulti(eq)
+            elif len(numVar) > 2:
+                raise ValueError(
+                        "Too many variables in equation")
+            else:
+                warnings.warn("No variables detected in equation at specified sigma final matrix position, plotting skipped")
+                flag = False
+            if flag:
                 try:
-                    roots, variables = self.getRootsMulti(eq)
-                except ValueError:
-                    raise ValueError("Too many variables in equation to find roots")
-            #  The root pair used is the first one in the list, might make this more noticable to change
-            usedRoot = roots[0]
-            for i in xVar:
-                for paramName, key in xVar[i].items():
-                    variableIndex = variables.index(key)
-                    setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
-            schem = draw_beamline()
-            schem.plotBeamPositionTransform(startParticles,beamline)
+                    #  The root pair used is the first one in the list if a equation has only one solution,
+                    #  might make this more noticable to change in the future if user wants to use not only first root
+                    usedRoot = roots[0]
+                except IndexError:
+                    warnings.warn(
+                        "No root found, plotting skipped")
+                    flag = False
+                if flag:
+                    print(usedRoot)
+                    for i in xVar:
+                        for paramName, key in xVar[i].items():
+                            variableIndex = variables.index(key)
+                            setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
+                    schem = draw_beamline()
+                    schem.plotBeamPositionTransform(startParticles,beamline)
+            
+            
         
         if latex:
             latexList = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
@@ -162,11 +189,9 @@ class AlgebraicOpti():
             return latexList
         return sigObg  # return the objective functions, solutions at zeros
          
-    #NOTE: only created to find roots for only one variable that exists in the 
-    #equation
     def getRootsUni(self, equation):
         '''
-        returns the roots of a complex equation using the multi-start method,
+        returns the roots of an equation using the multi-start method,
         function to be used when finding segment parameter values for a sigmaf equation. 
         Function intended for univariate equations
         
@@ -179,6 +204,8 @@ class AlgebraicOpti():
         -------
         rootList: list[float]
             estimated list of zeros of equation in specified interval
+        nameList: list[str]
+            list of variable name
         '''
         rootSet = set()
         ind = self.DOMAIN[0]
@@ -187,14 +214,14 @@ class AlgebraicOpti():
             raise ValueError("Wrong amount of variables, please use univariate equation")
         var = tempSet.pop()
         total_intervals = self.DOMAIN[1]
-        with tqdm(total=total_intervals, desc="Finding roots...",
-                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+        with tqdm(total=total_intervals, desc="Finding roots...", 
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar: #  loading bar
             while ind <= self.DOMAIN[1]:
                 try:
                     val = sp.nsolve(equation, var ,ind)
                     if val > 0:
                         rootSet.add(val)
-                except ValueError:
+                except ValueError: #  if root not found, ignore error
                     pass
                 pbar.update(self.ROOTINTERVAL)
                 ind = ind + self.ROOTINTERVAL
@@ -222,6 +249,8 @@ class AlgebraicOpti():
         -------
         rootList: list[tuple]
             estimated list of zero pairs of equation in specified interval
+        nameList: list[str]
+            ordered list of variable names matching with the order of root pairs.
         '''
         ans = None
         SEARCHPOINT = (5,5)
@@ -258,17 +287,16 @@ class AlgebraicOpti():
 
         searchRange = 10 
         with tqdm(total=searchRange*2, desc="Finding roots...",
-                  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar: #  loading bar
                
             while (searchRange > 0):
                 try:
-                    # checkLine = sp.Eq(searchSlope*y-x, 0)
                     checkLine = sp.Eq(y, searchRange)
                     ans = sp.nsolve((equation, checkLine), variableOrder, SEARCHPOINT)
                     if (ans[0] > 0 and ans[1] > 0):
                             tup = tuple(row[0] for row in ans.tolist())
                             rootSet.add(tup)
-                except ValueError:
+                except ValueError: #  if root not found, ignore error
                     pass
                 searchRange = searchRange - 1
                 pbar.update(1)
@@ -276,13 +304,12 @@ class AlgebraicOpti():
             searchRange = 10
             while (searchRange > 0):
                 try:
-                    # checkLine = sp.Eq(searchSlope*y-x, 0)
                     checkLine = sp.Eq(x, searchRange)
                     ans = sp.nsolve((equation, checkLine), variableOrder, SEARCHPOINT)
                     if (ans[0] > 0 and ans[1] > 0):
                             tup = tuple(row[0] for row in ans.tolist())
                             rootSet.add(tup)
-                except ValueError:
+                except ValueError: #  if root not found, ignore error
                     pass
                 searchRange = searchRange - 1
                 pbar.update(1)
