@@ -1,3 +1,30 @@
+'''
+old main testing code for findSymmetricObjective 
+'''
+# eq = finm[3,2]
+# # print(eq)
+# sett = eq.free_symbols
+# I = sett.pop()
+# I2 = sett.pop()
+# # p = plot.plot3d(eq, (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
+# newEq = sp.Eq(eq, 0)
+# # p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10))
+# # print(alg.getRootsUni(eq))
+# solutions, var = alg.getRootsMulti(eq)
+# print(var)
+# print(solutions)
+# schem.plotBeamPositionTransform(beam_dist,line_E)
+# line_E[1].current = solutions[0][0]
+# line_E[3].current = solutions[0][0]
+# line_E[5].current = solutions[0][0]
+# line_E[6].current = solutions[0][0]
+# schem.plotBeamPositionTransform(beam_dist,line_E, spacing = 5, defineLim=False)
+# newEq = sp.Eq(eq, 0)
+# p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10),show = False)
+# # p2 = plot.plot_implicit(testEq,(I, -10, 10), (I2, -10, 10),show = False)
+# # p1.append(p2[0])
+# p1.show()
+
 ''' old ebeam func'''
 # '''
 # plots 6d and twiss data with only particle distribution data

@@ -64,7 +64,6 @@ print("Initial v-plane sigma_i[19] (eps * gamma):"+str(sig[21]))
 '''
 We would like to compare this values with sigma_f, to try to have sigma_f = sigma_i for the h- and v-plane
 '''
-print(sig)
 
 I = 3.56  # result obtained from testOptimization.py...
 sec1 = driftLattice(0.5)
@@ -98,39 +97,18 @@ xVar = {
         1: {"current":"I"},
         3: {"current": "I2"},
         5: {"current": "I"},
-        # 7: {"current": "I2"}
+        7: {"current": "I2"}
         }
 
 
 
-address = [0,1]
-schem.plotBeamPositionTransform(beam_dist,line_E,0.015)
+address = [0,1] #  row, column position in sigma f matrix of equation roots to plot
+schem.plotBeamPositionTransform(beam_dist,line_E,0.015)  # pretransformed beam 
 finm = alg.findSymmetricObjective(line_E, xVar, startParticles= beam_dist,plotBeam=address)
-for i in line_E: print(i)
-eq = finm[3,2]
-# print(eq)
-sett = eq.free_symbols
-I = sett.pop()
-I2 = sett.pop()
-# p = plot.plot3d(eq, (I, -3, 3), (I2, -3, 3), zlim = (-10,10))
-newEq = sp.Eq(eq, 0)
-# p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10))
-# print(alg.getRootsUni(eq))
-solutions, var = alg.getRootsMulti(eq)
-print(var)
-print(solutions)
-schem.plotBeamPositionTransform(beam_dist,line_E)
-line_E[1].current = solutions[0][0]
-line_E[3].current = solutions[0][0]
-line_E[5].current = solutions[0][0]
-line_E[6].current = solutions[0][0]
-# schem.plotBeamPositionTransform(beam_dist,line_E, spacing = 5, defineLim=False)
+for i in line_E: print(i) # beamline list of objects are effected if plotting is dont
+schem.plotBeamPositionTransform(beam_dist,line_E,0.015)  # pretransformed beam 
 
-newEq = sp.Eq(eq, 0)
-p1 = plot.plot_implicit(newEq, (I, -10, 10), (I2, -10, 10),show = False)
-# p2 = plot.plot_implicit(testEq,(I, -10, 10), (I2, -10, 10),show = False)
-# p1.append(p2[0])
-p1.show()
+
 
 # print(sp.Poly(finm[1,1]).nroots())
 # print(sp.nroots(finm[21], 1))

@@ -247,6 +247,7 @@ class beam:
     '''
     def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
         axlist = [ax1,ax2,ax3]
+        # ax1.set_aspect(aspect = 1, adjustable='datalim')
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
         x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t / T_{\text{RF}}$ $(10^{-3})$', r'Position $x$ (mm)']
@@ -262,9 +263,11 @@ class beam:
             # Access Twiss parameters for the current axis
             ax = axlist[i]
             if defineLim:
-                # ax.axis('equal')
                 ax.set_xlim(minVals[2*i], maxVals[2*i])
                 ax.set_ylim(minVals[2*i + 1], maxVals[2*i + 1])
+                # ax.set_aspect(aspect = 1, adjustable='datalim')  # Testing purpose
+                # print(ax1.get_xlim())
+                # print(ax1.get_ylim())
                 # ax.set(xlim=(-maxVals[2*i], maxVals[2*i]), ylim=(-maxVals[2*i + 1], maxVals[2*i + 1]))
 
             ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)

@@ -79,7 +79,17 @@ print('beta y:' + str(beta_y[-1]))
 
 
 truncatedA_line_optimization = line_UH[:-75]
-twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedA_line_optimization, 1, plot=True)
+
+for beam in truncatedA_line_optimization: print(beam)
+xvar = {1: {"current": "I"},
+        3: {"current": "I2"},
+        }
+from AlgebraicOptimization import *
+alg = AlgebraicOpti()
+alg.BIVARIATE_SEARCH_RANGE = 1
+alg.SEARCHINTERVAL = 0.5
+alg.findSymmetricObjective(truncatedA_line_optimization, xvar, startParticles=beam_dist,plotBeam=[0,0])
+twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedA_line_optimization, 0.033, plot=True)
 
 
 truncated_line1 = line_UH[:-88]

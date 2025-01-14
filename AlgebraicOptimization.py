@@ -14,10 +14,10 @@ https://stackoverflow.com/questions/38104025/sympy-solveset-returns-conditionset
 class AlgebraicOpti():
     def __init__(self):
         self.DDOF = 1
-        self.MINCHECK = 0.00001
-        self.CURRENTRANGE = 10
-        self.ROOTINTERVAL = 0.5
-        self.DOMAIN = (0.00001,10)
+        self.SEARCHINTERVAL = 1
+        self.UNIVARIATE_SEARCH_RANGE = (0.00001,10)
+        self.BIVARIATE_SEARCH_RANGE = 10
+        self.BIVARIATE_SEARCH_POINT = (5,5)
         
 
     def getDistSigmai(self, particles):
@@ -119,6 +119,7 @@ class AlgebraicOpti():
         sigObg: sympy.Matrix
             6x6 2D Symypy matrix of equations representing transformed beam matrix
         '''
+        # Initialize particles/twiss parameters for finding sigma f matrix
         sigi = None
         if not startParticles is None:
               sigi = self.getDistSigmai(startParticles)
@@ -133,12 +134,14 @@ class AlgebraicOpti():
         if (not twiss is None) and (not startParticles is None):
              raise ValueError(
                  "Please enter one parameter for either twiss or startParticles only")
+        
+        # Create sigmaf matrice
         mMat = self.getM(beamline, xVar)
         sigObg = self.getSigmaF(mMat,sigi)
         for i in range(len(sigObg)):
              sigObg[i] = sigObg[i] - sigi[i]
         
-        #   PLEASE REMOVE FLAG AND CLEAN CODE UP
+        #  REMOVE FLAG AND CLEAN CODE UP
         #  Plotting found optimized values
         if plotBeam and twiss is not None:
             raise ValueError(
@@ -149,15 +152,13 @@ class AlgebraicOpti():
             numVar = eq.free_symbols
             roots = None
             variables = None
-            
             if len(numVar) == 1: 
                 roots, variables = self.getRootsUni(eq)
                 roots = [roots]
             elif len(numVar) == 2:
                 roots, variables = self.getRootsMulti(eq)
             elif len(numVar) > 2:
-                raise ValueError(
-                        "Too many variables in equation")
+                raise ValueError("Too many variables in equation")
             else:
                 warnings.warn("No variables detected in equation at specified sigma final matrix position, plotting skipped")
                 flag = False
@@ -171,22 +172,22 @@ class AlgebraicOpti():
                         "No root found, plotting skipped")
                     flag = False
                 if flag:
-                    print(usedRoot)
+                    print(f"root used for plotting: {usedRoot}")  # For testing purposes, might return this in the future
                     for i in xVar:
                         for paramName, key in xVar[i].items():
                             variableIndex = variables.index(key)
                             setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
                     schem = draw_beamline()
                     schem.plotBeamPositionTransform(startParticles,beamline)
-            
-            
         
+        # Return sigma f matrix in LaTex format
         if latex:
             latexList = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
             for i in range(len(latexList)):
                 for ii in range(len(latexList[i])):
                     latexList[i][ii] = sp.latex(sigObg[i,ii])
             return latexList
+        
         return sigObg  # return the objective functions, solutions at zeros
          
     def getRootsUni(self, equation):
@@ -208,23 +209,23 @@ class AlgebraicOpti():
             list of variable name
         '''
         rootSet = set()
-        ind = self.DOMAIN[0]
+        ind = self.UNIVARIATE_SEARCH_RANGE[0]
         tempSet = equation.free_symbols
         if not len(tempSet) == 1:
             raise ValueError("Wrong amount of variables, please use univariate equation")
         var = tempSet.pop()
-        total_intervals = self.DOMAIN[1]
+        total_intervals = self.UNIVARIATE_SEARCH_RANGE[1]
         with tqdm(total=total_intervals, desc="Finding roots...", 
         bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar: #  loading bar
-            while ind <= self.DOMAIN[1]:
+            while ind <= self.UNIVARIATE_SEARCH_RANGE[1]:
                 try:
                     val = sp.nsolve(equation, var ,ind)
                     if val > 0:
                         rootSet.add(val)
                 except ValueError: #  if root not found, ignore error
                     pass
-                pbar.update(self.ROOTINTERVAL)
-                ind = ind + self.ROOTINTERVAL
+                pbar.update(self.SEARCHINTERVAL)
+                ind = ind + self.SEARCHINTERVAL
         rootList = list(rootSet)
         nameList = [var.name]
         return rootList, nameList
@@ -253,7 +254,6 @@ class AlgebraicOpti():
             ordered list of variable names matching with the order of root pairs.
         '''
         ans = None
-        SEARCHPOINT = (5,5)
         rootSet = set()
         sett = equation.free_symbols
         if not len(sett) == 2:
@@ -270,8 +270,8 @@ class AlgebraicOpti():
             nameList.append(i.name)
 
         # checkLine = sp.Eq(y-x, 0)
-        # ind = self.DOMAIN[0]
-        # total_intervals = self.DOMAIN[1]
+        # ind = self.UNIVARIATE_SEARCH_RANGE[0]
+        # total_intervals = self.UNIVARIATE_SEARCH_RANGE[1]
         # with tqdm(total=total_intervals, desc="Finding roots...",
         #           bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
         #     while ind <= total_intervals:
@@ -285,34 +285,34 @@ class AlgebraicOpti():
         #         pbar.update(self.ROOTINTERVAL)
         #         ind = ind + self.ROOTINTERVAL
 
-        searchRange = 10 
+        searchRange = self.BIVARIATE_SEARCH_RANGE
         with tqdm(total=searchRange*2, desc="Finding roots...",
         bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar: #  loading bar
                
             while (searchRange > 0):
                 try:
                     checkLine = sp.Eq(y, searchRange)
-                    ans = sp.nsolve((equation, checkLine), variableOrder, SEARCHPOINT)
+                    ans = sp.nsolve((equation, checkLine), variableOrder, self.BIVARIATE_SEARCH_POINT)
                     if (ans[0] > 0 and ans[1] > 0):
                             tup = tuple(row[0] for row in ans.tolist())
                             rootSet.add(tup)
                 except ValueError: #  if root not found, ignore error
                     pass
-                searchRange = searchRange - 1
-                pbar.update(1)
+                searchRange = searchRange - self.SEARCHINTERVAL
+                pbar.update(self.SEARCHINTERVAL)
 
-            searchRange = 10
+            searchRange = self.BIVARIATE_SEARCH_RANGE
             while (searchRange > 0):
                 try:
                     checkLine = sp.Eq(x, searchRange)
-                    ans = sp.nsolve((equation, checkLine), variableOrder, SEARCHPOINT)
+                    ans = sp.nsolve((equation, checkLine), variableOrder, self.BIVARIATE_SEARCH_POINT)
                     if (ans[0] > 0 and ans[1] > 0):
                             tup = tuple(row[0] for row in ans.tolist())
                             rootSet.add(tup)
                 except ValueError: #  if root not found, ignore error
                     pass
-                searchRange = searchRange - 1
-                pbar.update(1)
+                searchRange = searchRange - self.SEARCHINTERVAL
+                pbar.update(self.SEARCHINTERVAL)
 
         rootList = list(rootSet)
         return rootList, nameList
