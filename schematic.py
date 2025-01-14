@@ -335,7 +335,7 @@ class draw_beamline:
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
-            for item in twiss_aggregated_df:print(twiss_aggregated_df[item])
+            # for item in twiss_aggregated_df:print(twiss_aggregated_df[item])
             colors = ['dodgerblue', 'crimson','yellow','green']
             for i in range(0,2):
                 emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[0]])
