@@ -1,4 +1,19 @@
 '''
+old code for circulating list in schematic
+'''
+# circularList = cycle(lineTwissData)
+#             circularDataNames = cycle(twissDataNames)
+#             def nextL(event):
+#                 data = (next(circularList))
+#                 for linei in range(len(lineList)): 
+#                     line = lineList[linei]
+#                     line.set_ydata(data[linei])
+#                 ax6.relim()
+#                 ax6.autoscale_view()
+#                 ax6.set_ylabel(next(circularDataNames))  #  WORK AND IMPROVE THIS
+#                 plt.draw()
+
+'''
 old main testing code for findSymmetricObjective 
 '''
 # eq = finm[3,2]

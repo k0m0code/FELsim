@@ -11,6 +11,7 @@ from beamline import *
 from ebeam import beam
 import datetime
 from tqdm import tqdm
+from matplotlib.widgets import Button
 
 #Note: plotBeamTransform may show rounded interval values slightly innacurate to actual lengths, but calculations are made with exact values, (rounded values only used for visualization)
 
@@ -338,12 +339,15 @@ class draw_beamline:
             # for item in twiss_aggregated_df:print(twiss_aggregated_df[item])
             colors = ['dodgerblue', 'crimson','yellow','green']
             for i in range(0,2):
-                emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[0]])
-                beta = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[2]])
+                axis = twiss_aggregated_df.index[i]
+                emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[axis, twiss_aggregated_df.keys()[0]])
+                beta = np.array(twiss_aggregated_df.at[axis, twiss_aggregated_df.keys()[2]])
                 envelope = (10 ** 3) * np.sqrt(emittance * beta)
                 ax5.plot(x_axis, envelope,
                          color=colors[i], linestyle='-',
-                         label=r'$E_' + twiss_aggregated_df.index[i] + '$ (mm)')
+                         label=r'$E_' + axis + '$ (mm)')
+                
+
 
             ax5.set_ylabel('Dispersion $D$ (m)')
             ax5.set_xticks(x_axis)
@@ -368,13 +372,16 @@ class draw_beamline:
             plt.xlabel("Distance from start of beam (m)")
             plt.ylabel("Envelope $E$ (mm)")
             ax5.legend(loc='upper left')
-
+            line = None
+            lineList = []
             ax6 = ax5.twinx()
             for i in range(0, 2):
-                dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[i], twiss_aggregated_df.keys()[4]])
-                ax6.plot(x_axis, dispersion,
+                axis = twiss_aggregated_df.index[i]
+                dispersion = np.array(twiss_aggregated_df.at[axis, twiss_aggregated_df.keys()[4]])
+                line, = ax6.plot(x_axis, dispersion,
                              color=colors[i], linestyle='--',
-                             label=r'$D_' + twiss_aggregated_df.index[i] + '$ (mm)')
+                             label=r'$D_' + axis + '$ (mm)')
+                lineList.append(line)
                 
              #for i in range(0, 4):
             #    dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[2], twiss_aggregated_df.keys()[i]])
@@ -414,6 +421,49 @@ class draw_beamline:
                 ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
                 fig.canvas.draw_idle()
             scrollbar.on_changed(update_scroll)
+
+            lineTwissData = []
+            twissDataNames = []
+            for key in twiss_aggregated_df.keys():
+                    lineTwissData.append([twiss_aggregated_df.at['x', key],twiss_aggregated_df.at['y', key]])
+                    twissDataNames.append(key)
+
+            class CircularList:
+                index = 0
+
+                def drawNewLines(self, ind):
+                    data = lineTwissData[ind%len(lineTwissData)]
+                    label = twissDataNames[ind%len(twissDataNames)]
+                    for i, axis in enumerate(['x', 'y']): 
+                        line = lineList[i]
+                        line.set_ydata(data[i])
+
+                        # NOTE: the legend formatting below may be changed in the future if the twiss data frame  name is changed.
+                        line.set_label(label.split(' ')[0] + '$_' + axis + '$')
+
+                    ax6.relim()
+                    ax6.autoscale_view()
+                    ax6.set_ylabel(label)  #  WORK AND IMPROVE THIS
+                    ax6.legend(loc='upper right')
+                    plt.draw()
+
+                def nextL(self, event):
+                    self.index = self.index + 1
+                    self.drawNewLines(self.index)
+
+                def prevL(self, event):
+                    self.index = self.index - 1
+                    self.drawNewLines(self.index)
+
+            axprev = fig.add_axes([dimensions[0]+dimensions[2]+0.02, dimensions[1]-0.04, 0.03, 0.03])
+            axnext = fig.add_axes([dimensions[0]+dimensions[2]+0.05, dimensions[1]-0.04, 0.03, 0.03])
+
+            # axprev = fig.add_axes([])
+            bnext = Button(axnext, 'Next')
+            bprev = Button(axprev, 'Prev')
+            circList = CircularList()
+            bnext.on_clicked(circList.nextL)
+            bprev.on_clicked(circList.prevL)
             
             #  Ploting
             plt.show()
