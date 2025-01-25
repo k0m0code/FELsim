@@ -2,6 +2,7 @@
 from sympy import symbols, Matrix
 import sympy as sp
 import numpy as np
+from scipy import interpolate
 
 #NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
 class beamline:
@@ -17,6 +18,8 @@ class beamline:
         #  [Mass (kg), charge (C), rest energy (MeV)]
         self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
                           "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
+        self.FRINGEDELTAZ = 0.01
+        self.MAGNETICSEGMENTS = [qpdLattice,qpfLattice,dipole,dipole_wedge]
 
     def changeBeamType(self, beamSegments, particleType, kineticE):
         newBeamline = beamSegments
@@ -43,8 +46,22 @@ class beamline:
                 return newBeamline
             except:
                 raise TypeError("Invalid particle type/isotope")
+            
+     #  may use other interpolation methods (cubic, spline, etc)       
+    def interpolateData(self, xData, yData):
+        rbf = interpolate.Rbf(xData, yData)
+        x_new = np.linspace(0, xData[-1], 1000)
+    
+    # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
+    def reconfigureLine(self, beamline, interval = None, fringeType = None):
+        if interval is None:
+            interval = self.FRINGEDELTAZ
+        
+        for segment in beamline:
+            if segment.fringeType is not None:
+                pass # WIP
 
-
+        
 class lattice:
     #  by default every beam type is an electron beam type
     def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
@@ -70,6 +87,7 @@ class lattice:
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
         ##
         self.color = 'none'  #Color of beamline element when graphed
+        self.fringeType = None  # Each segment has no magnetic fringe by default
 
         if not length <= 0:
             self.length = length
