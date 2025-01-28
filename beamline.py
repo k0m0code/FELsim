@@ -3,6 +3,7 @@ from sympy import symbols, Matrix
 import sympy as sp
 import numpy as np
 from scipy import interpolate
+import math
 
 #NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
 class beamline:
@@ -19,7 +20,6 @@ class beamline:
         self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
                           "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
         self.FRINGEDELTAZ = 0.01
-        self.MAGNETICSEGMENTS = [qpdLattice,qpfLattice,dipole,dipole_wedge]
 
     def changeBeamType(self, beamSegments, particleType, kineticE):
         newBeamline = beamSegments
@@ -48,9 +48,15 @@ class beamline:
                 raise TypeError("Invalid particle type/isotope")
             
      #  may use other interpolation methods (cubic, spline, etc)       
-    def interpolateData(self, xData, yData):
+    def interpolateData(self, xData, yData, interval):
         rbf = interpolate.Rbf(xData, yData)
-        x_new = np.linspace(0, xData[-1], 1000)
+        totalLen = xData[-1] - xData[0]
+        xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
+        yRbf = rbf(xNew)
+        return xNew, yRbf
+
+    def createFringe(self, segment):
+        pass
     
     # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
     def reconfigureLine(self, beamline, interval = None, fringeType = None):
@@ -176,11 +182,12 @@ class driftLattice(lattice):
 
 
 class qpfLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
+    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
         super().__init__(length, E0, Q, M, E)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
+        self.fringeType = fringeType
 
     def getSymbolicMatrice(self, numeric = False, length = None, current = None):
         l = None
