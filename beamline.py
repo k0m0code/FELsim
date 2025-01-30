@@ -4,73 +4,10 @@ import sympy as sp
 import numpy as np
 from scipy import interpolate
 import math
-
-#NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
-class beamline:
-    def __init__(self):
-        self.C = 299792458.0  # Speed of light in vacuum (m/s)
-        self.q_e = 1.602176634e-19  # Elementary charge (C)
-        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
-        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
-        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
-        
-        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
-
-        #  [Mass (kg), charge (C), rest energy (MeV)]
-        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
-                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
-        self.FRINGEDELTAZ = 0.01
-
-    def changeBeamType(self, beamSegments, particleType, kineticE):
-        newBeamline = beamSegments
-        try:
-            particleData = self.PARTICLES[particleType]
-            for seg in newBeamline:
-                seg.setMQE(particleData[0],particleData[1],particleData[2])
-                seg.setE(kineticE)
-            return newBeamline
-        except KeyError:
-            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
-            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
-            try:
-                isotopeData = particleType.split(",")
-                A = int(isotopeData[0])
-                Z = int(isotopeData[1])
-                m_i = A * self.m_amu
-                q_i = Z * self.q_e
-                meV = (m_i * self.C ** 2) * self.k_MeV
-
-                for seg in newBeamline:
-                    seg.setMQE(m_i, q_i, meV)
-                    seg.setE(kineticE)
-                return newBeamline
-            except:
-                raise TypeError("Invalid particle type/isotope")
-            
-     #  may use other interpolation methods (cubic, spline, etc)       
-    def interpolateData(self, xData, yData, interval):
-        rbf = interpolate.Rbf(xData, yData)
-        totalLen = xData[-1] - xData[0]
-        xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
-        yRbf = rbf(xNew)
-        return xNew, yRbf
-
-    def createFringe(self, segment):
-        pass
-    
-    # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
-    def reconfigureLine(self, beamline, interval = None, fringeType = None):
-        if interval is None:
-            interval = self.FRINGEDELTAZ
-        
-        for segment in beamline:
-            if segment.fringeType is not None:
-                pass # WIP
-
         
 class lattice:
     #  by default every beam type is an electron beam type
-    def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
+    def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = None):
         '''
         parent class for beamline segment object
 
@@ -93,7 +30,9 @@ class lattice:
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
         ##
         self.color = 'none'  #Color of beamline element when graphed
-        self.fringeType = None  # Each segment has no magnetic fringe by default
+        self.fringeType = fringeType  # Each segment has no magnetic fringe by default
+        self.startPos = None
+        self.endPos = None
 
         if not length <= 0:
             self.length = length
@@ -183,11 +122,10 @@ class driftLattice(lattice):
 
 class qpfLattice(lattice):
     def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E)
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
-        self.fringeType = fringeType
 
     def getSymbolicMatrice(self, numeric = False, length = None, current = None):
         l = None
@@ -237,8 +175,8 @@ class qpfLattice(lattice):
 
 
 class qpdLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
-        super().__init__(length, E0, Q, M, E)
+    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
@@ -290,8 +228,8 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long and a current of {self.current} amps"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
-        super().__init__(length, E0, Q, M, E)
+    def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.color = "forestgreen"
         self.angle = angle  # degrees
     
@@ -336,8 +274,8 @@ class dipole(lattice):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
 
 class dipole_wedge(lattice):
-    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
-        super().__init__(length, E0, Q, M, E)
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.color = "lightgreen"
         self.angle = angle
         self.dipole_length = dipole_length
@@ -383,3 +321,100 @@ class dipole_wedge(lattice):
 
     def __str__(self):
         return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
+    
+
+
+#NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
+class beamline:
+    class fringeField(lattice):
+        B = 0 #  Teslas
+
+        def __init__(self, length, fieldStrength,  E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
+            super().__init__(length, E0, Q, M, E)
+            self.B = fieldStrength
+    
+    def __init__(self, line = []):
+        self.C = 299792458.0  # Speed of light in vacuum (m/s)
+        self.q_e = 1.602176634e-19  # Elementary charge (C)
+        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
+        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
+        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
+        
+        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
+
+        #  [Mass (kg), charge (C), rest energy (MeV)]
+        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
+                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
+        self.FRINGEDELTAZ = 0.01
+
+        self.beamline = line
+        self.totalLen = 0
+        for seg in self.beamline:
+            seg.startPos = self.totalLen
+            self.totalLen = self.totalLen + seg.length
+            seg.endPos = self.totalLen
+
+
+    def changeBeamType(self, beamSegments, particleType, kineticE):
+        newBeamline = beamSegments
+        try:
+            particleData = self.PARTICLES[particleType]
+            for seg in newBeamline:
+                seg.setMQE(particleData[0],particleData[1],particleData[2])
+                seg.setE(kineticE)
+            return newBeamline
+        except KeyError:
+            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
+            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
+            try:
+                isotopeData = particleType.split(",")
+                A = int(isotopeData[0])
+                Z = int(isotopeData[1])
+                m_i = A * self.m_amu
+                q_i = Z * self.q_e
+                meV = (m_i * self.C ** 2) * self.k_MeV
+
+                for seg in newBeamline:
+                    seg.setMQE(m_i, q_i, meV)
+                    seg.setE(kineticE)
+                return newBeamline
+            except:
+                raise TypeError("Invalid particle type/isotope")
+            
+     #  may use other interpolation methods (cubic, spline, etc)  
+     # x = 0 = start of end of segment     
+    def interpolateData(self, xData, yData, interval):
+        rbf = interpolate.Rbf(xData, yData)
+        totalLen = xData[-1] - xData[0]
+        xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
+        yNew = rbf(xNew)
+        return xNew, yNew
+
+    def createFringe(self, segment, fringeType, interval):
+        pass
+    
+    # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
+
+    # TEST: functiom ran on the class' beamline OBJECT, NOT beamline LIST
+    def reconfigureLine(self, interval = None, fringeType = None):
+        if interval is None:
+            interval = self.FRINGEDELTAZ
+
+        beamline = self.beamline
+
+        zPos = []
+        magStrength = []
+        i = 0
+        while (i <= self.totalLen):
+            zPos.append(i)
+            magStrength.append(0)
+            i = i + interval
+        
+        for segment in beamline:
+            if isinstance(segment.fringeType, list):
+                xData = segment.fringeType[0]
+                yData = segment.fringeType[1]
+                xNew, yNew = self.interpolateData(xData, yData, interval)
+
+                segmentZ = []
+                for i in zPos: segmentZ.append(i)
