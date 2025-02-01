@@ -31,8 +31,8 @@ class lattice:
         ##
         self.color = 'none'  #Color of beamline element when graphed
         self.fringeType = fringeType  # Each segment has no magnetic fringe by default
-        self.startPos = None
-        self.endPos = None
+        # self.startPos = None
+        # self.endPos = None
 
         if not length <= 0:
             self.length = length
@@ -332,6 +332,9 @@ class beamline:
         def __init__(self, length, fieldStrength,  E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
             super().__init__(length, E0, Q, M, E)
             self.B = fieldStrength
+
+        def __str__(self) -> str:
+            return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
     
     def __init__(self, line = []):
         self.C = 299792458.0  # Speed of light in vacuum (m/s)
@@ -350,9 +353,9 @@ class beamline:
         self.beamline = line
         self.totalLen = 0
         for seg in self.beamline:
-            seg.startPos = self.totalLen
+            # seg.startPos = self.totalLen
             self.totalLen = self.totalLen + seg.length
-            seg.endPos = self.totalLen
+            # seg.endPos = self.totalLen
 
 
     def changeBeamType(self, beamSegments, particleType, kineticE):
@@ -389,6 +392,45 @@ class beamline:
         xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
         yNew = rbf(xNew)
         return xNew, yNew
+    '''
+    ind: int
+        The indice of the magnetic segment to create fringe
+    '''
+    # assumes the zlist doesnt start at 0, and that the first element is how far from the segment fringe measurement is
+    def _addEnd(self, zList, magnetList, beamline, ind):
+        
+        driftLen = 0
+        ind2 = ind
+        while (ind2 != 0 and isinstance(beamline[ind2 - 1], driftLattice)):
+            driftLen = driftLen + beamline[ind2 - 1].length
+            ind2 -= 1
+        
+        i = 1
+        fringeTotalLen = 0
+        zList.insert(0,0)
+        while (i < len(zList) and fringeTotalLen <= driftLen):
+            fringeLen = zList[i] - zList[i-1]
+            fringeTotalLen += fringeLen
+            print(zList[i-1])
+
+            if fringeTotalLen <= driftLen:
+                fringeSeg = self.fringeField(fringeLen, magnetList[i-1])
+                beamline.insert(ind, fringeSeg)
+            
+            i += 1
+        
+        while (fringeTotalLen > 0):
+            if (beamline[ind-1].length <= fringeTotalLen):
+                fringeTotalLen = fringeTotalLen - beamline[ind-1].length
+                beamline.pop(ind-1)
+                ind -= 1
+            else:
+                beamline[ind-1].length -= fringeTotalLen
+                fringeTotalLen -= fringeTotalLen
+
+
+            
+
 
     def createFringe(self, segment, fringeType, interval):
         pass
@@ -396,19 +438,22 @@ class beamline:
     # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
 
     # TEST: functiom ran on the class' beamline OBJECT, NOT beamline LIST
-    def reconfigureLine(self, interval = None, fringeType = None):
+
+    #  Fringe fields can only exist overlapping drift segments for now
+    #  assume all fringe fields overlap drift segments
+    def reconfigureLine(self, interval = None):
         if interval is None:
             interval = self.FRINGEDELTAZ
 
         beamline = self.beamline
 
-        zPos = []
-        magStrength = []
-        i = 0
-        while (i <= self.totalLen):
-            zPos.append(i)
-            magStrength.append(0)
-            i = i + interval
+        # zPos = []
+        # magStrength = []
+        # i = 0
+        # while (i <= self.totalLen):
+        #     zPos.append(i)
+        #     magStrength.append(0)
+        #     i = i + interval
         
         for segment in beamline:
             if isinstance(segment.fringeType, list):
@@ -416,5 +461,7 @@ class beamline:
                 yData = segment.fringeType[1]
                 xNew, yNew = self.interpolateData(xData, yData, interval)
 
-                segmentZ = []
-                for i in zPos: segmentZ.append(i)
+                self._addEnd(yNew)
+
+                # segmentZ = []
+                # for i in zPos: segmentZ.append(i)
