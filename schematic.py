@@ -448,11 +448,11 @@ class draw_beamline:
                     plt.draw()
 
                 def nextL(self, event):
-                    self.index = self.index + 1
+                    self.index += 1
                     self.drawNewLines(self.index)
 
                 def prevL(self, event):
-                    self.index = self.index - 1
+                    self.index -= 1
                     self.drawNewLines(self.index)
 
             axprev = fig.add_axes([dimensions[0]+dimensions[2]+0.02, dimensions[1]-0.04, 0.03, 0.03])

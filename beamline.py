@@ -3,10 +3,14 @@ from sympy import symbols, Matrix
 import sympy as sp
 import numpy as np
 from scipy import interpolate
+from scipy import optimize
 import math
         
 class lattice:
     #  by default every beam type is an electron beam type
+
+    #  NOTE: default fringe fields for now is noted as [[x list], [y list]] 
+    #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
     def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = None):
         '''
         parent class for beamline segment object
@@ -31,8 +35,8 @@ class lattice:
         ##
         self.color = 'none'  #Color of beamline element when graphed
         self.fringeType = fringeType  # Each segment has no magnetic fringe by default
-        # self.startPos = None
-        # self.endPos = None
+        self.startPos = None
+        self.endPos = None
 
         if not length <= 0:
             self.length = length
@@ -332,6 +336,7 @@ class beamline:
         def __init__(self, length, fieldStrength,  E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
             super().__init__(length, E0, Q, M, E)
             self.B = fieldStrength
+            self.color = 'brown'
 
         def __str__(self) -> str:
             return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
@@ -353,9 +358,9 @@ class beamline:
         self.beamline = line
         self.totalLen = 0
         for seg in self.beamline:
-            # seg.startPos = self.totalLen
-            self.totalLen = self.totalLen + seg.length
-            # seg.endPos = self.totalLen
+            seg.startPos = self.totalLen
+            self.totalLen += seg.length
+            seg.endPos = self.totalLen
 
 
     def changeBeamType(self, beamSegments, particleType, kineticE):
@@ -392,45 +397,57 @@ class beamline:
         xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
         yNew = rbf(xNew)
         return xNew, yNew
+    
+    # def _model(self, x, c, zFac, axis):
+    #     return c * np.exp(-zFac * (x - axis))
+    
+    # def _backModel(self, x, c, zFac, axis):
+    #     return c * np.exp(zFac * (x - axis))
+
+    def _model(self, x, B0, a, origin):
+        return B0 * (1 - ((x-origin)/a)**2) * (np.exp(-(((x-origin)/a)**2)))
+
+    
+    def formulaFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._model, xData, yData, p0= [1,1, pos])
+        return endParams
+
+    
+
     '''
     ind: int
         The indice of the magnetic segment to create fringe
     '''
     # assumes the zlist doesnt start at 0, and that the first element is how far from the segment fringe measurement is
     def _addEnd(self, zList, magnetList, beamline, ind):
-        
+        #  Initialize variables, find total space available for plotting
         driftLen = 0
         ind2 = ind
         while (ind2 != 0 and isinstance(beamline[ind2 - 1], driftLattice)):
             driftLen = driftLen + beamline[ind2 - 1].length
             ind2 -= 1
         
+        #  Create and add fringe fields to list based on input z and B values
         i = 1
         fringeTotalLen = 0
         zList.insert(0,0)
         while (i < len(zList) and fringeTotalLen <= driftLen):
             fringeLen = zList[i] - zList[i-1]
             fringeTotalLen += fringeLen
-            print(zList[i-1])
-
             if fringeTotalLen <= driftLen:
                 fringeSeg = self.fringeField(fringeLen, magnetList[i-1])
                 beamline.insert(ind, fringeSeg)
-            
             i += 1
         
-        while (fringeTotalLen > 0):
+        #  Shorten/eliminate any drift segments overlapping with fringe fields already
+        while (fringeTotalLen > 0 and isinstance(beamline[ind-1], driftLattice)):
             if (beamline[ind-1].length <= fringeTotalLen):
-                fringeTotalLen = fringeTotalLen - beamline[ind-1].length
+                fringeTotalLen -= beamline[ind-1].length
                 beamline.pop(ind-1)
                 ind -= 1
             else:
                 beamline[ind-1].length -= fringeTotalLen
                 fringeTotalLen -= fringeTotalLen
-
-
-            
-
 
     def createFringe(self, segment, fringeType, interval):
         pass
@@ -441,27 +458,74 @@ class beamline:
 
     #  Fringe fields can only exist overlapping drift segments for now
     #  assume all fringe fields overlap drift segments
+
+    # issue: origin of equations may not match with beamline exactly if interval 
+    #        doesnt match beamline interval
     def reconfigureLine(self, interval = None):
         if interval is None:
             interval = self.FRINGEDELTAZ
 
         beamline = self.beamline
+        totalLen = beamline[-1].endPos
 
-        # zPos = []
-        # magStrength = []
-        # i = 0
-        # while (i <= self.totalLen):
-        #     zPos.append(i)
-        #     magStrength.append(0)
-        #     i = i + interval
+        zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
+        y_values = np.zeros_like(zLine)
         
-        for segment in beamline:
+        for segment in reversed(beamline):
             if isinstance(segment.fringeType, list):
-                xData = segment.fringeType[0]
-                yData = segment.fringeType[1]
-                xNew, yNew = self.interpolateData(xData, yData, interval)
+                xData = segment.fringeType[0].copy()
+                yData = segment.fringeType[1].copy()
 
-                self._addEnd(yNew)
+                for i in range(len(xData)): xData[i] += segment.endPos
+                params = self.formulaFit(xData,yData, segment.endPos)
+                yfield = self._model(zLine, *params)
+                
+                zeroTracker = 0
+                while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
+                    yfield[zeroTracker] = 0
+                    zeroTracker += 1
 
+                y_values += yfield
+                # xNew, yNew = self.interpolateData(xData, yData, interval)
+                # self._addEnd(yNew)
                 # segmentZ = []
                 # for i in zPos: segmentZ.append(i)
+
+
+
+
+
+
+        for segment in beamline:
+            if isinstance(segment.fringeType, list):
+                xData = segment.fringeType[0].copy()
+                yData = segment.fringeType[1].copy()
+                for i in range(len(xData)): xData[i] *= -1
+
+                for i in range(len(xData)): xData[i] += segment.startPos
+                params = self.formulaFit(xData,yData, segment.startPos)
+                yfield = self._model(zLine, *params)
+                
+                zeroTracker = len(zLine)-1
+                while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
+                    yfield[zeroTracker] = 0
+                    zeroTracker -= 1
+
+                y_values += yfield
+
+        for segment in beamline:
+            if isinstance(segment, driftLattice):
+                index = np.searchsorted(zLine, segment.startPos, side='right')
+                if segment.startPos in zLine:
+                    index = np.where(zLine == segment.startPos)[0][0]
+                
+                totalDriftLen = segment.length
+                totalDriftLen -= interval
+                while (totalDriftLen > 0):
+                    fringe = self.fringeField(interval, y_values[index])
+
+                    totalDriftLen -= interval
+                
+                
+
+        return zLine, y_values

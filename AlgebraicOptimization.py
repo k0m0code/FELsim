@@ -75,7 +75,7 @@ class AlgebraicOpti():
                     resultArr = resultArr*beamline[i].getSymbolicMatrice(**xVar[i])
                 except KeyError:
                     resultArr = resultArr*beamline[i].getSymbolicMatrice()
-                i = i - 1
+                i -= 1
         return resultArr
     
     def getSigmaF(self, transferM, sigmaI):
@@ -139,7 +139,7 @@ class AlgebraicOpti():
         mMat = self.getM(beamline, xVar)
         sigObg = self.getSigmaF(mMat,sigi)
         for i in range(len(sigObg)):
-             sigObg[i] = sigObg[i] - sigi[i]
+             sigObg[i] -= sigi[i]
         
         #  REMOVE FLAG AND CLEAN CODE UP
         #  Plotting found optimized values
@@ -225,7 +225,7 @@ class AlgebraicOpti():
                 except ValueError: #  if root not found, ignore error
                     pass
                 pbar.update(self.SEARCHINTERVAL)
-                ind = ind + self.SEARCHINTERVAL
+                ind += self.SEARCHINTERVAL
         rootList = list(rootSet)
         nameList = [var.name]
         return rootList, nameList
@@ -298,7 +298,7 @@ class AlgebraicOpti():
                             rootSet.add(tup)
                 except ValueError: #  if root not found, ignore error
                     pass
-                searchRange = searchRange - self.SEARCHINTERVAL
+                searchRange -= self.SEARCHINTERVAL
                 pbar.update(self.SEARCHINTERVAL)
 
             searchRange = self.BIVARIATE_SEARCH_RANGE
@@ -311,7 +311,7 @@ class AlgebraicOpti():
                             rootSet.add(tup)
                 except ValueError: #  if root not found, ignore error
                     pass
-                searchRange = searchRange - self.SEARCHINTERVAL
+                searchRange -= self.SEARCHINTERVAL
                 pbar.update(self.SEARCHINTERVAL)
 
         rootList = list(rootSet)
