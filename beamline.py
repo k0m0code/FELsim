@@ -175,7 +175,7 @@ class qpfLattice(lattice):
         return mat
     
     def __str__(self):
-        return f"QPF beamline segment {self.length} mm long and a current of {self.current} amps"
+        return f"QPF beamline segment {self.length} m long and a current of {self.current} amps"
 
 
 class qpdLattice(lattice):
@@ -448,9 +448,6 @@ class beamline:
             else:
                 beamline[ind-1].length -= fringeTotalLen
                 fringeTotalLen -= fringeTotalLen
-
-    def createFringe(self, segment, fringeType, interval):
-        pass
     
     # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
 
@@ -466,7 +463,7 @@ class beamline:
             interval = self.FRINGEDELTAZ
 
         beamline = self.beamline
-        totalLen = beamline[-1].endPos
+        totalLen = self.totalLen
 
         zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
         y_values = np.zeros_like(zLine)
@@ -491,11 +488,6 @@ class beamline:
                 # segmentZ = []
                 # for i in zPos: segmentZ.append(i)
 
-
-
-
-
-
         for segment in beamline:
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
@@ -513,19 +505,33 @@ class beamline:
 
                 y_values += yfield
 
-        for segment in beamline:
-            if isinstance(segment, driftLattice):
-                index = np.searchsorted(zLine, segment.startPos, side='right')
-                if segment.startPos in zLine:
-                    index = np.where(zLine == segment.startPos)[0][0]
+        i = 0
+        while (i < len(beamline)):
+            if isinstance(beamline[i], driftLattice):
+                #  Find in x the value that first comes after start.pos
+                index = np.searchsorted(zLine, beamline[i].startPos, side='right')
                 
-                totalDriftLen = segment.length
-                totalDriftLen -= interval
-                while (totalDriftLen > 0):
-                    fringe = self.fringeField(interval, y_values[index])
+                totalDriftLen = beamline[i].length
+                totalFringeLen = 0
 
-                    totalDriftLen -= interval
-                
+                fringeLen = zLine[index] - beamline[i].startPos
+                totalDriftLen -= fringeLen
+                while (totalDriftLen >= 0 and index < len(y_values) - 1):
+                    totalFringeLen += fringeLen
+                    fringe = self.fringeField(fringeLen, y_values[index])
+                    beamline.insert(i, fringe)
+
+                    i += 1 # for adding a fringe field
+                    index += 1 # Get next y values
+                    fringeLen = zLine[index] - zLine[index-1] 
+                    totalDriftLen -= fringeLen
+
+                if (not totalDriftLen == 0 and index < len(y_values)):
+                    fringe = self.fringeField(totalDriftLen, y_values[index])
+                    #WIP adding to final leftover interval
+
+                beamline[i].length -= totalFringeLen
+            i += 1
                 
 
         return zLine, y_values
