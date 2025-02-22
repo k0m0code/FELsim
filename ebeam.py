@@ -219,7 +219,22 @@ class beam:
         ebeam = beam()
         dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
         return twiss.loc[variable].loc[r"$\phi$ (deg)"]
+    
+    def envelope(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        emittance = (10 ** -6) * twiss.loc[variable].loc[r"$\epsilon$ ($\pi$.mm.mrad)"]
+        beta = twiss.loc[variable].loc[r"$\beta$ (m)"]
+        envelope = (10 ** 3) * np.sqrt(emittance * beta)
+        return envelope
+    
+    def disper(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$D$ (mm)"]
 
+
+        
 
     
 
