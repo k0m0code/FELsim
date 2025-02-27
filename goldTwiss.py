@@ -42,10 +42,10 @@ Generate beamline() elements
 
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
-path3 = r"/Users/christiankomo/Desktop/Documents/FELsim"
+
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FELsim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path3)
+directory = Path(path2)
 # file_path = directory / 'Beamline_elements.xlsx'
 file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
