@@ -57,26 +57,79 @@ beamlineUH = excel.create_beamline()
 schem = draw_beamline()
 beamtype = beamline()
 line_UH = beamtype.changeBeamType(beamlineUH, "electron", 40)
-for i in line_UH: print(i)
-obj = schem.plotBeamPositionTransform(beam_dist, line_UH[:-34], 10)
-for i in obj: print(i)
 
-line = line_UH[:4]
+segments = 39
+line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
-variables = {1: ["I", "current", lambda num:num],
-             3: ["I2", "current", lambda num:num]}
-startPoint = {"I": {"bounds": (0,10), "start": 1},
-           "I2": {"bounds": (0, 10), "start": 1}}
-objectives = {3:[{"measure": ["x", "dispersion"], "goal": 0, "weight":1},
-                {"measure": ["y", "dispersion"], "goal": 0, "weight":1},
-                {"measure": ["x", "alpha"], "goal": 0, "weight":1},
-                {"measure": ["y", "alpha"], "goal": 0, "weight":1}],
-             }
+# schem.plotBeamPositionTransform(beam_dist, line,0.01)
+
+
+# variables = {1: ["I", "current", lambda num:num],
+#              3: ["I2", "current", lambda num:num]}
+# startPoint = {"I": {"bounds": (0,10), "start": 1},
+#            "I2": {"bounds": (0, 10), "start": 1}}
+# objectives = {8: [{"measure": ["x", "alpha"], "goal": -5, "weight":1},]
+#                #  {"measure": ["y", "beta"], "goal": 1, "weight":1}],
+#                # 9:[{"measure": ["x", "alpha"], "goal": 0, "weight":1},
+#                #  {"measure": ["y", "alpha"], "goal": 0, "weight":1}]
+#              }
+# result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True)
+line[1].current =  0.9989681933
+line[3].current = 1.044851479
+
+# variables = {10: ["I", "current", lambda num:num]}
+# startPoint = {"I": {"bounds": (0,10), "start": 1}}
+
+# objectives = {10: [{"measure": ["x", "alpha"], "goal": 5, "weight": 1},
+#                    {"measure": ["y", "alpha"], "goal": -5, "weight": 20}]}
+#
+# result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True)
+line[10].current = 3.5
+
+# variables = {16: ["I", "current", lambda num:num],
+#              18: ["I2", "current", lambda num:num],
+#              20: ["I", "current", lambda num:num]}
+# startPoint = {"I": {"bounds": (0,10), "start": 2},
+#               "I2": {"bounds": (0, 10), "start": 2}}
+
+# objectives = {24: [{"measure": ["x", "envelope"], "goal": 0, "weight": 1},
+#                    {"measure": ["y", "alpha"], "goal": 5, "weight": 10}],
+#               16: [{"measure": ["y", "envelope"], "goal": 1.4, "weight": 1}],
+#               20: [{"measure": ["y", "envelope"], "goal": 2, "weight": 1}]}
+#
+# result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+line[16].current =  2.882858241
+line[18].current =  5.108214683
+line[20].current = 2.882858241
+
+schem.plotBeamPositionTransform(beam_dist, line,0.01)
+
+variables = {27: ["I", "current", lambda num:num]}
+startPoint = {"I": {"bounds": (0,10), "start": 1}}
+
+objectives = {
+               # 32: [{"measure": ["y", "envelope"], "goal": 0.7, "weight": 1}],
+               28: [{"measure": ["x", "envelope"], "goal": 0, "weight": 10}],
+               27: [{"measure": ["y", "alpha"], "goal": -2.5, "weight": 1}]
+              }
 
 result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
 
-line.append(line_UH[5])
+schem.plotBeamPositionTransform(beam_dist, line,0.01)
+for i in line: print(i)
 
-schem.plotBeamPositionTransform(beam_dist, line,0.05)
 
 
+'''
+ALGEBRAIC OPTIMIZATION WORKPLACE BELOW
+'''
+# testLine = line_UH[16:21]
+# alg = AlgebraicOpti()
+# xvar = {
+#          0: {"current": "I2"},
+#          2: {"current": "I"},
+#          4: {"current": "I2"}
+# }
+# alg.BIVARIATE_SEARCH_RANGE = 5
+# finm = alg.findSymmetricObjective(testLine, xvar, beam_dist, plotBeam= [2,3])
+# print(finm[0,0])

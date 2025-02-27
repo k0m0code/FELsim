@@ -166,20 +166,25 @@ class AlgebraicOpti():
                 try:
                     #  The root pair used is the first one in the list if a equation has only one solution,
                     #  might make this more noticable to change in the future if user wants to use not only first root
-                    usedRoot = roots[0]
+                    test = roots[0]
                 except IndexError:
                     warnings.warn(
                         "No root found, plotting skipped")
                     flag = False
                 if flag:
-                    print(f"root used for plotting: {usedRoot}")  # For testing purposes, might return this in the future
-                    for i in xVar:
-                        for paramName, key in xVar[i].items():
-                            variableIndex = variables.index(key)
-                            setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
-                    schem = draw_beamline()
-                    schem.plotBeamPositionTransform(startParticles,beamline)
-        
+                    with tqdm(total=len(roots), desc="Finding roots...",
+                     bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar: #  loading bar
+                        for usedRoot, i in enumerate(roots):
+                            print(f"root used for plotting: {usedRoot}")  # For testing purposes, might return this in the future
+                            for i in xVar:
+                                for paramName, key in xVar[i].items():
+                                    variableIndex = variables.index(key)
+                                    setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
+                            pbar.update(i)
+                            schem = draw_beamline()
+                            schem.plotBeamPositionTransform(startParticles,beamline)
+                            
+            
         # Return sigma f matrix in LaTex format
         if latex:
             latexList = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
