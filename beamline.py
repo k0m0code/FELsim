@@ -406,6 +406,9 @@ class beamline:
 
     def _model(self, x, B0, a, origin):
         return B0 * (1 - ((x-origin)/a)**2) * (np.exp(-(((x-origin)/a)**2)))
+    
+    # def _model(self, x, B0, std, origin):
+        # return B0 * np.exp(-((x - origin)**2)/(2*(std**2)))
 
     
     def formulaFit(self, xData, yData, pos):
@@ -468,12 +471,14 @@ class beamline:
         zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
         y_values = np.zeros_like(zLine)
         
+        #  add to end of beam segments
         for segment in reversed(beamline):
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
                 yData = segment.fringeType[1].copy()
 
-                for i in range(len(xData)): xData[i] += segment.endPos
+                for i in range(len(xData)): xData[i] += segment.endPos  # adjust for z position
+               
                 params = self.formulaFit(xData,yData, segment.endPos)
                 yfield = self._model(zLine, *params)
                 
@@ -483,11 +488,8 @@ class beamline:
                     zeroTracker += 1
 
                 y_values += yfield
-                # xNew, yNew = self.interpolateData(xData, yData, interval)
-                # self._addEnd(yNew)
-                # segmentZ = []
-                # for i in zPos: segmentZ.append(i)
 
+        #  add to the front of beam segments
         for segment in beamline:
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
@@ -525,8 +527,9 @@ class beamline:
                     index += 1 # Get next y values
                     fringeLen = zLine[index] - zLine[index-1] 
                     totalDriftLen -= fringeLen
+                    print(totalDriftLen)
 
-                if (not totalDriftLen == 0 and index < len(y_values)):
+                if (not totalDriftLen <= 0 and index < len(y_values)):
                     fringe = self.fringeField(totalDriftLen, y_values[index])
                     #WIP adding to final leftover interval
 
