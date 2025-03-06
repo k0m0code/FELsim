@@ -197,7 +197,8 @@ class draw_beamline:
             minVals[1] = minVals[3]
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
-                                   saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True):
+                                   saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True,
+                                   showIndice = False):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -223,6 +224,8 @@ class draw_beamline:
         matchScaling: bool, optional
             Whether to have same x' vs x and y' vs y axis scaling or not.
             defineLim must be True for same scaling setting to work
+        showIndice: bool, optional
+            Option to display each segment's indice visually
 
 
 
@@ -397,9 +400,18 @@ class draw_beamline:
             ax5.set_ylim(ymin-(ymax*0.05), ymax)
             ymin, ymax = ax5.get_ylim()
             blockstart = 0
-            for seg in beamSegments:
+            moveUp = True
+            for i, seg in enumerate(beamSegments):
                 rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
                 ax5.add_patch(rectangle)
+                if showIndice:
+                    moveUp = not moveUp
+                    recx = rectangle.get_x()
+                    recy = rectangle.get_y()
+                    if moveUp:
+                        ax5.text(recx, recy/2, str(i), size = 'small')
+                    else:
+                        ax5.text(recx, recy, str(i), size = 'small')
                 blockstart += seg.length
 
             #  Important to leave tight_layout before scrollbar creation

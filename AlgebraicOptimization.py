@@ -92,7 +92,8 @@ class AlgebraicOpti():
     # is it possible to have multiple parameter variables for a single beam element? 
 
     # if values plotted, should we return them or print them?
-    def findSymmetricObjective(self, beamline, xVar, startParticles = None, twiss = None, plotBeam = None, latex = False):
+    def findSymmetricObjective(self, beamline, xVar, startParticles = None, twiss = None, plotBeam = None, latex = False,
+                               plotEquation = False):
         '''
         returns the final sigma beam matrix from beamline and twiss/particle parameters. 
         final sigma matrix made as to return a symmetric beamline regarding each twiss parameter
@@ -121,6 +122,7 @@ class AlgebraicOpti():
         '''
         # Initialize particles/twiss parameters for finding sigma f matrix
         sigi = None
+        eq = None
         if not startParticles is None:
               sigi = self.getDistSigmai(startParticles)
         elif not twiss is None:
@@ -154,7 +156,6 @@ class AlgebraicOpti():
             variables = None
             if len(numVar) == 1: 
                 roots, variables = self.getRootsUni(eq)
-                roots = [roots]
             elif len(numVar) == 2:
                 roots, variables = self.getRootsMulti(eq)
             elif len(numVar) > 2:
@@ -172,19 +173,24 @@ class AlgebraicOpti():
                         "No root found, plotting skipped")
                     flag = False
                 if flag:
-                    with tqdm(total=len(roots), desc="Finding roots...",
-                     bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar: #  loading bar
-                        for usedRoot, i in enumerate(roots):
-                            print(f"root used for plotting: {usedRoot}")  # For testing purposes, might return this in the future
-                            for i in xVar:
-                                for paramName, key in xVar[i].items():
-                                    variableIndex = variables.index(key)
+                    for i, usedRoot in enumerate(roots):
+                        print(f"root used for plotting: {usedRoot}")  # For testing purposes, might return this in the future
+                        for i in xVar:
+                            for paramName, key in xVar[i].items():
+                                variableIndex = variables.index(key)
+                                if (len(numVar) == 1):
+                                    setattr(beamline[i], paramName, float(usedRoot))
+                                else:    
                                     setattr(beamline[i], paramName, float(usedRoot[variableIndex]))
-                            pbar.update(i)
-                            schem = draw_beamline()
-                            schem.plotBeamPositionTransform(startParticles,beamline)
+                        schem = draw_beamline()
+                        schem.plotBeamPositionTransform(startParticles,beamline)
                             
-            
+                            
+        if plotEquation and len(numVar) == 1:
+            sp.plot(eq) 
+        elif plotEquation and len(numVar) == 2:
+            sp.plot_implicit(eq)
+        
         # Return sigma f matrix in LaTex format
         if latex:
             latexList = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
