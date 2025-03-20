@@ -1,6 +1,10 @@
 #   Authors:
 from pathlib import Path
+
+import numpy as np
+
 from ebeam import beam
+from beamline import lattice
 from schematic import draw_beamline
 from excelElements import ExcelElements
 from beamline import *
@@ -13,27 +17,44 @@ import sympy.plotting as plot
 import sympy as sp
 
 '''
-Beam Properties initialization
+-- Beam Properties initial conditions --
+Ref: PhysRevAccelBeams.22.040704 (2019)
+
+Transverse emittance normalized: 8 pi.mm.mrad
 Energy spread between 0.1 to 0.5 %
 Bunch length 1 ps (1 deg) to 2 ps (2 deg) 
 '''
-ebeam = beam()
+Energy = 40  # Electron beam energy (MeV)
 f = 2856 * (10 ** 6)  # Accelerator RF frequency (Hz)
+bunch_spread = 2  # std in pico-second
+energy_std_percent = 0.5  # Energy standard deviation in percent of the mean (%)
+h = 5 * (10 ** 9)  # Energy chirp from the linac (s-1)
 
-nb_particles = int(1e4)
+epsilon_n = 8  # Transverse emittance normalized (pi.mm.mrad) epsilon_n = beta * gamma * epsilon_geometric
+x_std = 0.8  # (mm)
+y_std = 0.8  # (mm)
 
-bunch_spread = 1  # std in pico-second
+nb_particles = 10000
+
+# Transverse phase space Initial conditions as a function of the normalized emittance and beam size
+relat = lattice(1,E=Energy)
+norm = relat.gamma * relat.beta
+epsilon = epsilon_n / norm
+x_prime_std = epsilon / x_std  # (mrad)
+y_prime_std = epsilon / y_std  # (mrad)
+
+# Longitudinal phase space normalization and conversion
 tof_std = bunch_spread * (10 ** -9) * f  # (10 ** -3) (dToF / T)
-energy_std = 1  # (10 ** -3) (dW / W)
+gen_tof = np.random.normal(0, tof_std, size=(nb_particles, 1))
+energy_std = energy_std_percent * 10 # (10 ** -3) (dW / W)
 
-x_std = 1  # (mm)
-x_prime_std = 0.1  # (mrad)
-y_std = 1  # (mm)
-y_prime_std = 0.1  # (mrad)
-
+ebeam = beam()
 beam_dist = ebeam.gen_6d_gaussian(0,
                                   [x_std,x_prime_std,y_std,y_prime_std,tof_std,energy_std],
                                   nb_particles)
+tof_dist = beam_dist[:,4] / f  # (10 ** -3) s
+print(np.std(tof_dist))
+beam_dist[:,5] += h * tof_dist
 
 '''
 Import UH beamline lattice from an Excel file
@@ -45,7 +66,7 @@ pd.set_option('display.max_rows', None)
 path3 = r"/Users/christiankomo/Desktop/Documents/FELsim"
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FELsim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path3)
+directory = Path(path2)
 # file_path = directory / 'Beamline_elements.xlsx'
 file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
@@ -65,9 +86,9 @@ replace all dipole wedge elements with drift elements
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 beamtype = beamline()
-line_UH = beamtype.changeBeamType(beamlineUH, "electron", 40)
+line_UH = beamtype.changeBeamType(beamlineUH, "electron", Energy)
 
-segments = 53
+segments = 56
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
 # schem.plotBeamPositionTransform(beam_dist, line,0.01)
@@ -86,14 +107,16 @@ opti = beamOptimizer(line, beam_dist)
 line[1].current =  0.9989681933
 line[3].current = 1.044851479
 
-# variables = {10: ["I", "current", lambda num:num]}
-# startPoint = {"I": {"bounds": (0,10), "start": 1}}
+variables = {10: ["I", "current", lambda num:num]}
+startPoint = {"I": {"bounds": (0,10), "start": 1}}
 
 # objectives = {10: [{"measure": ["x", "alpha"], "goal": 5, "weight": 1},
 #                    {"measure": ["y", "alpha"], "goal": -5, "weight": 20}]}
-#
-# result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True)
-line[10].current = 3.2
+objectives = {15: [{"measure": ["x", "dispersion"], "goal": 0, "weight": 1}]}
+
+
+result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam=True, printResults=True)
+print(line[10].current)  # 4! 3.2
 
 # variables = {16: ["I", "current", lambda num:num],
 #              18: ["I2", "current", lambda num:num],
@@ -160,24 +183,34 @@ startPoint = {"I": {"bounds": (0,10), "start": 2},
 
 objectives = {            
                37: [
-                  #  {"measure": ["x", "alpha"], "goal": 0, "weight": 1}, 
+                     {"measure": ["x", "alpha"], "goal": 0, "weight": 1},
                     {"measure": ["y", "alpha"], "goal": 0, "weight": 1},
                     # {"measure": ["x", "envelope"], "goal": 1.5, "weight": 100},
-                    {"measure": ["y", "envelope"], "goal": 0.75, "weight": 100}
+                    #{"measure": ["y", "envelope"], "goal": 0.75, "weight": 100}
                     ]
               }
 
-# result = opti.calc("COBYLA", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+#"COBYLA"
 
-line[33].current = 2.391954557
-line[35].current = 3.483629052
-line[37].current = 1.464965657
+I1 = 2.391954557  # 2.391954557
+I2 = 3.483629052  # 3.483629052
+I3 = 1.464965657  # 1.464965657
 
-line[43].current = 2.391954557
-line[41].current = 3.483629052
-line[39].current = 1.464965657
+factor1 = I2 / (I1 + I3)
+factor0 = I2 / I1
+factor2 = I3 / I2
 
-schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
+#line[33].current = I1
+#line[35].current = I2
+#line[37].current = I3
+
+line[43].current = line[33].current
+line[41].current = line[35].current
+line[39].current = line[37].current
+
+
+schem.plotBeamPositionTransform(beam_dist, line,1, showIndice=True)
 
 
 
