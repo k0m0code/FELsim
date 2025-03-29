@@ -42,10 +42,10 @@ Generate beamline() elements
 
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
-path3 = r"/Users/christiankomo/Desktop/Documents/FELsim"
+
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FELsim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path3)
+directory = Path(path2)
 # file_path = directory / 'Beamline_elements.xlsx'
 file_path = directory / 'Beamline_elements.xlsx'
 excel = ExcelElements(file_path)
@@ -67,10 +67,10 @@ schem = draw_beamline()
 beamtype = beamline()
 line_UH = beamtype.changeBeamType(beamlineUH, "electron", 40)
 
-segments = 53
+segments = 30
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
-# schem.plotBeamPositionTransform(beam_dist, line,0.01)
+# schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice= True)
 
 
 # variables = {1: ["I", "current", lambda num:num],
@@ -95,62 +95,52 @@ line[3].current = 1.044851479
 # result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True)
 line[10].current = 3.2
 
-# variables = {16: ["I", "current", lambda num:num],
-#              18: ["I2", "current", lambda num:num],
-#              20: ["I", "current", lambda num:num]}
-# startPoint = {"I": {"bounds": (0,10), "start": 2},
-#               "I2": {"bounds": (0, 10), "start": 2}}
-# 
-# objectives = {
-#             # 24: [{"measure": ["x", "envelope"], "goal": 0, "weight": 1},
-#             #        {"measure": ["y", "alpha"], "goal": 5, "weight": 10}],
-#               16: [{"measure": ["y", "envelope"], "goal": 0.5, "weight": 100}],
-#               20: [{"measure": ["y", "envelope"], "goal": 0.5, "weight": 100}]}
+# schem.plotBeamPositionTransform(beam_dist, line,1, showIndice=True)
+
+
+variables = {16: ["I", "current", lambda num:num],
+             18: ["I2", "current", lambda num:num],
+             20: ["I", "current", lambda num:num]}
+startPoint = {"I": {"bounds": (0,10), "start": 2},
+              "I2": {"bounds": (0, 10), "start": 2}}
+
+objectives = {
+              20: [{"measure": ["y", "beta"], "goal": 6.24, "weight": 1},
+                  {"measure": ["x", "beta"], "goal": 7.44, "weight": 1}],
+              22: [{"measure": ["x", "envelope"], "goal": 0, "weight": 100}],
+              27: [{"measure": ["y", "envelope"], "goal": 0, "weight": 100}],
+              }
 # 
 # result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+# line[16].current =  2.4
+# line[18].current =  5.108214683
+# line[20].current = 3.142089844
 
-line[16].current =  2.4
-line[18].current =  5.108214683
+variables = {27: ["I", "current", lambda num:num]}
+startPoint = {"I": {"bounds": (0,10), "start": 2}}
 
-
-# variables = {20: ["I", "current", lambda num:num],
-#              18: ["I2", "current", lambda num:num]}
-# startPoint = {"I": {"bounds": (0,4), "start": 2},
-#               "I2": {"bounds": (0, 4), "start": 2}}
-
-# objectives = {
-#                # 32: [{"measure": ["y", "envelope"], "goal": 0.7, "weight": 1}],
-#                25: [{"measure": ["x", "envelope"], "goal": 0, "weight": 1}],
-#                26: [{"measure": ["y", "alpha"], "goal":3.29, "weight": 1}],
-#             #    27: [{"measure": ["y", "alpha"], "goal": -2.5, "weight": 1}]
-#               }
-
-# result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
-line[20].current = 3.142089844
-
-
-# variables = {27: ["I", "current", lambda num:num]}
-# startPoint = {"I": {"bounds": (0,10), "start": 2}}
-
-# objectives = {
-#                # 32: [{"measure": ["y", "envelope"], "goal": 0.7, "weight": 1}],
-#               #  28: [{"measure": ["x", "envelope"], "goal": 0, "weight": 1}, 
-#               #       {"measure": ["x", "alpha"], "goal": 0, "weight": 1}],
-#                32: [{"measure": ["y", "alpha"], "goal": 20, "weight": 1} ]
+objectives = {
+              #  32: [{"measure": ["y", "envelope"], "goal": 0.7, "weight": 1}],
+              #  28: [{"measure": ["x", "envelope"], "goal": 0, "weight": 1}, 
+              #       {"measure": ["x", "alpha"], "goal": 0, "weight": 1}],
+              #  32: [{"measure": ["y", "alpha"], "goal": 20, "weight": 1} ],
                 
-#             #    27: [{"measure": ["y", "alpha"], "goal": -2.5, "weight": 1}]
-#               }
+               27: [{"measure": ["y", "alpha"], "goal": -1.75, "weight": 1}],
+               29: [{"measure": ["x", "envelope"], "goal": 0, "weight": 30}]
+              }
 
-# result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+# result = opti.calc("TNC", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
 line[27].current = 4.694135938
+
+schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
 
 variables = {
              37: ["I", "current", lambda num:num],
              35: ["I2", "current", lambda num:num],
              33: ["I3", "current", lambda num:num],
-            #  39: ["I", "current", lambda num:num],
-            #  41: ["I2", "current", lambda num:num],
-            #  43: ["I3", "current", lambda num:num],
+             39: ["I", "current", lambda num:num],
+             41: ["I2", "current", lambda num:num],
+             43: ["I3", "current", lambda num:num],
              }
              
 startPoint = {"I": {"bounds": (0,10), "start": 2},
@@ -158,16 +148,26 @@ startPoint = {"I": {"bounds": (0,10), "start": 2},
               "I3": {"bounds": (0, 10)}, 
                 }              
 
-objectives = {            
+objectives = {    
                37: [
-                  #  {"measure": ["x", "alpha"], "goal": 0, "weight": 1}, 
+                   {"measure": ["x", "alpha"], "goal": 0, "weight": 1}, 
                     {"measure": ["y", "alpha"], "goal": 0, "weight": 1},
-                    # {"measure": ["x", "envelope"], "goal": 1.5, "weight": 100},
-                    {"measure": ["y", "envelope"], "goal": 0.75, "weight": 100}
-                    ]
+                    {"measure": ["x", "envelope"], "goal": 1.5, "weight": 10},
+                    {"measure": ["y", "envelope"], "goal": 0.75, "weight": 10}
+                    ],
+                # 46: [
+                #      {"measure": ["x", "envelope"], "goal": 0, "weight": 1}, 
+                # ],
+                49: [
+                    {"measure": ["y", "envelope"], "goal": 0, "weight": 10}, 
+                ],
+                # 43: [
+                #     {"measure": ["y", "alpha"], "goal": 15, "weight": 10}, 
+                # ]
+
               }
 
-# result = opti.calc("COBYLA", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+result = opti.calc("COBYLA", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
 
 line[33].current = 2.391954557
 line[35].current = 3.483629052
@@ -176,6 +176,10 @@ line[37].current = 1.464965657
 line[43].current = 2.391954557
 line[41].current = 3.483629052
 line[39].current = 1.464965657
+
+line[50].current = 0
+
+
 
 schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
 
