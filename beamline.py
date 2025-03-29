@@ -366,16 +366,32 @@ class dipole_wedge(lattice):
         # Hard edge model for the wedge magnets
         By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * sp.pi / 180 / dipole_length)
         R = self.M*self.C*self.beta*self.gamma / (self.Q * By)
+
         k = sp.Abs((self.Q * By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
         eta = (a * sp.pi / 180) * l / self.length # Verify
-        E = (l * k) / ((sp.cos(eta)) ** 2)
-        T = sp.tan(eta)
+        #E = (l * k) / ((sp.cos(eta)) ** 2)
+        Tx = sp.tan(eta)
+
+        '''
+        https://www.slac.stanford.edu/cgi-bin/getdoc/slac-r-075.pdf page 49.
+        
+        phi = K * g * h  g * (1 + sin^2 a) / cos a. 
+        
+        Fringe field contribution:
+        K = int( By(z) * (By_max - By(z)) / (g * By_max^2), dz ) 
+        h = 1 / rho_0, dipole radius
+        g, pole gap
+        
+        hard-edge model, phi = 0
+        '''
+        phi = 0
+        Ty = sp.tan(eta - phi)
         M56 = self.f * (l / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         mat = Matrix([[1, 0, 0, 0, 0, 0],
-                      [-T / R, 1, 0, 0, 0, 0],
+                      [Tx / R, 1, 0, 0, 0, 0],
                       [0, 0, 1, 0, 0, 0],
-                      [0, 0, -(T + E / 3) / R, 1, 0, 0],
+                      [0, 0, -Ty / R, 1, 0, 0],
                       [0, 0, 0, 0, 1, M56],
                       [0, 0, 0, 0, 0, 1]])
         

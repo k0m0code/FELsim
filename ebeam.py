@@ -59,40 +59,46 @@ class beam:
 
         twiss_data = []
 
-        delta_energy = dist_cov[5, 5]
+        sigma_delta = dist_cov[5, 5]  # variance of (10^-3 δW/W)^2, dimensionless
+
         for i in range(3):
+            idx, idx_prime = 2 * i, 2 * i + 1
 
-            covar = dist_cov[2 * i, 2 * i + 1]
-            var = dist_cov[2 * i, 2 * i]
-            var_prime = dist_cov[2 * i + 1, 2 * i + 1]
-            covar_dispersion = dist_cov[2 * i, 5]
-            covar_dispersion_prime = dist_cov[2 * i + 1, 5]
+            var = dist_cov[idx, idx]
+            var_prime = dist_cov[idx_prime, idx_prime]
+            covar = dist_cov[idx, idx_prime]
 
-            if i == 2:
-                emittance = np.sqrt(var * var_prime - covar ** 2)
-                alpha = - covar / emittance
-                beta = var / emittance
-                gamma = var_prime / emittance
-                dispersion = 0.0
-                dispersion_prime = 0.0
+            if i < 2:
+                D = dist_cov[idx, 5] / sigma_delta
+                D_prime = dist_cov[idx_prime, 5] / sigma_delta
+
+                # Dispersion-corrected variances
+                var_disp_free = var - D ** 2 * sigma_delta
+                var_prime_disp_free = var_prime - D_prime ** 2 * sigma_delta
+                covar_disp_free = covar - D * D_prime * sigma_delta
+
+                # Intrinsic emittance
+                epsilon = np.sqrt(var_disp_free * var_prime_disp_free - covar_disp_free ** 2)
+
+                alpha = -covar_disp_free / epsilon
+                beta = var_disp_free / epsilon
+                gamma = var_prime_disp_free / epsilon
+
+                dispersion = D
+                dispersion_prime = D_prime
             else:
-                alpha_emittance = - covar + covar_dispersion * covar_dispersion_prime / delta_energy
-                beta_emittance = var - (covar_dispersion ** 2) / delta_energy
-                gamma_emittance = var_prime - (covar_dispersion_prime ** 2) / delta_energy
-                emittance = np.sqrt(beta_emittance * gamma_emittance - alpha_emittance ** 2)
-                alpha = alpha_emittance / emittance
-                beta = beta_emittance / emittance
-                gamma = gamma_emittance / emittance
-                dispersion = covar_dispersion / np.sqrt(delta_energy)
-                dispersion_prime = covar_dispersion_prime / np.sqrt(delta_energy)
+                # Longitudinal plane (no dispersion)
+                epsilon = np.sqrt(var * var_prime - covar ** 2)
+                alpha = -covar / epsilon
+                beta = var / epsilon
+                gamma = var_prime / epsilon
+                dispersion = dispersion_prime = 0.0
 
-            phi = (90 /np.pi) * np.arctan2(2 * alpha, gamma - beta) / 2
-            if phi > 0:
-                phi = phi - 90
-            else:
-                phi = phi + 90
+            # Standardized phase advance φ calculation
+            phi_rad = 0.5 * np.arctan2(2 * alpha, gamma - beta)
+            phi_deg = np.rad2deg(phi_rad)
 
-            twiss_data.append([emittance, alpha, beta, gamma, dispersion, dispersion_prime, phi])
+            twiss_data.append([epsilon, alpha, beta, gamma, dispersion, dispersion_prime, phi_deg])
 
         twiss = pd.DataFrame(twiss_data, columns=label_twiss, index=label_axes[:3])
 
