@@ -28,13 +28,13 @@ Energy = 40  # Electron beam energy (MeV)
 f = 2856 * (10 ** 6)  # Accelerator RF frequency (Hz)
 bunch_spread = 2  # std in pico-second
 energy_std_percent = 0.5  # Energy standard deviation in percent of the mean (%)
-h = 5 * (10 ** 9)  # Energy chirp from the linac (s-1)
+h = 5 * (10 ** 9)  # Energy chirp from the linac (1/s)
 
 epsilon_n = 8  # Transverse emittance normalized (pi.mm.mrad) epsilon_n = beta * gamma * epsilon_geometric
 x_std = 0.8  # (mm)
 y_std = 0.8  # (mm)
 
-nb_particles = 10000
+nb_particles = 1000
 
 # Transverse phase space Initial conditions as a function of the normalized emittance and beam size
 relat = lattice(1,E=Energy)
@@ -53,7 +53,6 @@ beam_dist = ebeam.gen_6d_gaussian(0,
                                   [x_std,x_prime_std,y_std,y_prime_std,tof_std,energy_std],
                                   nb_particles)
 tof_dist = beam_dist[:,4] / f  # (10 ** -3) s
-print(np.std(tof_dist))
 beam_dist[:,5] += h * tof_dist
 
 '''
@@ -132,8 +131,8 @@ print(line[10].current)  # 4! 3.2
 # 
 # result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
 
-line[16].current =  2.4
-line[18].current =  5.108214683
+line[16].current = 2.4
+line[18].current = 5.108214683
 
 
 # variables = {20: ["I", "current", lambda num:num],
@@ -210,7 +209,7 @@ line[41].current = line[35].current
 line[39].current = line[37].current
 
 
-schem.plotBeamPositionTransform(beam_dist, line,1, showIndice=True)
+schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
 
 
 

@@ -167,7 +167,7 @@ class driftLattice(lattice):
             if numeric: l = length  # length should be number
             else: l = symbols(length, real = True)  # length should be string
         
-        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = -(l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
         mat = Matrix([[1, l, 0, 0, 0, 0],
                       [0, 1, 0, 0, 0, 0],
                       [0, 0, 1, l, 0, 0],
@@ -214,7 +214,7 @@ class qpfLattice(lattice):
         M33 = sp.cosh(self.theta)
         M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
         M44 = sp.cosh(self.theta)
-        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = -(l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         if I == 0:
             M12 = l
@@ -268,7 +268,7 @@ class qpdLattice(lattice):
         M33 = sp.cos(self.theta)
         M43 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
         M44 = sp.cos(self.theta)
-        M56 = l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
+        M56 = -l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
 
         if I == 0:
             M12 = l
@@ -319,9 +319,9 @@ class dipole(lattice):
 
         M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1))
         M26 = S * (self.gamma / (self.gamma + 1))
-        M51 = self.f * (-S / (self.beta * self.C))
-        M52 = self.f * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.f * (-rho * (l / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M51 = -self.f * S / (self.beta * self.C)
+        M52 = -self.f * rho * (1 - C) / (self.beta * self.C)
+        M56 = -self.f * (l - rho * S) / (self.C * self.beta * self.gamma * (self.gamma + 1))
 
         mat = Matrix([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
@@ -342,7 +342,8 @@ class dipole_wedge(lattice):
         self.angle = angle
         self.dipole_length = dipole_length
         self.dipole_angle = dipole_angle
-        self.gap = 0.01  # hard-edge fringe field gap (m)
+        self.pole_gap = 0.014478
+        self.fringe_extent = 0.01  # hard-edge fringe field gap (m)
     
     def getSymbolicMatrice(self, numeric = False, length = None, angle = None):
         l = None
@@ -366,10 +367,7 @@ class dipole_wedge(lattice):
         # Hard edge model for the wedge magnets
         By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * sp.pi / 180 / dipole_length)
         R = self.M*self.C*self.beta*self.gamma / (self.Q * By)
-
-        k = sp.Abs((self.Q * By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
-        eta = (a * sp.pi / 180) * l / self.length # Verify
-        #E = (l * k) / ((sp.cos(eta)) ** 2)
+        eta = (a * sp.pi / 180) * l / self.length
         Tx = sp.tan(eta)
 
         '''
@@ -384,9 +382,18 @@ class dipole_wedge(lattice):
         
         hard-edge model, phi = 0
         '''
-        phi = 0
+        z = sp.symbols("z", real=True)
+        g = self.pole_gap
+        le = self.fringe_extent
+        # Triangle fringe field model: B(z) = Bmax * (z / le)
+        Bz = By * (z / le)
+        K_expr = sp.integrate((Bz * (By - Bz)) / (g * By ** 2), (z, 0, le))
+        K_simplified = sp.simplify(K_expr)
+        h = 1 / R
+        phi = sp.simplify(K_simplified * g * h * (1 + sp.sin(eta) ** 2) / sp.cos(eta))
         Ty = sp.tan(eta - phi)
-        M56 = self.f * (l / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = -self.f * (l / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
 
         mat = Matrix([[1, 0, 0, 0, 0, 0],
                       [Tx / R, 1, 0, 0, 0, 0],
