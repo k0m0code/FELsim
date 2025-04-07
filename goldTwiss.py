@@ -87,9 +87,12 @@ schem = draw_beamline()
 beamtype = beamline()
 line_UH = beamtype.changeBeamType(beamlineUH, "electron", Energy)
 
-segments = 56
+segments = 98
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
+
+schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
+
 # schem.plotBeamPositionTransform(beam_dist, line,0.01)
 
 
@@ -114,7 +117,7 @@ startPoint = {"I": {"bounds": (0,10), "start": 1}}
 objectives = {15: [{"measure": ["x", "dispersion"], "goal": 0, "weight": 1}]}
 
 
-result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam=True, printResults=True)
+result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam=False, printResults=False, plotProgress=False)
 print(line[10].current)  # 4! 3.2
 
 # variables = {16: ["I", "current", lambda num:num],
@@ -164,7 +167,16 @@ line[20].current = 3.142089844
 #               }
 
 # result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
-line[27].current = 4.694135938
+
+variables = {27: ["I", "current", lambda num:num]}
+startPoint = {"I": {"bounds": (0,10), "start": 1}}
+
+objectives = {32: [{"measure": ["x", "dispersion"], "goal": 0, "weight": 1}]}
+
+
+result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam=False, printResults=False, plotProgress=False)
+print(line[27].current)  # 4.694135938
+#line[27].current = 4.694135938
 
 variables = {
              37: ["I", "current", lambda num:num],
@@ -176,25 +188,25 @@ variables = {
              }
              
 startPoint = {"I": {"bounds": (0,10), "start": 2},
-              "I2": {"bounds": (0, 10)}, 
-              "I3": {"bounds": (0, 10)}, 
+              "I2": {"bounds": (0, 10), "start": 2},
+              "I3": {"bounds": (0, 10), "start": 2},
                 }              
 
 objectives = {            
                37: [
                      {"measure": ["x", "alpha"], "goal": 0, "weight": 1},
                     {"measure": ["y", "alpha"], "goal": 0, "weight": 1},
-                    # {"measure": ["x", "envelope"], "goal": 1.5, "weight": 100},
-                    #{"measure": ["y", "envelope"], "goal": 0.75, "weight": 100}
+                    {"measure": ["x", "envelope"], "goal": 2.0, "weight": 1},
+                    {"measure": ["y", "envelope"], "goal": 2.0, "weight": 1}
                     ]
               }
 
-result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= True, printResults=True, plotProgress=True)
+result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam= False, printResults=True, plotProgress=True)
 #"COBYLA"
 
-I1 = 2.391954557  # 2.391954557
-I2 = 3.483629052  # 3.483629052
-I3 = 1.464965657  # 1.464965657
+I1 = 2.391954557  # 2.391954557    1.5820359927989482
+I2 = 3.483629052  # 3.483629052    3.443475696137673
+I3 = 1.464965657  # 1.464965657    1.8909887406970303
 
 factor1 = I2 / (I1 + I3)
 factor0 = I2 / I1
@@ -208,6 +220,16 @@ line[43].current = line[33].current
 line[41].current = line[35].current
 line[39].current = line[37].current
 
+
+# Chromacity quad optimization
+variables = {50: ["I", "current", lambda num:num]}
+startPoint = {"I": {"bounds": (0,10), "start": 1}}
+
+objectives = {55: [{"measure": ["x", "dispersion"], "goal": 0, "weight": 1}]}
+
+
+result = opti.calc("Nelder-Mead", variables, startPoint, objectives, plotBeam=False, printResults=False, plotProgress=False)
+print(line[50].current)
 
 schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
 
