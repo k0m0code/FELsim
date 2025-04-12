@@ -5,11 +5,20 @@ import numpy as np
 from scipy import interpolate
 from scipy import optimize
 import math
+
+#IMPORTANT NOTES:
+    #  by default every beam type is an electron beam type
+
+    #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
+    #  ASSUMES that the measurement begins at 0
+    #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
+#      getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
         
 class lattice:
     #  by default every beam type is an electron beam type
 
-    #  NOTE: default fringe fields for now is noted as [[x list], [y list]] 
+    #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
+    #  ASSUMES that the measurement begins at 0
     #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
     def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = None):
         '''
@@ -66,7 +75,7 @@ class lattice:
     def getSymbolicMatrice(self, **kwargs):
         raise NotImplementedError("getSymbolicMatrice not defined in child class")
     
-    #unfortuately, cannot check whether the kwargs exist in the segments function or not alreay\dy
+    #unfortuately, cannot check whether the kwargs exist in the segments function or not already
     def useMatrice(self, val, **kwargs):
         ''''
         Simulates the movement of given particles through its child segment with the 
@@ -338,6 +347,26 @@ class beamline:
             self.B = fieldStrength
             self.color = 'brown'
 
+        #temporarily use drift matrice for testing
+        def getSymbolicMatrice(self, numeric = False, length = None):
+            l = None
+            if length is None:
+                l = self.length
+            else:
+                if numeric: l = length  # length should be number
+                else: l = symbols(length, real = True)  # length should be string
+            
+            M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+            mat = Matrix([[1, l, 0, 0, 0, 0],
+                        [0, 1, 0, 0, 0, 0],
+                        [0, 0, 1, l, 0, 0],
+                        [0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 1, M56],
+                        [0, 0, 0, 0, 0, 1]])
+            
+            return mat
+
+
         def __str__(self) -> str:
             return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
     
@@ -356,6 +385,11 @@ class beamline:
         self.FRINGEDELTAZ = 0.01
 
         self.beamline = line
+        self.totalLen = 0
+        self.defineEndFrontPos()
+
+    #  Invariant, call at end of all functions
+    def defineEndFrontPos(self):
         self.totalLen = 0
         for seg in self.beamline:
             seg.startPos = self.totalLen
@@ -397,26 +431,31 @@ class beamline:
         xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
         yNew = rbf(xNew)
         return xNew, yNew
-    
-    # def _model(self, x, c, zFac, axis):
-    #     return c * np.exp(-zFac * (x - axis))
-    
-    # def _backModel(self, x, c, zFac, axis):
-    #     return c * np.exp(zFac * (x - axis))
 
-    def _model(self, x, B0, a, origin):
-        return B0 * (1 - ((x-origin)/a)**2) * (np.exp(-(((x-origin)/a)**2)))
+    # def _model(self, x, B0, a, origin):
+    #     return B0 * (1 - ((x-origin)/a)**2) * (np.exp(-(((x-origin)/a)**2)))
     
-    # def _model(self, x, B0, std, origin):
-        # return B0 * np.exp(-((x - origin)**2)/(2*(std**2)))
+    # def formulaFit(self, xData, yData, pos):
+    #     endParams, _ = optimize.curve_fit(self._model, xData, yData, p0= [1,1, pos])
+    #     return endParams
+    
 
     
-    def formulaFit(self, xData, yData, pos):
-        endParams, _ = optimize.curve_fit(self._model, xData, yData, p0= [1,1, pos])
+    def _endModel(self, x, origin, strength, B0):
+        return (1/(1+np.exp((x-origin)*strength))) * B0
+    
+    def _frontModel(self, x, origin, strength, B0):
+        return 1/(1+np.exp((-x+origin)*strength)) * B0
+    
+    def frontFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._frontModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
+        print(endParams)
         return endParams
-
     
-
+    def endFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._endModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
+        return endParams
+    
     '''
     ind: int
         The indice of the magnetic segment to create fringe
@@ -479,8 +518,8 @@ class beamline:
 
                 for i in range(len(xData)): xData[i] += segment.endPos  # adjust for z position
                
-                params = self.formulaFit(xData,yData, segment.endPos)
-                yfield = self._model(zLine, *params)
+                params = self.endFit(xData,yData, segment.endPos)
+                yfield = self._endModel(zLine, *params)
                 
                 zeroTracker = 0
                 while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
@@ -497,8 +536,8 @@ class beamline:
                 for i in range(len(xData)): xData[i] *= -1
 
                 for i in range(len(xData)): xData[i] += segment.startPos
-                params = self.formulaFit(xData,yData, segment.startPos)
-                yfield = self._model(zLine, *params)
+                params = self.frontFit(xData,yData, segment.startPos)
+                yfield = self._frontModel(zLine, *params)
                 
                 zeroTracker = len(zLine)-1
                 while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
@@ -507,6 +546,7 @@ class beamline:
 
                 y_values += yfield
 
+        #  Create each fringe field element, using right Riemann summnation
         i = 0
         while (i < len(beamline)):
             if isinstance(beamline[i], driftLattice):
@@ -518,6 +558,8 @@ class beamline:
 
                 fringeLen = zLine[index] - beamline[i].startPos
                 totalDriftLen -= fringeLen
+
+                #  Convert drift segment into fringe field segments
                 while (totalDriftLen >= 0 and index < len(y_values) - 1):
                     totalFringeLen += fringeLen
                     fringe = self.fringeField(fringeLen, y_values[index])
@@ -527,14 +569,18 @@ class beamline:
                     index += 1 # Get next y values
                     fringeLen = zLine[index] - zLine[index-1] 
                     totalDriftLen -= fringeLen
-                    print(totalDriftLen)
-
-                if (not totalDriftLen <= 0 and index < len(y_values)):
-                    fringe = self.fringeField(totalDriftLen, y_values[index])
+                
+                beamline[i].length -= totalFringeLen
+                
+                #  Convert last portion of drift portion to fringe field and remove
+                if (beamline[i].length > 0 and index < len(y_values)):
+                    fringe = self.fringeField(beamline[i].length, y_values[index])
+                    beamline.insert(i, fringe)
+                    i += 1
                     #WIP adding to final leftover interval
 
-                beamline[i].length -= totalFringeLen
+                beamline.pop(i)
             i += 1
-                
-
+        
+        self.defineEndFrontPos()
         return zLine, y_values
