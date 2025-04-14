@@ -472,7 +472,7 @@ class beamline:
     
     def frontFit(self, xData, yData, pos):
         endParams, _ = optimize.curve_fit(self._frontModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
-        print(endParams)
+        # print(endParams)
         return endParams
     
     def endFit(self, xData, yData, pos):
@@ -530,7 +530,18 @@ class beamline:
         beamline = self.beamline
         totalLen = self.totalLen
 
-        zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
+        # zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
+        # y_values = np.zeros_like(zLine)
+
+        zLine = []
+        i = 0
+        while i <= totalLen:
+            zLine.append(i)
+            i += interval
+        if not interval == (i - totalLen):
+            zLine.append(totalLen)
+        zLine = np.array(zLine)
+
         y_values = np.zeros_like(zLine)
         
         #  add to end of beam segments
