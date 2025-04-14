@@ -3,74 +3,24 @@ from sympy import symbols, Matrix
 import sympy as sp
 import numpy as np
 from scipy import interpolate
+from scipy import optimize
 import math
 
-#NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
-class beamline:
-    def __init__(self):
-        self.C = 299792458.0  # Speed of light in vacuum (m/s)
-        self.q_e = 1.602176634e-19  # Elementary charge (C)
-        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
-        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
-        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
-        
-        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
+#IMPORTANT NOTES:
+    #  by default every beam type is an electron beam type
 
-        #  [Mass (kg), charge (C), rest energy (MeV)]
-        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
-                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
-        self.FRINGEDELTAZ = 0.01
-
-    def changeBeamType(self, beamSegments, particleType, kineticE):
-        newBeamline = beamSegments
-        try:
-            particleData = self.PARTICLES[particleType]
-            for seg in newBeamline:
-                seg.setMQE(particleData[0],particleData[1],particleData[2])
-                seg.setE(kineticE)
-            return newBeamline
-        except KeyError:
-            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
-            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
-            try:
-                isotopeData = particleType.split(",")
-                A = int(isotopeData[0])
-                Z = int(isotopeData[1])
-                m_i = A * self.m_amu
-                q_i = Z * self.q_e
-                meV = (m_i * self.C ** 2) * self.k_MeV
-
-                for seg in newBeamline:
-                    seg.setMQE(m_i, q_i, meV)
-                    seg.setE(kineticE)
-                return newBeamline
-            except:
-                raise TypeError("Invalid particle type/isotope")
-            
-     #  may use other interpolation methods (cubic, spline, etc)       
-    def interpolateData(self, xData, yData, interval):
-        rbf = interpolate.Rbf(xData, yData)
-        totalLen = xData[-1] - xData[0]
-        xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
-        yRbf = rbf(xNew)
-        return xNew, yRbf
-
-    def createFringe(self, segment):
-        pass
-    
-    # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
-    def reconfigureLine(self, beamline, interval = None, fringeType = None):
-        if interval is None:
-            interval = self.FRINGEDELTAZ
-        
-        for segment in beamline:
-            if segment.fringeType is not None:
-                pass # WIP
-
+    #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
+    #  ASSUMES that the measurement begins at 0
+    #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
+#      getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
         
 class lattice:
     #  by default every beam type is an electron beam type
-    def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
+
+    #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
+    #  ASSUMES that the measurement begins at 0
+    #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
+    def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = None):
         '''
         parent class for beamline segment object
 
@@ -93,7 +43,9 @@ class lattice:
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
         ##
         self.color = 'none'  #Color of beamline element when graphed
-        self.fringeType = None  # Each segment has no magnetic fringe by default
+        self.fringeType = fringeType  # Each segment has no magnetic fringe by default
+        self.startPos = None
+        self.endPos = None
 
         if not length <= 0:
             self.length = length
@@ -123,7 +75,7 @@ class lattice:
     def getSymbolicMatrice(self, **kwargs):
         raise NotImplementedError("getSymbolicMatrice not defined in child class")
     
-    #unfortuately, cannot check whether the kwargs exist in the segments function or not alreay\dy
+    #unfortuately, cannot check whether the kwargs exist in the segments function or not already
     def useMatrice(self, val, **kwargs):
         ''''
         Simulates the movement of given particles through its child segment with the 
@@ -183,11 +135,10 @@ class driftLattice(lattice):
 
 class qpfLattice(lattice):
     def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E)
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
-        self.fringeType = fringeType
 
     def getSymbolicMatrice(self, numeric = False, length = None, current = None):
         l = None
@@ -233,12 +184,12 @@ class qpfLattice(lattice):
         return mat
     
     def __str__(self):
-        return f"QPF beamline segment {self.length} mm long and a current of {self.current} amps"
+        return f"QPF beamline segment {self.length} m long and a current of {self.current} amps"
 
 
 class qpdLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
-        super().__init__(length, E0, Q, M, E)
+    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
@@ -290,8 +241,8 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long and a current of {self.current} amps"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
-        super().__init__(length, E0, Q, M, E)
+    def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.color = "forestgreen"
         self.angle = angle  # degrees
     
@@ -336,8 +287,8 @@ class dipole(lattice):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
 
 class dipole_wedge(lattice):
-    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
-        super().__init__(length, E0, Q, M, E)
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+        super().__init__(length, E0, Q, M, E, fringeType)
         self.color = "lightgreen"
         self.angle = angle
         self.dipole_length = dipole_length
@@ -406,3 +357,253 @@ class dipole_wedge(lattice):
 
     def __str__(self):
         return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
+    
+
+
+#NOTE: getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
+class beamline:
+    class fringeField(lattice):
+        B = 0 #  Teslas
+
+        def __init__(self, length, fieldStrength,  E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
+            super().__init__(length, E0, Q, M, E)
+            self.B = fieldStrength
+            self.color = 'brown'
+
+        #temporarily use drift matrice for testing
+        def getSymbolicMatrice(self, numeric = False, length = None):
+            l = None
+            if length is None:
+                l = self.length
+            else:
+                if numeric: l = length  # length should be number
+                else: l = symbols(length, real = True)  # length should be string
+            
+            M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+            mat = Matrix([[1, l, 0, 0, 0, 0],
+                        [0, 1, 0, 0, 0, 0],
+                        [0, 0, 1, l, 0, 0],
+                        [0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 1, M56],
+                        [0, 0, 0, 0, 0, 1]])
+            
+            return mat
+
+
+        def __str__(self) -> str:
+            return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
+    
+    def __init__(self, line = []):
+        self.C = 299792458.0  # Speed of light in vacuum (m/s)
+        self.q_e = 1.602176634e-19  # Elementary charge (C)
+        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
+        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
+        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
+        
+        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
+
+        #  [Mass (kg), charge (C), rest energy (MeV)]
+        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
+                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
+        self.FRINGEDELTAZ = 0.01
+
+        self.beamline = line
+        self.totalLen = 0
+        self.defineEndFrontPos()
+
+    #  Invariant, call at end of all functions
+    def defineEndFrontPos(self):
+        self.totalLen = 0
+        for seg in self.beamline:
+            seg.startPos = self.totalLen
+            self.totalLen += seg.length
+            seg.endPos = self.totalLen
+
+
+    def changeBeamType(self, beamSegments, particleType, kineticE):
+        newBeamline = beamSegments
+        try:
+            particleData = self.PARTICLES[particleType]
+            for seg in newBeamline:
+                seg.setMQE(particleData[0],particleData[1],particleData[2])
+                seg.setE(kineticE)
+            return newBeamline
+        except KeyError:
+            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
+            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
+            try:
+                isotopeData = particleType.split(",")
+                A = int(isotopeData[0])
+                Z = int(isotopeData[1])
+                m_i = A * self.m_amu
+                q_i = Z * self.q_e
+                meV = (m_i * self.C ** 2) * self.k_MeV
+
+                for seg in newBeamline:
+                    seg.setMQE(m_i, q_i, meV)
+                    seg.setE(kineticE)
+                return newBeamline
+            except:
+                raise TypeError("Invalid particle type/isotope")
+            
+     #  may use other interpolation methods (cubic, spline, etc)  
+     # x = 0 = start of end of segment     
+    def interpolateData(self, xData, yData, interval):
+        rbf = interpolate.Rbf(xData, yData)
+        totalLen = xData[-1] - xData[0]
+        xNew = np.linspace(xData[0], xData[-1], math.ceil(totalLen/interval) + 1)
+        yNew = rbf(xNew)
+        return xNew, yNew
+
+    # def _model(self, x, B0, a, origin):
+    #     return B0 * (1 - ((x-origin)/a)**2) * (np.exp(-(((x-origin)/a)**2)))
+    
+    # def formulaFit(self, xData, yData, pos):
+    #     endParams, _ = optimize.curve_fit(self._model, xData, yData, p0= [1,1, pos])
+    #     return endParams
+    
+
+    
+    def _endModel(self, x, origin, strength, B0):
+        return (1/(1+np.exp((x-origin)*strength))) * B0
+    
+    def _frontModel(self, x, origin, strength, B0):
+        return 1/(1+np.exp((-x+origin)*strength)) * B0
+    
+    def frontFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._frontModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
+        print(endParams)
+        return endParams
+    
+    def endFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._endModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
+        return endParams
+    
+    '''
+    ind: int
+        The indice of the magnetic segment to create fringe
+    '''
+    # assumes the zlist doesnt start at 0, and that the first element is how far from the segment fringe measurement is
+    def _addEnd(self, zList, magnetList, beamline, ind):
+        #  Initialize variables, find total space available for plotting
+        driftLen = 0
+        ind2 = ind
+        while (ind2 != 0 and isinstance(beamline[ind2 - 1], driftLattice)):
+            driftLen = driftLen + beamline[ind2 - 1].length
+            ind2 -= 1
+        
+        #  Create and add fringe fields to list based on input z and B values
+        i = 1
+        fringeTotalLen = 0
+        zList.insert(0,0)
+        while (i < len(zList) and fringeTotalLen <= driftLen):
+            fringeLen = zList[i] - zList[i-1]
+            fringeTotalLen += fringeLen
+            if fringeTotalLen <= driftLen:
+                fringeSeg = self.fringeField(fringeLen, magnetList[i-1])
+                beamline.insert(ind, fringeSeg)
+            i += 1
+        
+        #  Shorten/eliminate any drift segments overlapping with fringe fields already
+        while (fringeTotalLen > 0 and isinstance(beamline[ind-1], driftLattice)):
+            if (beamline[ind-1].length <= fringeTotalLen):
+                fringeTotalLen -= beamline[ind-1].length
+                beamline.pop(ind-1)
+                ind -= 1
+            else:
+                beamline[ind-1].length -= fringeTotalLen
+                fringeTotalLen -= fringeTotalLen
+    
+    # BEAMLINE OBJECT DOESNT CONTAIN THE BEAMLINE, ONLY TO PERFORM CALCULATIONS ON THE LINE
+
+    # TEST: functiom ran on the class' beamline OBJECT, NOT beamline LIST
+
+    #  Fringe fields can only exist overlapping drift segments for now
+    #  assume all fringe fields overlap drift segments
+
+    # issue: origin of equations may not match with beamline exactly if interval 
+    #        doesnt match beamline interval
+    def reconfigureLine(self, interval = None):
+        if interval is None:
+            interval = self.FRINGEDELTAZ
+
+        beamline = self.beamline
+        totalLen = self.totalLen
+
+        zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
+        y_values = np.zeros_like(zLine)
+        
+        #  add to end of beam segments
+        for segment in reversed(beamline):
+            if isinstance(segment.fringeType, list):
+                xData = segment.fringeType[0].copy()
+                yData = segment.fringeType[1].copy()
+
+                for i in range(len(xData)): xData[i] += segment.endPos  # adjust for z position
+               
+                params = self.endFit(xData,yData, segment.endPos)
+                yfield = self._endModel(zLine, *params)
+                
+                zeroTracker = 0
+                while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
+                    yfield[zeroTracker] = 0
+                    zeroTracker += 1
+
+                y_values += yfield
+
+        #  add to the front of beam segments
+        for segment in beamline:
+            if isinstance(segment.fringeType, list):
+                xData = segment.fringeType[0].copy()
+                yData = segment.fringeType[1].copy()
+                for i in range(len(xData)): xData[i] *= -1
+
+                for i in range(len(xData)): xData[i] += segment.startPos
+                params = self.frontFit(xData,yData, segment.startPos)
+                yfield = self._frontModel(zLine, *params)
+                
+                zeroTracker = len(zLine)-1
+                while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
+                    yfield[zeroTracker] = 0
+                    zeroTracker -= 1
+
+                y_values += yfield
+
+        #  Create each fringe field element, using right Riemann summnation
+        i = 0
+        while (i < len(beamline)):
+            if isinstance(beamline[i], driftLattice):
+                #  Find in x the value that first comes after start.pos
+                index = np.searchsorted(zLine, beamline[i].startPos, side='right')
+                
+                totalDriftLen = beamline[i].length
+                totalFringeLen = 0
+
+                fringeLen = zLine[index] - beamline[i].startPos
+                totalDriftLen -= fringeLen
+
+                #  Convert drift segment into fringe field segments
+                while (totalDriftLen >= 0 and index < len(y_values) - 1):
+                    totalFringeLen += fringeLen
+                    fringe = self.fringeField(fringeLen, y_values[index])
+                    beamline.insert(i, fringe)
+
+                    i += 1 # for adding a fringe field
+                    index += 1 # Get next y values
+                    fringeLen = zLine[index] - zLine[index-1] 
+                    totalDriftLen -= fringeLen
+                
+                beamline[i].length -= totalFringeLen
+                
+                #  Convert last portion of drift portion to fringe field and remove
+                if (beamline[i].length > 0 and index < len(y_values)):
+                    fringe = self.fringeField(beamline[i].length, y_values[index])
+                    beamline.insert(i, fringe)
+                    i += 1
+                    #WIP adding to final leftover interval
+
+                beamline.pop(i)
+            i += 1
+        
+        self.defineEndFrontPos()
+        return zLine, y_values
