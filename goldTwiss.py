@@ -62,12 +62,12 @@ Generate beamline() elements
 
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
-path3 = r"/Users/christiankomo/Desktop/Documents/FELsim"
+path3 = r"/Users/***/Desktop/Documents/FELsim"
 path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FELsim"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path2)
+directory = Path(path3)
 # file_path = directory / 'Beamline_elements.xlsx'
-file_path = directory / 'Beamline_elements.xlsx'
+file_path = directory / 'Beamline_elements_2.xlsx'
 excel = ExcelElements(file_path)
 df = excel.get_dataframe()
 #beamline
@@ -85,7 +85,7 @@ replace all dipole wedge elements with drift elements
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 beamtype = beamline()
-line_UH = beamtype.changeBeamType(beamlineUH, "electron", Energy)
+line_UH = beamtype.changeBeamType( "electron", Energy,beamlineUH)
 
 segments = 98
 line = line_UH[:segments]

@@ -12,11 +12,10 @@ import math
     #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
     #  ASSUMES that the measurement begins at 0
     #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
+
 #      getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
         
 class lattice:
-    #  by default every beam type is an electron beam type
-
     #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
     #  ASSUMES that the measurement begins at 0
     #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
@@ -287,15 +286,15 @@ class dipole(lattice):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
 
 class dipole_wedge(lattice):
-    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5,
+                 pole_gap = 0.0127, enge_fct = 0, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
         super().__init__(length, E0, Q, M, E, fringeType)
         self.color = "lightgreen"
         self.angle = angle
         self.dipole_length = dipole_length
         self.dipole_angle = dipole_angle
         self.pole_gap = 0.014478
-        self.fringe_extent = 0.01  # hard-edge fringe field gap (m)
-    
+
     def getSymbolicMatrice(self, numeric = False, length = None, angle = None):
         l = None
         a = None
@@ -335,7 +334,7 @@ class dipole_wedge(lattice):
         '''
         z = sp.symbols("z", real=True)
         g = self.pole_gap
-        le = self.fringe_extent
+        le = self.length
         # Triangle fringe field model: B(z) = Bmax * (z / le)
         Bz = By * (z / le)
         K_expr = sp.integrate((Bz * (By - Bz)) / (g * By ** 2), (z, 0, le))
@@ -420,8 +419,12 @@ class beamline:
             seg.endPos = self.totalLen
 
 
-    def changeBeamType(self, beamSegments, particleType, kineticE):
-        newBeamline = beamSegments
+    def changeBeamType(self, particleType, kineticE, beamSegments = None):
+
+        if beamSegments is not None:
+            newBeamline = beamSegments
+        else:
+            newBeamline = self.beamline
         try:
             particleData = self.PARTICLES[particleType]
             for seg in newBeamline:
@@ -445,7 +448,8 @@ class beamline:
                 return newBeamline
             except:
                 raise TypeError("Invalid particle type/isotope")
-            
+
+
      #  may use other interpolation methods (cubic, spline, etc)  
      # x = 0 = start of end of segment     
     def interpolateData(self, xData, yData, interval):
@@ -462,13 +466,27 @@ class beamline:
     #     endParams, _ = optimize.curve_fit(self._model, xData, yData, p0= [1,1, pos])
     #     return endParams
     
+    def _testModeOrder2end(self, x, origin, B0, a1, a2):
+        return B0/(1+np.exp((a1*(x - origin)) + (a2*(x-origin)**2)))
+    
+    def testFrontFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._testModeOrder2front, xData, yData, p0= [pos, 1, 1, 1], maxfev=50000)
+        return endParams
+    
+    def testendFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._testModeOrder2end, xData, yData, p0= [pos, 1, 1, 1], maxfev=50000)
+        print(endParams)
+        return endParams
+    
+    def _testModeOrder2front(self, x, origin, B0, a1, a2):
+        return B0/(1+np.exp((a1*(-x - origin)) + (a2*(-x-origin)**2)))
 
     
-    def _endModel(self, x, origin, strength, B0):
-        return (1/(1+np.exp((x-origin)*strength))) * B0
+    def _endModel(self, x, origin, B0, strength):
+        return (B0/(1+np.exp((x-origin)*strength)))
     
-    def _frontModel(self, x, origin, strength, B0):
-        return 1/(1+np.exp((-x+origin)*strength)) * B0
+    def _frontModel(self, x, origin, B0, strength):
+        return (B0/(1+np.exp((-x+origin)*strength)))
     
     def frontFit(self, xData, yData, pos):
         endParams, _ = optimize.curve_fit(self._frontModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
@@ -546,6 +564,7 @@ class beamline:
         
         #  add to end of beam segments
         for segment in reversed(beamline):
+            #  custom fringe field
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
                 yData = segment.fringeType[1].copy()
@@ -554,7 +573,10 @@ class beamline:
                
                 params = self.endFit(xData,yData, segment.endPos)
                 yfield = self._endModel(zLine, *params)
-                
+
+                # params = self.testendFit(xData, yData, segment.endPos)
+                # yfield = self._testModeOrder2end(zLine, *params)
+
                 zeroTracker = 0
                 while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
                     yfield[zeroTracker] = 0
@@ -562,8 +584,13 @@ class beamline:
 
                 y_values += yfield
 
+            # elif (segment.fringeType == 'first order decay'):
+            #     B0 = 1
+            #     segmentField = self._frontModel(zLine,segment.endPos, B0, )
+
         #  add to the front of beam segments
         for segment in beamline:
+            #  custom fringe field
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
                 yData = segment.fringeType[1].copy()
@@ -572,6 +599,9 @@ class beamline:
                 for i in range(len(xData)): xData[i] += segment.startPos
                 params = self.frontFit(xData,yData, segment.startPos)
                 yfield = self._frontModel(zLine, *params)
+
+                # params = self.testFrontFit(xData, yData, segment.startPos)
+                # yfield = self._testModeOrder2front(zLine, *params)
                 
                 zeroTracker = len(zLine)-1
                 while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
