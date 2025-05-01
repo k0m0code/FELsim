@@ -364,20 +364,55 @@ class beamline:
     class fringeField(lattice):
         B = 0 #  Teslas
 
-        def __init__(self, length, fieldStrength,  E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
+        def __init__(self, length, fieldStrength, current = 0, E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
             super().__init__(length, E0, Q, M, E)
             self.B = fieldStrength
+            # self.current = current
             self.color = 'brown'
 
         #temporarily use drift matrice for testing
-        def getSymbolicMatrice(self, numeric = False, length = None):
+        def getSymbolicMatrice(self, numeric = False, length = None, current = None):
             l = None
+            I = None
             if length is None:
                 l = self.length
             else:
                 if numeric: l = length  # length should be number
                 else: l = symbols(length, real = True)  # length should be string
             
+            # if current is None:
+            #     I = self.current
+            # else:
+            #     if numeric: I = current  # current should be number
+            #     else: I = symbols(current, real = True)  # current should be string
+            
+            # self.k = sp.Abs((self.Q*self.G*I * self.fringeDecay )/(self.M*self.C*self.beta*self.gamma))  
+            # self.theta = sp.sqrt(self.k)*l
+
+            # M11 = sp.cos(self.theta)
+            # M21 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
+            # M22 = sp.cos(self.theta)
+            # M33 = sp.cosh(self.theta)
+            # M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
+            # M44 = sp.cosh(self.theta)
+            # M56 = -(l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+            # if I == 0:
+            #     M12 = l
+            #     M34 = l
+            # else:
+            #     M34 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
+            #     M12 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
+
+            # mat =  Matrix([[M11, M12, 0, 0, 0, 0],
+            #                 [M21, M22, 0, 0, 0, 0],
+            #                 [0, 0, M33, M34, 0, 0],
+            #                 [0, 0, M43, M44, 0, 0],
+            #                 [0, 0, 0, 0, 1, M56],
+            #                 [0, 0, 0, 0, 0, 1]])
+            
+            # return mat
+        
             M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
             mat = Matrix([[1, l, 0, 0, 0, 0],
                         [0, 1, 0, 0, 0, 0],
@@ -401,9 +436,13 @@ class beamline:
         
         self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
 
+        self.ORIGINFACTOR = 0.99
+
         #  [Mass (kg), charge (C), rest energy (MeV)]
         self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
                           "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
+        
+        a = {'first order decay': (self._frontModel, self._endModel)} # must work on later 
         self.FRINGEDELTAZ = 0.01
 
         self.beamline = line
@@ -490,7 +529,6 @@ class beamline:
     
     def frontFit(self, xData, yData, pos):
         endParams, _ = optimize.curve_fit(self._frontModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
-        # print(endParams)
         return endParams
     
     def endFit(self, xData, yData, pos):
@@ -584,9 +622,19 @@ class beamline:
 
                 y_values += yfield
 
-            # elif (segment.fringeType == 'first order decay'):
-            #     B0 = 1
-            #     segmentField = self._frontModel(zLine,segment.endPos, B0, )
+            elif (segment.fringeType == 'first order decay'):
+                B0 = 1 # temporary
+                strength = 1 # temporary, must let user choose this
+                yfield = self._endModel(zLine,
+                                        segment.endPos-(np.log((1-self.ORIGINFACTOR)/self.ORIGINFACTOR)/strength), 
+                                        B0, strength)
+                zeroTracker = 0
+                while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
+                    yfield[zeroTracker] = 0
+                    zeroTracker += 1
+
+                y_values += yfield
+
 
         #  add to the front of beam segments
         for segment in beamline:
@@ -603,6 +651,20 @@ class beamline:
                 # params = self.testFrontFit(xData, yData, segment.startPos)
                 # yfield = self._testModeOrder2front(zLine, *params)
                 
+                zeroTracker = len(zLine)-1
+                while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
+                    yfield[zeroTracker] = 0
+                    zeroTracker -= 1
+
+                y_values += yfield
+            
+            elif (segment.fringeType == 'first order decay'):
+                B0 = 1 # temporary?
+                strength = 5 # temporary, must let user choose this
+                yfield = self._frontModel(zLine,
+                                        segment.startPos+(np.log((1-self.ORIGINFACTOR)/self.ORIGINFACTOR)/strength), 
+                                        B0, strength)
+
                 zeroTracker = len(zLine)-1
                 while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
                     yfield[zeroTracker] = 0
