@@ -19,7 +19,7 @@ class lattice:
     #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
     #  ASSUMES that the measurement begins at 0
     #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
-    def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = None):
+    def __init__(self, length, fringeType = None):
         '''
         parent class for beamline segment object
 
@@ -30,11 +30,11 @@ class lattice:
         E: float, optional
             Kinetic energy value (MeV/c^2)
         '''
-        self.E = E  # Kinetic energy (MeV/c^2)
+        self.E = 45  # Kinetic energy (MeV/c^2)
         ## this should be passed from ebeam
-        self.E0 = E0 # Electron rest energy (MeV/c^2)
-        self.Q = Q  # (C)
-        self.M = M  # (kg)
+        self.E0 = 0.51099 # Electron rest energy (MeV/c^2)
+        self.Q = 1.60217663e-19  # (C)
+        self.M = 9.1093837e-31  # (kg)
         self.C = 299792458  # Celerity (m/s)
         self.f = 2856 * (10 ** 6)  # RF frequency (Hz)
         self.gamma = (1 + (self.E / self.E0))
@@ -97,14 +97,14 @@ class lattice:
         return newMatrix #  return 2d list
     
 class driftLattice(lattice):
-    def __init__(self, length: float, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
+    def __init__(self, length: float):
         '''
         drift lattice segment
 
         length: float
             length of drift segment
         '''
-        super().__init__(length, E0, Q, M, E)
+        super().__init__(length)
         self.color = "white"
     
     # note: unlike old usematrice, this func doesnt check for negative/zero parameter numbers,
@@ -133,8 +133,8 @@ class driftLattice(lattice):
 
 
 class qpfLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, current: float, length: float = 0.0889, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
@@ -187,8 +187,8 @@ class qpfLattice(lattice):
 
 
 class qpdLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, current: float, length: float = 0.0889, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
@@ -240,8 +240,8 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long and a current of {self.current} amps"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, length: float = 0.0889, angle: float = 1.5, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.color = "forestgreen"
         self.angle = angle  # degrees
     
@@ -287,8 +287,8 @@ class dipole(lattice):
 
 class dipole_wedge(lattice):
     def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5,
-                 pole_gap = 0.0127, enge_fct = 0, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+                 pole_gap = 0.0127, enge_fct = 0, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.color = "lightgreen"
         self.angle = angle
         self.dipole_length = dipole_length
@@ -364,8 +364,8 @@ class beamline:
     class fringeField(lattice):
         B = 0 #  Teslas
 
-        def __init__(self, length, fieldStrength, current = 0, E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
-            super().__init__(length, E0, Q, M, E)
+        def __init__(self, length, fieldStrength, current = 0):
+            super().__init__(length)
             self.B = fieldStrength
             # self.current = current
             self.color = 'brown'
