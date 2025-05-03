@@ -37,6 +37,14 @@ class lattice:
         self.M = 9.1093837e-31  # (kg)
         self.C = 299792458  # Celerity (m/s)
         self.f = 2856 * (10 ** 6)  # RF frequency (Hz)
+
+        self.M_AMU = 1.66053906892E-27  # Atomic mass unit (kg)
+        self.k_MeV = 1e-6 / self.Q  # Conversion factor (MeV / J)
+        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
+        #  [Mass (kg), charge (C), rest energy (MeV)]
+        self.PARTICLES = {"electron": [self.M, self.Q, (self.M * self.C ** 2) * self.k_MeV],
+                          "proton": [self.m_p, self.Q, (self.m_p * self.C ** 2) * self.k_MeV]}
+
         self.gamma = (1 + (self.E / self.E0))
         self.beta = np.sqrt(1 - (1 / (self.gamma ** 2)))
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
@@ -45,6 +53,8 @@ class lattice:
         self.fringeType = fringeType  # Each segment has no magnetic fringe by default
         self.startPos = None
         self.endPos = None
+
+        
 
         if not length <= 0:
             self.length = length
@@ -70,6 +80,27 @@ class lattice:
         self.E0 = restE
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
+
+    def changeBeamType(self, particleType, kineticE):
+        try:
+            particleData = self.PARTICLES[particleType]
+            self.setMQE(particleData[0],particleData[1],particleData[2])
+            self.setE(kineticE)
+        except KeyError:
+            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
+            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
+            try:
+                isotopeData = particleType.split(",")
+                A = int(isotopeData[0])
+                Z = int(isotopeData[1])
+                m_i = A * self.M_AMU
+                q_i = Z * self.Q
+                meV = (m_i * self.C ** 2) * self.k_MeV
+
+                self.setMQE(m_i, q_i, meV)
+                self.setE(kineticE)
+            except:
+                raise TypeError("Invalid particle type/isotope")
     
     def getSymbolicMatrice(self, **kwargs):
         raise NotImplementedError("getSymbolicMatrice not defined in child class")
@@ -428,19 +459,7 @@ class beamline:
             return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
     
     def __init__(self, line = []):
-        self.C = 299792458.0  # Speed of light in vacuum (m/s)
-        self.q_e = 1.602176634e-19  # Elementary charge (C)
-        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
-        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
-        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
-        
-        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
-
         self.ORIGINFACTOR = 0.99
-
-        #  [Mass (kg), charge (C), rest energy (MeV)]
-        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
-                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
         
         a = {'first order decay': (self._frontModel, self._endModel)} # must work on later 
         self.FRINGEDELTAZ = 0.01
@@ -456,38 +475,6 @@ class beamline:
             seg.startPos = self.totalLen
             self.totalLen += seg.length
             seg.endPos = self.totalLen
-
-
-    def changeBeamType(self, particleType, kineticE, beamSegments = None):
-
-        if beamSegments is not None:
-            newBeamline = beamSegments
-        else:
-            newBeamline = self.beamline
-        try:
-            particleData = self.PARTICLES[particleType]
-            for seg in newBeamline:
-                seg.setMQE(particleData[0],particleData[1],particleData[2])
-                seg.setE(kineticE)
-            return newBeamline
-        except KeyError:
-            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
-            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
-            try:
-                isotopeData = particleType.split(",")
-                A = int(isotopeData[0])
-                Z = int(isotopeData[1])
-                m_i = A * self.m_amu
-                q_i = Z * self.q_e
-                meV = (m_i * self.C ** 2) * self.k_MeV
-
-                for seg in newBeamline:
-                    seg.setMQE(m_i, q_i, meV)
-                    seg.setE(kineticE)
-                return newBeamline
-            except:
-                raise TypeError("Invalid particle type/isotope")
-
 
      #  may use other interpolation methods (cubic, spline, etc)  
      # x = 0 = start of end of segment     
