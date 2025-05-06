@@ -12,6 +12,8 @@ from ebeam import beam
 import datetime
 from tqdm import tqdm
 from matplotlib.widgets import Button
+from scipy.stats import gaussian_kde
+
 
 #Note: plotBeamTransform may show rounded interval values slightly innacurate to actual lengths, but calculations are made with exact values, (rounded values only used for visualization)
 
@@ -335,7 +337,7 @@ class draw_beamline:
             
             #  Plot inital 6d scatter data
             matrix = plot6dValues.get(0)
-            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, matrix[4])
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
@@ -430,7 +432,7 @@ class draw_beamline:
                 ax3.clear()
                 ax4.clear()
                 scrollbar.label.set_text("z: " + str(val))
-                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, matrix[4])
                 fig.canvas.draw_idle()
             scrollbar.on_changed(update_scroll)
 

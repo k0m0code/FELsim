@@ -9,6 +9,12 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as patches
 from scipy.stats import norm
+from scipy.stats import gaussian_kde
+from scipy.ndimage import gaussian_filter
+
+METHOD1 = False
+METHOD2 = False
+METHOD3 = True
 
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
@@ -134,7 +140,9 @@ class beam:
         # Check if the point (x, y) is inside or on the ellipse
         return Z <= 0
 
-
+    '''
+    THIS FUNCTION BELOW IS A WIP
+    '''
     def particles_in_ellipse(self, dist_6d, n=1):
         fig, axes = plt.subplots(2, 2)
 
@@ -261,12 +269,23 @@ class beam:
             std1.append([X,Y,Z])
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
             std6.append([X,Y,Z])
-        return std1, std6, dist_6d, twiss
+
+        heatMap = []
+        if METHOD2:
+            #  Heat map 
+            for i, axis in enumerate(twiss.index):
+                xy = np.vstack([dist_6d[:, 2 * i],  dist_6d[:, 2 * i + 1]])
+                density = gaussian_kde(xy)(xy)
+                heatMap.append(density)
+        
+        return std1, std6, dist_6d, twiss, heatMap
 
     '''
     plots 6d and twiss data, used in schematic.py file
     '''
-    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
+    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, 
+                maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {},
+                heatMap = None):
         axlist = [ax1,ax2,ax3]
         # ax1.set_aspect(aspect = 1, adjustable='datalim')
         # Define SymPy symbols for plotting
@@ -290,8 +309,26 @@ class beam:
                 # print(ax1.get_xlim())
                 # print(ax1.get_ylim())
                 # ax.set(xlim=(-maxVals[2*i], maxVals[2*i]), ylim=(-maxVals[2*i + 1], maxVals[2*i + 1]))
+            
+            if METHOD2:
+                density = heatMap[i]
+                ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], c = density, cmap='hot', s=15, alpha=0.7)
 
-            ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
+            elif METHOD1:
+                bins = 100
+                # Use the defined limits for the histogram range if defineLim is True
+                range_xy = [[minVals[2*i], maxVals[2*i]], [minVals[2*i + 1], maxVals[2*i + 1]]] if defineLim else None
+                hist, xedges, yedges = np.histogram2d(dist_6d[:, 2 * i],dist_6d[:, 2 * i + 1], bins=bins, range=range_xy)
+                hist_smoothed = gaussian_filter(hist, sigma=1)
+                xcenters = (xedges[:-1] + xedges[1:]) / 2
+                ycenters = (yedges[:-1] + yedges[1:]) / 2
+                x_flat = np.repeat(xcenters, bins)
+                y_flat = np.tile(ycenters, bins)
+                density_flat = hist_smoothed.flatten()
+                scatter = ax.scatter(x_flat, y_flat, c=density_flat, cmap='hot') 
+            elif METHOD3:    
+                hb = ax.hexbin(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], cmap='hot', gridsize=100) # Adjust gridsize
+            
             ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
             ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
 
