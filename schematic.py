@@ -374,8 +374,8 @@ class draw_beamline:
                 ax5.set_xticklabels(x_axis,rotation=45,ha='right')
 
             plt.tick_params(labelsize = 9)
-            plt.xlabel("Distance from start of beam (m)")
-            plt.ylabel("Envelope $E$ (mm)")
+            plt.xlabel(r"Distance from start of beam (m)")
+            plt.ylabel(r"Envelope $E$ (mm)")
             ax5.legend(loc='upper left')
             line = None
             lineList = []
@@ -393,7 +393,7 @@ class draw_beamline:
             #    ax5.plot(x_axis, dispersion,
             #                 color=colors[i], linestyle='-',
             #                 label=twiss_aggregated_df.keys()[i])
-            ax6.set_ylabel('Dispersion $D$ (mm)')
+            ax6.set_ylabel(r'Dispersion $D$ (mm)')
 
             ax6.legend(loc='upper right')
 

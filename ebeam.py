@@ -61,7 +61,7 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm)",
+        label_twiss = [r"$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm)",
                        r"$D^{\prime}$ (mrad)", r"$\phi$ (deg)"]
 
         label_axes = ["x", "y", "z"]
@@ -292,7 +292,7 @@ class beam:
         # ax1.set_aspect(aspect = 1, adjustable='datalim')
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
-        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t / T_{\text{RF}}$ $(10^{-3})$', r'Position $x$ (mm)']
+        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t$ $/$ $T_{rf}$ $(10^{-3})$', r'Position $x$ (mm)']
         y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Relative Energy $\Delta W / W_0$ $(10^{-3})$',
                     r'Position $y$ (mm)']
 
