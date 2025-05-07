@@ -24,7 +24,7 @@ Transverse emittance normalized: 8 pi.mm.mrad
 Energy spread between 0.1 to 0.5 %
 Bunch length 1 ps (1 deg) to 2 ps (2 deg) 
 '''
-Energy = 40  # Electron beam energy (MeV)
+Energy = 400  # Electron beam energy (MeV)
 f = 2856 * (10 ** 6)  # Accelerator RF frequency (Hz)
 bunch_spread = 2  # std in pico-second
 energy_std_percent = 0.5  # Energy standard deviation in percent of the mean (%)
@@ -37,7 +37,8 @@ y_std = 0.8  # (mm)
 nb_particles = 1000
 
 # Transverse phase space Initial conditions as a function of the normalized emittance and beam size
-relat = lattice(1,E=Energy)
+relat = lattice(1,fringeType=None)
+lattice.setE(relat, E=Energy)
 norm = relat.gamma * relat.beta
 epsilon = epsilon_n / norm
 x_prime_std = epsilon / x_std  # (mrad)
@@ -63,11 +64,11 @@ Generate beamline() elements
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
 path3 = r"/Users/***/Desktop/Documents/FELsim"
-path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FELsim"
+path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\UH_FELxBeamDyn"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path3)
-# file_path = directory / 'Beamline_elements.xlsx'
-file_path = directory / 'Beamline_elements_2.xlsx'
+directory = Path(path2)
+file_path = directory / 'Beamline_elements.xlsx'
+#file_path = directory / 'Beamline_elements_2.xlsx'
 excel = ExcelElements(file_path)
 df = excel.get_dataframe()
 #beamline
@@ -85,8 +86,12 @@ replace all dipole wedge elements with drift elements
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 beamtype = beamline()
-line_UH = beamtype.changeBeamType( "electron", Energy,beamlineUH)
+test=lattice(1)
 
+
+#line_UH = lattice.changeBeamType(test,"electron", Energy)
+
+line_UH = beamlineUH
 segments = 98
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
