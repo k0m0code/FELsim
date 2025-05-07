@@ -24,7 +24,7 @@ Transverse emittance normalized: 8 pi.mm.mrad
 Energy spread between 0.1 to 0.5 %
 Bunch length 1 ps (1 deg) to 2 ps (2 deg) 
 '''
-Energy = 400  # Electron beam energy (MeV)
+Energy = 40  # Electron beam energy (MeV)
 f = 2856 * (10 ** 6)  # Accelerator RF frequency (Hz)
 bunch_spread = 2  # std in pico-second
 energy_std_percent = 0.5  # Energy standard deviation in percent of the mean (%)
@@ -38,7 +38,7 @@ nb_particles = 1000
 
 # Transverse phase space Initial conditions as a function of the normalized emittance and beam size
 relat = lattice(1,fringeType=None)
-lattice.setE(relat, E=Energy)
+relat.setE(E=Energy)
 norm = relat.gamma * relat.beta
 epsilon = epsilon_n / norm
 x_prime_std = epsilon / x_std  # (mrad)
@@ -86,12 +86,8 @@ replace all dipole wedge elements with drift elements
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 beamtype = beamline()
-test=lattice(1)
+line_UH = relat.changeBeamType("electron", Energy, beamlineUH)
 
-
-#line_UH = lattice.changeBeamType(test,"electron", Energy)
-
-line_UH = beamlineUH
 segments = 98
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
