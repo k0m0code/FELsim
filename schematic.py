@@ -337,7 +337,7 @@ class draw_beamline:
             
             #  Plot inital 6d scatter data
             matrix = plot6dValues.get(0)
-            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, matrix[4])
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
@@ -432,7 +432,7 @@ class draw_beamline:
                 ax3.clear()
                 ax4.clear()
                 scrollbar.label.set_text("z: " + str(val))
-                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, matrix[4])
+                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
                 fig.canvas.draw_idle()
             scrollbar.on_changed(update_scroll)
 

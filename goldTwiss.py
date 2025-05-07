@@ -91,8 +91,8 @@ line_UH = relat.changeBeamType("electron", Energy, beamlineUH)
 segments = 98
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
-
-schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
+acceptance = {"shape":'circle', "radius":1, "origin":[0,0]}
+schem.plotBeamPositionTransform(beam_dist, line,0.01, plot=True, showIndice=True, defineLim=False, matchScaling=False, shape=acceptance)
 
 # schem.plotBeamPositionTransform(beam_dist, line,0.01)
 

@@ -13,8 +13,8 @@ from scipy.stats import gaussian_kde
 from scipy.ndimage import gaussian_filter
 
 METHOD1 = False
-METHOD2 = False
-METHOD3 = True
+METHOD2 = True
+METHOD3 = False
 
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
@@ -33,6 +33,9 @@ METHOD3 = True
 class beam:
     def __init__(self):
         self.DDOF = 1 #  Unbiased Bessel correction for standard deviation calculation for twiss functions
+        self.scatter_size = 30
+        self.scatter_alpha = 0.7
+        self.scatter_cmap = 'plasma'  #'magma'. 'inferno', 'plasma', 'viridis' for uniform (append _r for reverse).
 
     x_sym, y_sym = sp.symbols('x_sym y_sym')
 
@@ -270,22 +273,21 @@ class beam:
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
             std6.append([X,Y,Z])
 
-        heatMap = []
-        if METHOD2:
+        #heatMap = []
+        #if METHOD2:
             #  Heat map 
-            for i, axis in enumerate(twiss.index):
-                xy = np.vstack([dist_6d[:, 2 * i],  dist_6d[:, 2 * i + 1]])
-                density = gaussian_kde(xy)(xy)
-                heatMap.append(density)
+        #    for i, axis in enumerate(twiss.index):
+        #        xy = np.vstack([dist_6d[:, 2 * i],  dist_6d[:, 2 * i + 1]])
+        #        density = gaussian_kde(xy)(xy)
+        #        heatMap.append(density)
         
-        return std1, std6, dist_6d, twiss, heatMap
+        return std1, std6, dist_6d, twiss #, heatMap
 
     '''
     plots 6d and twiss data, used in schematic.py file
     '''
     def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, 
-                maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {},
-                heatMap = None):
+                maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
         axlist = [ax1,ax2,ax3]
         # ax1.set_aspect(aspect = 1, adjustable='datalim')
         # Define SymPy symbols for plotting
@@ -311,8 +313,10 @@ class beam:
                 # ax.set(xlim=(-maxVals[2*i], maxVals[2*i]), ylim=(-maxVals[2*i + 1], maxVals[2*i + 1]))
             
             if METHOD2:
-                density = heatMap[i]
-                ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], c = density, cmap='hot', s=15, alpha=0.7)
+                xy = np.vstack([dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1]])
+                density = gaussian_kde(xy)(xy)
+                ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], c=density,
+                           cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
 
             elif METHOD1:
                 bins = 100
@@ -359,6 +363,7 @@ class beam:
         withinArea = [[],[]]
         outsideArea = [[],[]]
         xyPart = [dist_6d[:, 0], dist_6d[:, 2]]
+
         if shape.get("shape") == "circle":
             radius = shape.get("radius")
             origin = shape.get("origin")
@@ -370,8 +375,14 @@ class beam:
                 else:
                     outsideArea[0].append(x)
                     outsideArea[1].append(y)
-            circle = patches.Circle(origin, radius, edgecolor = "black", facecolor = "None")
+            circle = patches.Circle(origin, radius, edgecolor="black", facecolor="None")
             ax4.add_patch(circle)
+            xy = np.vstack([withinArea[0], withinArea[1]])
+            density = gaussian_kde(xy)(xy)
+            ax4.scatter(withinArea[0], withinArea[1], c=density,
+                        cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+            ax4.scatter(outsideArea[0], outsideArea[1], s=self.scatter_size, alpha=self.scatter_alpha, color="black")
+            percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         elif shape.get("shape") == "rectangle":
             length = shape.get("length")
             width = shape.get("width")
@@ -385,18 +396,25 @@ class beam:
                 else:
                     outsideArea[0].append(x)
                     outsideArea[1].append(y)
-            rectangle = patches.Rectangle(updatedOrigin,length,width, edgecolor = "black", facecolor = "none")
+            rectangle = patches.Rectangle(updatedOrigin,length,width, edgecolor="black", facecolor="none")
             ax4.add_patch(rectangle)
+            xy = np.vstack([withinArea[0], withinArea[1]])
+            density = gaussian_kde(xy)(xy)
+            ax4.scatter(withinArea[0], withinArea[1], c=density,
+                        cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+            ax4.scatter(outsideArea[0], outsideArea[1], s=self.scatter_size, alpha=self.scatter_alpha, color="black")
+            percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         else:
-            ax4.scatter(xyPart[0], xyPart[1], s=15,alpha = 0.7)
+            xy = np.vstack(xyPart)
+            density = gaussian_kde(xy)(xy)
+            ax4.scatter(xyPart[0], xyPart[1], c=density,
+                        cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+            percentageInside = 100
+        
         if defineLim:
             # ax4.axis('equal')
             ax4.set_xlim(minVals[0], maxVals[0])
             ax4.set_ylim(minVals[2], maxVals[2])
-        ax4.scatter(withinArea[0], withinArea[1], s=15, alpha=0.7, color = "blue")
-        ax4.scatter(outsideArea[0], outsideArea[1], s=15, alpha=0.7, color = "red")
-        percentageInside = len(withinArea[0])/len(xyPart[0])*100
-        
 
         ax4.set_title(f'x, y - Space: {round(percentageInside,4)}% acceptance')
         ax4.set_xlabel(x_labels[i + 1])
