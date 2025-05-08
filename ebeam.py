@@ -13,8 +13,8 @@ from scipy.stats import gaussian_kde
 from scipy.ndimage import gaussian_filter
 
 METHOD1 = False
-METHOD2 = True
-METHOD3 = False
+METHOD2 = False
+METHOD3 = True
 
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
@@ -36,6 +36,7 @@ class beam:
         self.scatter_size = 30
         self.scatter_alpha = 0.7
         self.scatter_cmap = 'plasma'  #'magma'. 'inferno', 'plasma', 'viridis' for uniform (append _r for reverse).
+        self.BINS = 70
 
     x_sym, y_sym = sp.symbols('x_sym y_sym')
 
@@ -331,7 +332,9 @@ class beam:
                 density_flat = hist_smoothed.flatten()
                 scatter = ax.scatter(x_flat, y_flat, c=density_flat, cmap='hot') 
             elif METHOD3:    
-                hb = ax.hexbin(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], cmap='hot', gridsize=100) # Adjust gridsize
+                extent = (minVals[2*i], maxVals[2*i], minVals[2*i + 1], maxVals[2*i + 1]) if defineLim else None
+                hb = ax.hexbin(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], cmap=self.scatter_cmap, extent=extent, gridsize=self.BINS) # Adjust gridsize
+                # cb = ax.figure.colorbar(hb, ax=ax, label='Point Count per Bin')
             
             ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
             ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
@@ -405,12 +408,17 @@ class beam:
             ax4.scatter(outsideArea[0], outsideArea[1], s=self.scatter_size, alpha=self.scatter_alpha, color="black")
             percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         else:
-            xy = np.vstack(xyPart)
-            density = gaussian_kde(xy)(xy)
-            ax4.scatter(xyPart[0], xyPart[1], c=density,
-                        cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+            if METHOD2:
+                xy = np.vstack(xyPart)
+                density = gaussian_kde(xy)(xy)
+                ax4.scatter(xyPart[0], xyPart[1], c=density,
+                            cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+
+            elif METHOD3:
+                extent = (minVals[0], maxVals[0], minVals[2], maxVals[2]) if defineLim else None
+                hb = ax4.hexbin(xyPart[0], xyPart[1], cmap=self.scatter_cmap, extent=extent, gridsize=self.BINS) # Adjust gridsize
+            
             percentageInside = 100
-        
         if defineLim:
             # ax4.axis('equal')
             ax4.set_xlim(minVals[0], maxVals[0])
