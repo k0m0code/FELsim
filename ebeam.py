@@ -11,6 +11,7 @@ import matplotlib.patches as patches
 from scipy.stats import norm
 from scipy.stats import gaussian_kde
 from scipy.ndimage import gaussian_filter
+from matplotlib.colors import LinearSegmentedColormap
 
 METHOD1 = False
 METHOD2 = False
@@ -35,8 +36,13 @@ class beam:
         self.DDOF = 1 #  Unbiased Bessel correction for standard deviation calculation for twiss functions
         self.scatter_size = 30
         self.scatter_alpha = 0.7
-        self.scatter_cmap = 'plasma'  #'magma'. 'inferno', 'plasma', 'viridis' for uniform (append _r for reverse).
-        self.BINS = 70
+        plasma = plt.cm.get_cmap('plasma', 256) #'magma'. 'inferno', 'plasma', 'viridis' for uniform (append _r for reverse).
+        new_colors = plasma(np.linspace(0, 1, 256))
+        new_colors[0] = [1, 1, 1, 0]
+        plasma_with_white = LinearSegmentedColormap.from_list('plasma_with_white', new_colors)
+        self.default_cmap = plasma_with_white
+        self.lost_cmap = 'binary'
+        self.BINS = 10
 
     x_sym, y_sym = sp.symbols('x_sym y_sym')
 
@@ -288,7 +294,7 @@ class beam:
     plots 6d and twiss data, used in schematic.py file
     '''
     def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, 
-                maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
+                maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim=True, shape={}, scatter=False):
         axlist = [ax1,ax2,ax3]
         # ax1.set_aspect(aspect = 1, adjustable='datalim')
         # Define SymPy symbols for plotting
@@ -312,30 +318,8 @@ class beam:
                 # print(ax1.get_xlim())
                 # print(ax1.get_ylim())
                 # ax.set(xlim=(-maxVals[2*i], maxVals[2*i]), ylim=(-maxVals[2*i + 1], maxVals[2*i + 1]))
-            
-            if METHOD2:
-                xy = np.vstack([dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1]])
-                density = gaussian_kde(xy)(xy)
-                ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], c=density,
-                           cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
 
-            elif METHOD1:
-                bins = 100
-                # Use the defined limits for the histogram range if defineLim is True
-                range_xy = [[minVals[2*i], maxVals[2*i]], [minVals[2*i + 1], maxVals[2*i + 1]]] if defineLim else None
-                hist, xedges, yedges = np.histogram2d(dist_6d[:, 2 * i],dist_6d[:, 2 * i + 1], bins=bins, range=range_xy)
-                hist_smoothed = gaussian_filter(hist, sigma=1)
-                xcenters = (xedges[:-1] + xedges[1:]) / 2
-                ycenters = (yedges[:-1] + yedges[1:]) / 2
-                x_flat = np.repeat(xcenters, bins)
-                y_flat = np.tile(ycenters, bins)
-                density_flat = hist_smoothed.flatten()
-                scatter = ax.scatter(x_flat, y_flat, c=density_flat, cmap='hot') 
-            elif METHOD3:    
-                extent = (minVals[2*i], maxVals[2*i], minVals[2*i + 1], maxVals[2*i + 1]) if defineLim else None
-                hb = ax.hexbin(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], cmap=self.scatter_cmap, extent=extent, gridsize=self.BINS) # Adjust gridsize
-                # cb = ax.figure.colorbar(hb, ax=ax, label='Point Count per Bin')
-            
+            self.heatmap(ax, dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], scatter=scatter)
             ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
             ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
 
@@ -380,11 +364,8 @@ class beam:
                     outsideArea[1].append(y)
             circle = patches.Circle(origin, radius, edgecolor="black", facecolor="None")
             ax4.add_patch(circle)
-            xy = np.vstack([withinArea[0], withinArea[1]])
-            density = gaussian_kde(xy)(xy)
-            ax4.scatter(withinArea[0], withinArea[1], c=density,
-                        cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
-            ax4.scatter(outsideArea[0], outsideArea[1], s=self.scatter_size, alpha=self.scatter_alpha, color="black")
+            self.heatmap(ax4, withinArea[0], withinArea[1], scatter=scatter, zorder=2)
+            self.heatmap(ax4, outsideArea[0], outsideArea[1], scatter=scatter, lost=True, zorder=1)
             percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         elif shape.get("shape") == "rectangle":
             length = shape.get("length")
@@ -401,24 +382,14 @@ class beam:
                     outsideArea[1].append(y)
             rectangle = patches.Rectangle(updatedOrigin,length,width, edgecolor="black", facecolor="none")
             ax4.add_patch(rectangle)
-            xy = np.vstack([withinArea[0], withinArea[1]])
-            density = gaussian_kde(xy)(xy)
-            ax4.scatter(withinArea[0], withinArea[1], c=density,
-                        cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
-            ax4.scatter(outsideArea[0], outsideArea[1], s=self.scatter_size, alpha=self.scatter_alpha, color="black")
+
+            self.heatmap(ax4, withinArea[0], withinArea[1], scatter=scatter, zorder=2)
+            self.heatmap(ax4, outsideArea[0], outsideArea[1], scatter=scatter, lost=True, zorder=1)
             percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         else:
-            if METHOD2:
-                xy = np.vstack(xyPart)
-                density = gaussian_kde(xy)(xy)
-                ax4.scatter(xyPart[0], xyPart[1], c=density,
-                            cmap=self.scatter_cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+            self.heatmap(ax4, xyPart[0], xyPart[1], scatter=scatter)
+            percentageInside = 100  # No defined aperture so acceptance is 100 % by default
 
-            elif METHOD3:
-                extent = (minVals[0], maxVals[0], minVals[2], maxVals[2]) if defineLim else None
-                hb = ax4.hexbin(xyPart[0], xyPart[1], cmap=self.scatter_cmap, extent=extent, gridsize=self.BINS) # Adjust gridsize
-            
-            percentageInside = 100
         if defineLim:
             # ax4.axis('equal')
             ax4.set_xlim(minVals[0], maxVals[0])
@@ -428,3 +399,42 @@ class beam:
         ax4.set_xlabel(x_labels[i + 1])
         ax4.set_ylabel(y_labels[i + 1])
         ax4.grid(True)
+
+    def heatmap(self, axes, x, y, scatter=False, lost=False, zorder=1):
+
+        """
+        Methods 1 and 3 copy and paste from previous version:
+            if METHOD1:
+                bins = 100
+                # Use the defined limits for the histogram range if defineLim is True
+                range_xy = [[minVals[2*i], maxVals[2*i]], [minVals[2*i + 1], maxVals[2*i + 1]]] if defineLim else None
+                hist, xedges, yedges = np.histogram2d(dist_6d[:, 2 * i],dist_6d[:, 2 * i + 1], bins=bins, range=range_xy)
+                hist_smoothed = gaussian_filter(hist, sigma=1)
+                xcenters = (xedges[:-1] + xedges[1:]) / 2
+                ycenters = (yedges[:-1] + yedges[1:]) / 2
+                x_flat = np.repeat(xcenters, bins)
+                y_flat = np.tile(ycenters, bins)
+                density_flat = hist_smoothed.flatten()
+                scatter = ax.scatter(x_flat, y_flat, c=density_flat, cmap='hot')
+            elif METHOD3:
+                extent = (minVals[2*i], maxVals[2*i], minVals[2*i + 1], maxVals[2*i + 1]) if defineLim else None
+                hb = ax.hexbin(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], cmap=self.scatter_cmap, extent=extent, gridsize=self.BINS) # Adjust gridsize
+                 cb = ax.figure.colorbar(hb, ax=ax, label='Point Count per Bin')
+                self.heatmap(ax, dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1])
+
+        Check if Method 1 could be useful...
+        Check if Method 3 could be improved
+
+        """
+
+        cmap = self.lost_cmap if lost else self.default_cmap
+
+        # Scatter plot with color density
+        if scatter:
+            xy = np.vstack([x, y])
+            density = gaussian_kde(xy)(xy)
+            return axes.scatter(x, y, c=density, cmap=cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+
+        # Heatmap with hexagonal tiles
+        else:
+            return axes.hexbin(x, y, cmap=cmap, extent=None, gridsize=self.BINS, zorder=zorder)
