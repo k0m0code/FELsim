@@ -200,7 +200,7 @@ class draw_beamline:
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
                                    saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True,
-                                   showIndice = False):
+                                   showIndice = False, scatter=False):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -337,7 +337,7 @@ class draw_beamline:
             
             #  Plot inital 6d scatter data
             matrix = plot6dValues.get(0)
-            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, matrix[4])
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, scatter=scatter)
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
@@ -374,8 +374,8 @@ class draw_beamline:
                 ax5.set_xticklabels(x_axis,rotation=45,ha='right')
 
             plt.tick_params(labelsize = 9)
-            plt.xlabel("Distance from start of beam (m)")
-            plt.ylabel("Envelope $E$ (mm)")
+            plt.xlabel(r"Distance from start of beam (m)")
+            plt.ylabel(r"Envelope $E$ (mm)")
             ax5.legend(loc='upper left')
             line = None
             lineList = []
@@ -393,7 +393,7 @@ class draw_beamline:
             #    ax5.plot(x_axis, dispersion,
             #                 color=colors[i], linestyle='-',
             #                 label=twiss_aggregated_df.keys()[i])
-            ax6.set_ylabel('Dispersion $D$ (mm)')
+            ax6.set_ylabel(r'Dispersion $D$ (mm)')
 
             ax6.legend(loc='upper right')
 
@@ -432,7 +432,8 @@ class draw_beamline:
                 ax3.clear()
                 ax4.clear()
                 scrollbar.label.set_text("z: " + str(val))
-                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, matrix[4])
+                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1, ax2, ax3, ax4, maxVals, minVals,
+                              defineLim, shape, scatter=scatter)
                 fig.canvas.draw_idle()
             scrollbar.on_changed(update_scroll)
 

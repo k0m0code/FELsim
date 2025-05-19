@@ -80,11 +80,16 @@ class lattice:
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
-    def changeBeamType(self, particleType, kineticE):
+    def changeBeamType(self, particleType, kineticE, beamSegments = None):
         try:
             particleData = self.PARTICLES[particleType]
-            self.setMQE(particleData[0],particleData[1],particleData[2])
+            self.setMQE(particleData[0], particleData[1], particleData[2])
             self.setE(kineticE)
+            if beamSegments is not None:
+                for seg in beamSegments:
+                    seg.setMQE(particleData[0], particleData[1], particleData[2])
+                    seg.setE(kineticE)
+                return beamSegments
         except KeyError:
             #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
             #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
@@ -98,6 +103,11 @@ class lattice:
 
                 self.setMQE(m_i, q_i, meV)
                 self.setE(kineticE)
+                if beamSegments is not None:
+                    for seg in beamSegments:
+                        seg.setMQE(m_i, q_i, meV)
+                        seg.setE(kineticE)
+                    return beamSegments
             except:
                 raise TypeError("Invalid particle type/isotope")
     

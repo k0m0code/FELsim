@@ -34,10 +34,11 @@ epsilon_n = 8  # Transverse emittance normalized (pi.mm.mrad) epsilon_n = beta *
 x_std = 0.8  # (mm)
 y_std = 0.8  # (mm)
 
-nb_particles = 1000
+nb_particles = 10000
 
 # Transverse phase space Initial conditions as a function of the normalized emittance and beam size
-relat = lattice(1,E=Energy)
+relat = lattice(1,fringeType=None)
+relat.setE(E=Energy)
 norm = relat.gamma * relat.beta
 epsilon = epsilon_n / norm
 x_prime_std = epsilon / x_std  # (mrad)
@@ -63,11 +64,11 @@ Generate beamline() elements
 pd.set_option('display.max_rows', None)
 # Create beamline from Excel file
 path3 = r"/Users/***/Desktop/Documents/FELsim"
-path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\FELsim"
+path2 = r"C:\Users\NielsB\cernbox\Hawaii University\Beam dynamics\UH_FELxBeamDyn"
 path1 = r"C:\Users\User\Documents\FELsim"
-directory = Path(path3)
-# file_path = directory / 'Beamline_elements.xlsx'
-file_path = directory / 'Beamline_elements_2.xlsx'
+directory = Path(path2)
+file_path = directory / 'Beamline_elements.xlsx'
+#file_path = directory / 'Beamline_elements_2.xlsx'
 excel = ExcelElements(file_path)
 df = excel.get_dataframe()
 #beamline
@@ -85,13 +86,13 @@ replace all dipole wedge elements with drift elements
 #     beamline = beamline[:-5]
 schem = draw_beamline()
 beamtype = beamline()
-line_UH = beamtype.changeBeamType( "electron", Energy,beamlineUH)
+line_UH = relat.changeBeamType("electron", Energy, beamlineUH)
 
 segments = 98
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
-
-schem.plotBeamPositionTransform(beam_dist, line,0.01, showIndice=True)
+acceptance = {"shape":'circle', "radius":1, "origin":[0,0]}
+schem.plotBeamPositionTransform(beam_dist, line,0.01, plot=True, showIndice=True, defineLim=False, matchScaling=False, shape=acceptance, scatter=True)
 
 # schem.plotBeamPositionTransform(beam_dist, line,0.01)
 
