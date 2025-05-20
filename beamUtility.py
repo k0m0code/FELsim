@@ -9,6 +9,7 @@ class beamUtility:
     NA = 6.02214076e23  # Avogadro's number
     epsilon_0 = 8.854187817e-12  # Vacuum permittivity (F/m)
     me = 9.10938356e-31  # Electron mass (kg)
+    m_p = 1.67262192595e-27  # Proton Mass (kg)
     c = 299792458.0  # Speed of light (m/s)
 
     # Material properties (Density in kg/m^3, Specific Heat in J/kg*K, Stopping Power in MeV cm^2/g, heat capacity in J/g°C)
@@ -26,10 +27,16 @@ class beamUtility:
     for material, props in materials.items():
         props["stopping_power"] *= (MeV_to_J * 1e6) / props["density"]  # Convert MeV cm^2/g to J/m
 
+    PARTICLES = {"electron": [me, e, (me * c ** 2)],
+                    "proton": [m_p, e, (m_p * c ** 2)]}
     
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, beam_type = "electron", sigma_x = 1e-3, sigma_y = 10e-3) -> None:
+        self.beam_information = self.PARTICLES[beam_type]
+
+        # Beam transverse size (6 sigma contains ~95% of beam)
+        self.sigma_x = sigma_x # sigma_x : 1 mm
+        self.sigma_y = sigma_y # sigma_y : 10 mm
 
     #f_bunch: Bunch frequency (Hz)
     def chargePerMacropulse(self, I_pulse_range: list, T_pulse_values: list, f_bunch = 2.856e9):
@@ -64,14 +71,11 @@ class beamUtility:
         fig.suptitle("Charge per Macropulse vs Beam Current for Different Pulse Durations")
         plt.show()
 
-    # Beam transverse size (6 sigma contains ~95% of beam)
-    # sigma_x : 1 mm
-    # sigma_y : 10 mm
     # penetration_depch : 1 mm
     def getPowerDF(self, I_pulse_range: np.array, T_pulse_values: np.array, rep_rate_values: np.array,
-                   E_energy_range: np.array, plot_type = "Power", sigma_x = 1e-3, sigma_y = 10e-3, penetration_depth = 20e-3,
-                   plot = True):
-        
+                   E_energy_range: np.array, plot_type = "Power", penetration_depth = 20e-3, plot = True):
+        sigma_x = self.sigma_x
+        sigma_y = self.sigma_y
         colors = ['lightskyblue', 'goldenrod', 'black', 'lightcoral']
         linestyles = ['-', '-', '--', '-']
 
@@ -195,9 +199,9 @@ class beamUtility:
         plt.show()
 
     # Function to plot penetration depth
-    def plot_penetration_depth(self, E_energy_range, material):
-        df_grunn = self.model_Grunn(material,E_energy_range)
-        df_bethe = self.model_Bethe(material, E_energy_range)
+    def plot_penetration_depth(self, material, df_grunn = None, df_bethe = None, E_energy_range = np.logspace(-1, 2, 100)):
+        df_grunn = self.model_Grunn(material,E_energy_range) if df_grunn is None else df_grunn
+        df_bethe = self.model_Bethe(material, E_energy_range) if df_bethe is None else df_bethe
         plt.figure(figsize=(8, 5))
         plt.xscale("log")
         plt.plot(df_grunn["Energy (MeV)"], df_grunn["Penetration Depth (cm)"], label=f"{material} - Grunn", linestyle='--', color='blue')
@@ -229,4 +233,4 @@ if __name__ == "__main__":
                        rep_rate_values = np.array([1, 2]), E_energy_range = np.linspace(0, 50, 100),
                        plot_type = "Temperature")
     for material in obj.materials.keys():
-        obj.plot_penetration_depth(np.logspace(-1, 2, 100), material)
+        obj.plot_penetration_depth(material)
