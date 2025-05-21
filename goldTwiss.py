@@ -34,7 +34,7 @@ epsilon_n = 8  # Transverse emittance normalized (pi.mm.mrad) epsilon_n = beta *
 x_std = 0.8  # (mm)
 y_std = 0.8  # (mm)
 
-nb_particles = 10000
+nb_particles = 1000
 
 # Transverse phase space Initial conditions as a function of the normalized emittance and beam size
 relat = lattice(1,fringeType=None)
@@ -92,7 +92,7 @@ segments = 98
 line = line_UH[:segments]
 opti = beamOptimizer(line, beam_dist)
 acceptance = {"shape":'circle', "radius":1, "origin":[0,0]}
-schem.plotBeamPositionTransform(beam_dist, line,0.01, plot=True, showIndice=True, defineLim=False, matchScaling=False, shape=acceptance, scatter=True)
+schem.plotBeamPositionTransform(beam_dist, line,0.01, plot=True, showIndice=True, defineLim=False, saveFig = 10, matchScaling=False, shape=acceptance, scatter=False)
 
 # schem.plotBeamPositionTransform(beam_dist, line,0.01)
 

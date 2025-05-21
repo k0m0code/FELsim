@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
 from matplotlib.widgets import Slider
+from matplotlib.transforms import Bbox
 import pandas as pd
 import csv
 import numpy as np
@@ -199,8 +200,8 @@ class draw_beamline:
             minVals[1] = minVals[3]
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
-                                   saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True,
-                                   showIndice = False, scatter=False):
+                                   saveData = False, saveFig = False, shape = {}, plot = True, spacing = True,
+                                   matchScaling = True, showIndice = False, scatter=False):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -336,8 +337,25 @@ class draw_beamline:
             ax4 = plt.subplot(gs[1, 1])
             
             #  Plot inital 6d scatter data
-            matrix = plot6dValues.get(0)
-            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, scatter=scatter)
+            #matrix = plot6dValues.get(0)
+            #ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, scatter=scatter)
+
+            if isinstance(saveFig, bool):
+                savePhaseSpace = saveFig
+                saveZ = 0  # or a default like 'last' or x_axis[0]
+            elif isinstance(saveFig, (int, float)):
+                savePhaseSpace = True
+                saveZ = saveFig
+            else:
+                raise ValueError("saveFig must be either False, True, or a float (z value)")
+
+            z_values = np.array(list(plot6dValues.keys()))
+            closest_z = z_values[np.argmin(np.abs(z_values - saveZ))]
+            matrix = plot6dValues[closest_z]
+
+            # Update the phase space plots to match that z
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1, ax2, ax3, ax4, maxVals, minVals, defineLim,
+                          shape, scatter=scatter)
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
@@ -363,15 +381,18 @@ class draw_beamline:
                 totalLen = x_axis[-1]
                 lastTick = x_axis[0]
                 xTickLab = [lastTick]
-                for tick in x_axis[1:]: 
-                    if (tick - lastTick)/totalLen > self.DEFAULTSPACINGPERCENTAGE:
+                for tick in x_axis[1:]:
+                    if (tick - lastTick) / totalLen > self.DEFAULTSPACINGPERCENTAGE:
                         xTickLab.append(tick)
                         lastTick = tick
                     else:
                         xTickLab.append("")
-                ax5.set_xticklabels(xTickLab,rotation=45,ha='right')
+                # Format non-empty labels to 2 decimal places
+                xTicks_disp = [f"{x:.3f}" if x != "" else "" for x in xTickLab]
+                ax5.set_xticklabels(xTicks_disp, rotation=45, ha='right')
             else:
-                ax5.set_xticklabels(x_axis,rotation=45,ha='right')
+                xTicks_disp = [f"{x:.3f}" for x in x_axis]
+                ax5.set_xticklabels(xTicks_disp, rotation=45, ha='right')
 
             plt.tick_params(labelsize = 9)
             plt.xlabel(r"Distance from start of beam (m)")
@@ -419,7 +440,32 @@ class draw_beamline:
             #  Important to leave tight_layout before scrollbar creation
             plt.suptitle("Beamline Simulation")
             plt.tight_layout()
-            
+
+            if savePhaseSpace:
+                #  Saving bottom plot, beam dynamics simulations versus z
+                bbox = ax5.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                x0, y0, x1, y1 = bbox.extents
+                pad_left = 0.55
+                pad_right = 0.7
+                pad_bottom = 0.7
+                pad_top = 0.1
+                new_bbox = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
+                fig.savefig("dynamics_plot.eps", format='eps', bbox_inches=new_bbox)
+
+                #  Saving top plots, phase space
+                bbox1 = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                bbox2 = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                bbox3 = ax3.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                bbox4 = ax4.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                bbox_quadrants = Bbox.union([bbox1, bbox2, bbox3, bbox4])
+                x0, y0, x1, y1 = bbox_quadrants.extents
+                pad_left = 0.7
+                pad_right = 0.1
+                pad_bottom = 0.5
+                pad_top = 0.3
+                bbox_quadrants_asym = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
+                fig.savefig("phase_space.eps", format='eps', bbox_inches=bbox_quadrants_asym)
+
             #   Scroll bar creation and function
             dimensions = ax5.get_position().bounds
             scrollax = plt.axes([dimensions[0],0.01,dimensions[2],0.01], facecolor = 'lightgoldenrodyellow')

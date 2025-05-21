@@ -327,12 +327,13 @@ class beam:
                         space = ''
                     else:
                         space = '\n'
-                    twiss_txt = twiss_txt + space + f'{label_twiss_z[j]}: {np.round(value, 2)}'
+                    twiss_txt = twiss_txt + space + f'{label_twiss_z[j]}: {np.round(value, 3)}'
                     j = j + 1
                     if j == 4:
                         break
             else:
-                twiss_txt = '\n'.join(f'{label}: {np.round(value, 2)}' for label, value in twiss_axis.items())
+                twiss_items_short = list(twiss_axis.items())[:-2]
+                twiss_txt = '\n'.join(f'{label}: {np.round(value, 3)}' for label, value in twiss_items_short)
             props = dict(boxstyle='round', facecolor='lavender', alpha=0.5)
             ax.text(0.01, 0.97, twiss_txt, transform=ax.transAxes, fontsize=8,
                     verticalalignment='top', bbox=props)
