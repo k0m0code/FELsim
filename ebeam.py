@@ -275,16 +275,8 @@ class beam:
             std1.append([X,Y,Z])
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
             std6.append([X,Y,Z])
-
-        #heatMap = []
-        #if METHOD2:
-            #  Heat map 
-        #    for i, axis in enumerate(twiss.index):
-        #        xy = np.vstack([dist_6d[:, 2 * i],  dist_6d[:, 2 * i + 1]])
-        #        density = gaussian_kde(xy)(xy)
-        #        heatMap.append(density)
         
-        return std1, std6, dist_6d, twiss #, heatMap
+        return std1, std6, dist_6d, twiss
 
     '''
     plots 6d and twiss data, used in schematic.py file
