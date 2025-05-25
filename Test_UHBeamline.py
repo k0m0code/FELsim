@@ -20,7 +20,7 @@ Bunch length 1 ps (1 deg) to 2 ps (2 deg)
 ebeam = beam()
 f = 2856 * (10 ** 6)  # Accelerator RF frequency (Hz)
 
-nb_particles = int(1e4)
+nb_particles = int(1e3)
 
 bunch_spread = 1  # std in pico-second
 tof_std = bunch_spread * (10 ** -9) * f  # (10 ** -3) (dToF / T)
@@ -93,6 +93,7 @@ twiss_aggregated_df = schem.plotBeamPositionTransform(beam_dist, truncatedA_line
 
 
 truncated_line1 = line_UH[:-88]
+truncated_line2 = line_UH[:-30]
 
 truncated_line1.append(qpfLattice(current = 3.816604, length=0.0889/2))
 schem.plotBeamPositionTransform(beam_dist, truncated_line1, 1, plot=True)
@@ -140,4 +141,4 @@ Plotting results
 '''
 
 
-schem.plotBeamPositionTransform(beam_dist, line_test, 0.001)
+schem.plotBeamPositionTransform(beam_dist, truncated_line2, 0.1)

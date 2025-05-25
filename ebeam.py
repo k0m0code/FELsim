@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as patches
 from scipy.stats import norm
+from scipy.stats import gaussian_kde
+from scipy.ndimage import gaussian_filter
+from matplotlib.colors import LinearSegmentedColormap
 
 
 #in plotDriftTransform, add legend and gausian distribution for x and y points
@@ -27,6 +30,15 @@ from scipy.stats import norm
 class beam:
     def __init__(self):
         self.DDOF = 1 #  Unbiased Bessel correction for standard deviation calculation for twiss functions
+        self.scatter_size = 30
+        self.scatter_alpha = 0.7
+        plasma = plt.cm.get_cmap('plasma', 256) #'magma'. 'inferno', 'plasma', 'viridis' for uniform (append _r for reverse).
+        new_colors = plasma(np.linspace(0, 1, 256))
+        new_colors[0] = [1, 1, 1, 0]
+        plasma_with_white = LinearSegmentedColormap.from_list('plasma_with_white', new_colors)
+        self.default_cmap = plasma_with_white
+        self.lost_cmap = 'binary'
+        self.BINS = 20
 
     x_sym, y_sym = sp.symbols('x_sym y_sym')
 
@@ -52,47 +64,53 @@ class beam:
         dist_avg = np.mean(dist_6d, axis=0)
         dist_cov = np.cov(dist_6d, rowvar=False, ddof=ddof)
 
-        label_twiss = ["$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm)",
+        label_twiss = [r"$\epsilon$ ($\pi$.mm.mrad)", r"$\alpha$", r"$\beta$ (m)", r"$\gamma$ (rad/m)", r"$D$ (mm)",
                        r"$D^{\prime}$ (mrad)", r"$\phi$ (deg)"]
 
         label_axes = ["x", "y", "z"]
 
         twiss_data = []
 
-        delta_energy = dist_cov[5, 5]
+        sigma_delta = dist_cov[5, 5]  # variance of (10^-3 δW/W)^2, dimensionless
+
         for i in range(3):
+            idx, idx_prime = 2 * i, 2 * i + 1
 
-            covar = dist_cov[2 * i, 2 * i + 1]
-            var = dist_cov[2 * i, 2 * i]
-            var_prime = dist_cov[2 * i + 1, 2 * i + 1]
-            covar_dispersion = dist_cov[2 * i, 5]
-            covar_dispersion_prime = dist_cov[2 * i + 1, 5]
+            var = dist_cov[idx, idx]
+            var_prime = dist_cov[idx_prime, idx_prime]
+            covar = dist_cov[idx, idx_prime]
 
-            if i == 2:
-                emittance = np.sqrt(var * var_prime - covar ** 2)
-                alpha = - covar / emittance
-                beta = var / emittance
-                gamma = var_prime / emittance
-                dispersion = 0.0
-                dispersion_prime = 0.0
+            if i < 2:
+                D = dist_cov[idx, 5] / sigma_delta
+                D_prime = dist_cov[idx_prime, 5] / sigma_delta
+
+                # Dispersion-corrected variances
+                var_disp_free = var - D ** 2 * sigma_delta
+                var_prime_disp_free = var_prime - D_prime ** 2 * sigma_delta
+                covar_disp_free = covar - D * D_prime * sigma_delta
+
+                # Intrinsic emittance
+                epsilon = np.sqrt(var_disp_free * var_prime_disp_free - covar_disp_free ** 2)
+
+                alpha = -covar_disp_free / epsilon
+                beta = var_disp_free / epsilon
+                gamma = var_prime_disp_free / epsilon
+
+                dispersion = D
+                dispersion_prime = D_prime
             else:
-                alpha_emittance = - covar + covar_dispersion * covar_dispersion_prime / delta_energy
-                beta_emittance = var - (covar_dispersion ** 2) / delta_energy
-                gamma_emittance = var_prime - (covar_dispersion_prime ** 2) / delta_energy
-                emittance = np.sqrt(beta_emittance * gamma_emittance - alpha_emittance ** 2)
-                alpha = alpha_emittance / emittance
-                beta = beta_emittance / emittance
-                gamma = gamma_emittance / emittance
-                dispersion = covar_dispersion / np.sqrt(delta_energy)
-                dispersion_prime = covar_dispersion_prime / np.sqrt(delta_energy)
+                # Longitudinal plane (no dispersion)
+                epsilon = np.sqrt(var * var_prime - covar ** 2)
+                alpha = -covar / epsilon
+                beta = var / epsilon
+                gamma = var_prime / epsilon
+                dispersion = dispersion_prime = 0.0
 
-            phi = (90 /np.pi) * np.arctan2(2 * alpha, gamma - beta) / 2
-            if phi > 0:
-                phi = phi - 90
-            else:
-                phi = phi + 90
+            # Standardized phase advance φ calculation
+            phi_rad = 0.5 * np.arctan2(2 * alpha, gamma - beta)
+            phi_deg = np.rad2deg(phi_rad)
 
-            twiss_data.append([emittance, alpha, beta, gamma, dispersion, dispersion_prime, phi])
+            twiss_data.append([epsilon, alpha, beta, gamma, dispersion, dispersion_prime, phi_deg])
 
         twiss = pd.DataFrame(twiss_data, columns=label_twiss, index=label_axes[:3])
 
@@ -128,7 +146,9 @@ class beam:
         # Check if the point (x, y) is inside or on the ellipse
         return Z <= 0
 
-
+    '''
+    THIS FUNCTION BELOW IS A WIP
+    '''
     def particles_in_ellipse(self, dist_6d, n=1):
         fig, axes = plt.subplots(2, 2)
 
@@ -219,7 +239,22 @@ class beam:
         ebeam = beam()
         dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
         return twiss.loc[variable].loc[r"$\phi$ (deg)"]
+    
+    def envelope(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        emittance = (10 ** -6) * twiss.loc[variable].loc[r"$\epsilon$ ($\pi$.mm.mrad)"]
+        beta = twiss.loc[variable].loc[r"$\beta$ (m)"]
+        envelope = (10 ** 3) * np.sqrt(emittance * beta)
+        return envelope
+    
+    def disper(self, particles, variable):
+        ebeam = beam()
+        dist_avg, dist_cov, twiss = ebeam.cal_twiss(particles, ddof=self.DDOF)
+        return twiss.loc[variable].loc[r"$D$ (mm)"]
 
+
+        
 
     
 
@@ -240,17 +275,19 @@ class beam:
             std1.append([X,Y,Z])
             X, Y, Z = self.ellipse_sym(dist_avg[2 * i], dist_avg[2 * i + 1], twiss_axis, n=6, num_pts=num_pts)
             std6.append([X,Y,Z])
+        
         return std1, std6, dist_6d, twiss
 
     '''
     plots 6d and twiss data, used in schematic.py file
     '''
-    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim = True, shape = {}):
+    def plotXYZ(self, dist_6d, std1, std6, twiss, ax1, ax2, ax3, ax4, 
+                maxVals = [0,0,0,0,0,0], minVals = [0,0,0,0,0,0], defineLim=True, shape={}, scatter=False):
         axlist = [ax1,ax2,ax3]
         # ax1.set_aspect(aspect = 1, adjustable='datalim')
         # Define SymPy symbols for plotting
         x_sym, y_sym = sp.symbols('x y')
-        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t / T_{\text{RF}}$ $(10^{-3})$', r'Position $x$ (mm)']
+        x_labels = [r'Position $x$ (mm)', r'Position $y$ (mm)', r'Relative Bunch ToF $\Delta t$ $/$ $T_{rf}$ $(10^{-3})$', r'Position $x$ (mm)']
         y_labels = [r'Phase $x^{\prime}$ (mrad)', r'Phase $y^{\prime}$ (mrad)', r'Relative Energy $\Delta W / W_0$ $(10^{-3})$',
                     r'Position $y$ (mm)']
 
@@ -270,7 +307,7 @@ class beam:
                 # print(ax1.get_ylim())
                 # ax.set(xlim=(-maxVals[2*i], maxVals[2*i]), ylim=(-maxVals[2*i + 1], maxVals[2*i + 1]))
 
-            ax.scatter(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], s=15, alpha=0.7)
+            self.heatmap(ax, dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], scatter=scatter)
             ax.contour(std1[i][0], std1[i][1], std1[i][2], levels=[0], colors='black', linestyles='--')
             ax.contour(std6[i][0], std6[i][1], std6[i][2], levels=[0], colors='black', linestyles='--')
 
@@ -300,7 +337,8 @@ class beam:
         # Plot for 'x, y - Space'
         withinArea = [[],[]]
         outsideArea = [[],[]]
-        xyPart = [dist_6d[:, 0], dist_6d[:, 2]]
+        xyPart = [np.array(dist_6d[:, 0]), np.array(dist_6d[:, 2])]
+
         if shape.get("shape") == "circle":
             radius = shape.get("radius")
             origin = shape.get("origin")
@@ -312,8 +350,12 @@ class beam:
                 else:
                     outsideArea[0].append(x)
                     outsideArea[1].append(y)
-            circle = patches.Circle(origin, radius, edgecolor = "black", facecolor = "None")
+            circle = patches.Circle(origin, radius, edgecolor="black", facecolor="None", zorder = 3)
             ax4.add_patch(circle)
+            totalExtent = [xyPart[0].min(), xyPart[0].max(), xyPart[1].min(),xyPart[1].max()]
+            self.heatmap(ax4, withinArea[0], withinArea[1], scatter=scatter, zorder=2, shapeExtent = totalExtent)
+            self.heatmap(ax4, outsideArea[0], outsideArea[1], scatter=scatter, lost=True, zorder=1, shapeExtent = totalExtent)
+            percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         elif shape.get("shape") == "rectangle":
             length = shape.get("length")
             width = shape.get("width")
@@ -327,20 +369,50 @@ class beam:
                 else:
                     outsideArea[0].append(x)
                     outsideArea[1].append(y)
-            rectangle = patches.Rectangle(updatedOrigin,length,width, edgecolor = "black", facecolor = "none")
+            rectangle = patches.Rectangle(updatedOrigin,length,width, edgecolor="black", facecolor="none", zorder = 3)
             ax4.add_patch(rectangle)
+            totalExtent = [xyPart[0].min(), xyPart[0].max(), xyPart[1].min(),xyPart[1].max()]
+            self.heatmap(ax4, withinArea[0], withinArea[1], scatter=scatter, zorder=2, shapeExtent=totalExtent)
+            self.heatmap(ax4, outsideArea[0], outsideArea[1], scatter=scatter, lost=True, zorder=1, shapeExtent=totalExtent)
+            percentageInside = len(withinArea[0]) / len(xyPart[0]) * 100
         else:
-            ax4.scatter(xyPart[0], xyPart[1], s=15,alpha = 0.7)
+            self.heatmap(ax4, xyPart[0], xyPart[1], scatter=scatter)
+            percentageInside = 100  # No defined aperture so acceptance is 100 % by default
+
         if defineLim:
             # ax4.axis('equal')
             ax4.set_xlim(minVals[0], maxVals[0])
             ax4.set_ylim(minVals[2], maxVals[2])
-        ax4.scatter(withinArea[0], withinArea[1], s=15, alpha=0.7, color = "blue")
-        ax4.scatter(outsideArea[0], outsideArea[1], s=15, alpha=0.7, color = "red")
-        percentageInside = len(withinArea[0])/len(xyPart[0])*100
-        
 
         ax4.set_title(f'x, y - Space: {round(percentageInside,4)}% acceptance')
         ax4.set_xlabel(x_labels[i + 1])
         ax4.set_ylabel(y_labels[i + 1])
         ax4.grid(True)
+
+    def heatmap(self, axes, x, y, scatter=False, lost=False, zorder=1, shapeExtent = None):
+
+        """
+        Methods 1 and 3 copy and paste from previous version:
+            elif METHOD3:
+                extent = (minVals[2*i], maxVals[2*i], minVals[2*i + 1], maxVals[2*i + 1]) if defineLim else None
+                hb = ax.hexbin(dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1], cmap=self.scatter_cmap, extent=extent, gridsize=self.BINS) # Adjust gridsize
+                 cb = ax.figure.colorbar(hb, ax=ax, label='Point Count per Bin')
+                self.heatmap(ax, dist_6d[:, 2 * i], dist_6d[:, 2 * i + 1])
+
+        Check if Method 1 could be useful...
+        Check if Method 3 could be improved
+
+        """
+
+        cmap = self.lost_cmap if lost else self.default_cmap
+
+        # Scatter plot with color density
+        if scatter:
+            if not (len(x) == 0 or len(y) == 0):
+                xy = np.vstack([x, y])
+                density = gaussian_kde(xy)(xy)
+                return axes.scatter(x, y, c=density, cmap=cmap, s=self.scatter_size, alpha=self.scatter_alpha)
+
+        # Heatmap with hexagonal tiles
+        else:
+            return axes.hexbin(x, y, cmap=cmap, extent=shapeExtent, gridsize=self.BINS, zorder=zorder)

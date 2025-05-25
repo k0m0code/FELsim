@@ -47,7 +47,9 @@ class beamOptimizer():
         '''
         ebeam = beam()
         #  Methods included in class to return staistical information, add to dictionary if additional methods are created
-        self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,"beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi}
+        self.OBJECTIVEMETHODS = {"std": ebeam.std,"epsilon":ebeam.epsilon,"alpha":ebeam.alpha,
+                                 "beta":ebeam.beta,"gamma":ebeam.gamma,"phi":ebeam.phi,
+                                 "envelope": ebeam.envelope, "dispersion": ebeam.disper}
         
         self.matrixVariables = matrixVariables
         self.beamline = beamline
