@@ -23,8 +23,8 @@ class ExcelElements:
 
         # Rename columns to match their usage
         df.columns = ['Nomenclature', 'z_start', 'z_mid', 'z_end', 'Current (A)', 'Dipole Angle (deg)',
-                      'Dipole length (m)', 'Dipole wedge (deg)', 'Gap wedge (m)', 'Element name',
-                      'Channel','Label','Sector', 'Element']
+                      'Dipole length (m)', 'Dipole wedge (deg)', 'Gap wedge (m)', 'Pole gap (m)', 'Fringe Field Enge coefficients',
+                      'Element name', 'Channel','Label','Sector', 'Element']
         
 
         # Convert 'ch' to numeric, handling any non-numeric gracefully
@@ -45,16 +45,23 @@ class ExcelElements:
         default_current = 0
 
         for index, row in self.df.iterrows():
+            
             element = row['Element']
             z_sta = row['z_start']
             z_end = row['z_end']
 
-            # Read the current for the quadrupole
+            # Parameters associated with beamline elements
             current = float(row['Current (A)']) if pd.notna(row['Current (A)']) else 0.0
             angle = float(row['Dipole Angle (deg)']) if pd.notna(row['Dipole Angle (deg)']) else 0.0
             curvature = float(row['Dipole length (m)']) if pd.notna(row['Dipole length (m)']) else 0.0
             angle_wedge = float(row['Dipole wedge (deg)']) if pd.notna(row['Dipole wedge (deg)']) else 0.0
             gap_wedge = float(row['Gap wedge (m)']) if pd.notna(row['Gap wedge (m)']) else 0.0
+            pole_gap = float(row['Pole gap (m)']) if pd.notna(row['Pole gap (m)']) else 0.0
+            if pd.notna(row['Fringe Field Enge coefficients']) and row['Fringe Field Enge coefficients'].strip():
+                enge_fct = [float(val.strip()) for val in row['Fringe Field Enge coefficients'].split(',') if
+                            val.strip()]
+            else:
+                enge_fct = []
 
             # Calculate the drift length between previous element and current element
             if z_sta > prev_z_end:
@@ -74,7 +81,8 @@ class ExcelElements:
             elif element == "DPH":
                 beamline.append(dipole(length=curvature, angle=angle))
             elif element == "DPW":
-                beamline.append(dipole_wedge(length=gap_wedge, angle=angle_wedge, dipole_length=curvature,dipole_angle=angle))
+                beamline.append(dipole_wedge(length=gap_wedge, angle=angle_wedge, dipole_length=curvature,
+                                            dipole_angle=angle, pole_gap=pole_gap, enge_fct=enge_fct))
             else:
                 # # Add additional elements here if necessary
                 # pass

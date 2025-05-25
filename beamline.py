@@ -12,15 +12,14 @@ import math
     #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
     #  ASSUMES that the measurement begins at 0
     #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
+
 #      getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
         
 class lattice:
-    #  by default every beam type is an electron beam type
-
     #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
     #  ASSUMES that the measurement begins at 0
     #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
-    def __init__(self, length, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = None):
+    def __init__(self, length, fringeType = None):
         '''
         parent class for beamline segment object
 
@@ -31,21 +30,30 @@ class lattice:
         E: float, optional
             Kinetic energy value (MeV/c^2)
         '''
-        self.E = E  # Kinetic energy (MeV/c^2)
+        self.E = 45  # Kinetic energy (MeV/c^2)
         ## this should be passed from ebeam
-        self.E0 = E0 # Electron rest energy (MeV/c^2)
-        self.Q = Q  # (C)
-        self.M = M  # (kg)
+        self.E0 = 0.51099 # Electron rest energy (MeV/c^2)
+        self.Q = 1.60217663e-19  # (C)
+        self.M = 9.1093837e-31  # (kg)
         self.C = 299792458  # Celerity (m/s)
         self.f = 2856 * (10 ** 6)  # RF frequency (Hz)
+
+        self.M_AMU = 1.66053906892E-27  # Atomic mass unit (kg)
+        self.k_MeV = 1e-6 / self.Q  # Conversion factor (MeV / J)
+        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
+        #  [Mass (kg), charge (C), rest energy (MeV)]
+        self.PARTICLES = {"electron": [self.M, self.Q, (self.M * self.C ** 2) * self.k_MeV],
+                          "proton": [self.m_p, self.Q, (self.m_p * self.C ** 2) * self.k_MeV]}
+
         self.gamma = (1 + (self.E / self.E0))
         self.beta = np.sqrt(1 - (1 / (self.gamma ** 2)))
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
-        ##
         self.color = 'none'  #Color of beamline element when graphed
         self.fringeType = fringeType  # Each segment has no magnetic fringe by default
         self.startPos = None
         self.endPos = None
+
+        
 
         if not length <= 0:
             self.length = length
@@ -71,6 +79,37 @@ class lattice:
         self.E0 = restE
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
+
+    def changeBeamType(self, particleType, kineticE, beamSegments = None):
+        try:
+            particleData = self.PARTICLES[particleType]
+            self.setMQE(particleData[0], particleData[1], particleData[2])
+            self.setE(kineticE)
+            if beamSegments is not None:
+                for seg in beamSegments:
+                    seg.setMQE(particleData[0], particleData[1], particleData[2])
+                    seg.setE(kineticE)
+                return beamSegments
+        except KeyError:
+            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
+            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
+            try:
+                isotopeData = particleType.split(",")
+                A = int(isotopeData[0])
+                Z = int(isotopeData[1])
+                m_i = A * self.M_AMU
+                q_i = Z * self.Q
+                meV = (m_i * self.C ** 2) * self.k_MeV
+
+                self.setMQE(m_i, q_i, meV)
+                self.setE(kineticE)
+                if beamSegments is not None:
+                    for seg in beamSegments:
+                        seg.setMQE(m_i, q_i, meV)
+                        seg.setE(kineticE)
+                    return beamSegments
+            except:
+                raise TypeError("Invalid particle type/isotope")
     
     def getSymbolicMatrice(self, **kwargs):
         raise NotImplementedError("getSymbolicMatrice not defined in child class")
@@ -98,14 +137,14 @@ class lattice:
         return newMatrix #  return 2d list
     
 class driftLattice(lattice):
-    def __init__(self, length: float, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45):
+    def __init__(self, length: float):
         '''
         drift lattice segment
 
         length: float
             length of drift segment
         '''
-        super().__init__(length, E0, Q, M, E)
+        super().__init__(length)
         self.color = "white"
     
     # note: unlike old usematrice, this func doesnt check for negative/zero parameter numbers,
@@ -119,7 +158,7 @@ class driftLattice(lattice):
             if numeric: l = length  # length should be number
             else: l = symbols(length, real = True)  # length should be string
         
-        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = -(l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
         mat = Matrix([[1, l, 0, 0, 0, 0],
                       [0, 1, 0, 0, 0, 0],
                       [0, 0, 1, l, 0, 0],
@@ -134,8 +173,8 @@ class driftLattice(lattice):
 
 
 class qpfLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, current: float, length: float = 0.0889, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.current = current # Amps
         self.color = "cornflowerblue"
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
@@ -165,7 +204,7 @@ class qpfLattice(lattice):
         M33 = sp.cosh(self.theta)
         M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
         M44 = sp.cosh(self.theta)
-        M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M56 = -(l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
 
         if I == 0:
             M12 = l
@@ -188,8 +227,8 @@ class qpfLattice(lattice):
 
 
 class qpdLattice(lattice):
-    def __init__(self, current: float, length: float = 0.0889, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, current: float, length: float = 0.0889, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
@@ -219,7 +258,7 @@ class qpdLattice(lattice):
         M33 = sp.cos(self.theta)
         M43 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
         M44 = sp.cos(self.theta)
-        M56 = l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
+        M56 = -l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1))
 
         if I == 0:
             M12 = l
@@ -241,8 +280,8 @@ class qpdLattice(lattice):
         return f"QPD beamline segment {self.length} m long and a current of {self.current} amps"
 
 class dipole(lattice):
-    def __init__(self, length: float = 0.0889, angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, length: float = 0.0889, angle: float = 1.5, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.color = "forestgreen"
         self.angle = angle  # degrees
     
@@ -270,9 +309,9 @@ class dipole(lattice):
 
         M16 = rho * (1 - C) * (self.gamma / (self.gamma + 1))
         M26 = S * (self.gamma / (self.gamma + 1))
-        M51 = self.f * (-S / (self.beta * self.C))
-        M52 = self.f * (-rho * (1 - C) / (self.beta * self.C))
-        M56 = self.f * (-rho * (l / rho - S) / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        M51 = -self.f * S / (self.beta * self.C)
+        M52 = -self.f * rho * (1 - C) / (self.beta * self.C)
+        M56 = -self.f * (l - rho * S) / (self.C * self.beta * self.gamma * (self.gamma + 1))
 
         mat = Matrix([[C, rho * S, 0, 0, 0, M16],
                       [-S / rho, C, 0, 0, 0, M26],
@@ -287,14 +326,15 @@ class dipole(lattice):
         return f"Horizontal dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
 
 class dipole_wedge(lattice):
-    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5, E0 = 0.51099, Q = 1.60217663e-19, M = 9.1093837e-31, E = 45, fringeType = 'decay'):
-        super().__init__(length, E0, Q, M, E, fringeType)
+    def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5,
+                 pole_gap = 0.0127, enge_fct = 0, fringeType = 'decay'):
+        super().__init__(length, fringeType)
         self.color = "lightgreen"
         self.angle = angle
         self.dipole_length = dipole_length
         self.dipole_angle = dipole_angle
-        self.gap = 0.01  # hard-edge fringe field gap (m)
-    
+        self.pole_gap = 0.014478
+
     def getSymbolicMatrice(self, numeric = False, length = None, angle = None):
         l = None
         a = None
@@ -317,16 +357,38 @@ class dipole_wedge(lattice):
         # Hard edge model for the wedge magnets
         By = (self.M*self.C*self.beta*self.gamma / self.Q) * (dipole_angle * sp.pi / 180 / dipole_length)
         R = self.M*self.C*self.beta*self.gamma / (self.Q * By)
-        k = sp.Abs((self.Q * By / self.length) / (self.M * self.C * self.beta * self.gamma)) # Verify
-        eta = (a * sp.pi / 180) * l / self.length # Verify
-        E = (l * k) / ((sp.cos(eta)) ** 2)
-        T = sp.tan(eta)
-        M56 = self.f * (l / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+        eta = (a * sp.pi / 180) * l / self.length
+        Tx = sp.tan(eta)
+
+        '''
+        https://www.slac.stanford.edu/cgi-bin/getdoc/slac-r-075.pdf page 49.
+        
+        phi = K * g * h  g * (1 + sin^2 a) / cos a. 
+        
+        Fringe field contribution:
+        K = int( By(z) * (By_max - By(z)) / (g * By_max^2), dz ) 
+        h = 1 / rho_0, dipole radius
+        g, pole gap
+        
+        hard-edge model, phi = 0
+        '''
+        z = sp.symbols("z", real=True)
+        g = self.pole_gap
+        le = self.length
+        # Triangle fringe field model: B(z) = Bmax * (z / le)
+        Bz = By * (z / le)
+        K_expr = sp.integrate((Bz * (By - Bz)) / (g * By ** 2), (z, 0, le))
+        K_simplified = sp.simplify(K_expr)
+        h = 1 / R
+        phi = sp.simplify(K_simplified * g * h * (1 + sp.sin(eta) ** 2) / sp.cos(eta))
+        Ty = sp.tan(eta - phi)
+        M56 = -self.f * (l / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
 
         mat = Matrix([[1, 0, 0, 0, 0, 0],
-                      [-T / R, 1, 0, 0, 0, 0],
+                      [Tx / R, 1, 0, 0, 0, 0],
                       [0, 0, 1, 0, 0, 0],
-                      [0, 0, -(T + E / 3) / R, 1, 0, 0],
+                      [0, 0, -Ty / R, 1, 0, 0],
                       [0, 0, 0, 0, 1, M56],
                       [0, 0, 0, 0, 0, 1]])
         
@@ -342,20 +404,55 @@ class beamline:
     class fringeField(lattice):
         B = 0 #  Teslas
 
-        def __init__(self, length, fieldStrength,  E0=0.51099, Q=1.60217663e-19, M=9.1093837e-31, E=45):
-            super().__init__(length, E0, Q, M, E)
+        def __init__(self, length, fieldStrength, current = 0):
+            super().__init__(length)
             self.B = fieldStrength
+            # self.current = current
             self.color = 'brown'
 
         #temporarily use drift matrice for testing
-        def getSymbolicMatrice(self, numeric = False, length = None):
+        def getSymbolicMatrice(self, numeric = False, length = None, current = None):
             l = None
+            I = None
             if length is None:
                 l = self.length
             else:
                 if numeric: l = length  # length should be number
                 else: l = symbols(length, real = True)  # length should be string
             
+            # if current is None:
+            #     I = self.current
+            # else:
+            #     if numeric: I = current  # current should be number
+            #     else: I = symbols(current, real = True)  # current should be string
+            
+            # self.k = sp.Abs((self.Q*self.G*I * self.fringeDecay )/(self.M*self.C*self.beta*self.gamma))  
+            # self.theta = sp.sqrt(self.k)*l
+
+            # M11 = sp.cos(self.theta)
+            # M21 = (-(sp.sqrt(self.k)))*sp.sin(self.theta)
+            # M22 = sp.cos(self.theta)
+            # M33 = sp.cosh(self.theta)
+            # M43 = sp.sqrt(self.k)*sp.sinh(self.theta)
+            # M44 = sp.cosh(self.theta)
+            # M56 = -(l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
+
+            # if I == 0:
+            #     M12 = l
+            #     M34 = l
+            # else:
+            #     M34 = sp.sinh(self.theta)*(1/sp.sqrt(self.k))
+            #     M12 = sp.sin(self.theta)*(1/sp.sqrt(self.k))
+
+            # mat =  Matrix([[M11, M12, 0, 0, 0, 0],
+            #                 [M21, M22, 0, 0, 0, 0],
+            #                 [0, 0, M33, M34, 0, 0],
+            #                 [0, 0, M43, M44, 0, 0],
+            #                 [0, 0, 0, 0, 1, M56],
+            #                 [0, 0, 0, 0, 0, 1]])
+            
+            # return mat
+        
             M56 = (l * self.f / (self.C * self.beta * self.gamma * (self.gamma + 1)))
             mat = Matrix([[1, l, 0, 0, 0, 0],
                         [0, 1, 0, 0, 0, 0],
@@ -371,17 +468,9 @@ class beamline:
             return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
     
     def __init__(self, line = []):
-        self.C = 299792458.0  # Speed of light in vacuum (m/s)
-        self.q_e = 1.602176634e-19  # Elementary charge (C)
-        self.m_e = 9.1093837139e-31  # Electron Mass (kg)
-        self.m_p = 1.67262192595e-27  # Proton Mass (kg)
-        self.m_amu = 1.66053906892E-27  # Atomic mass unit (kg)
+        self.ORIGINFACTOR = 0.99
         
-        self.k_MeV = 1e-6 / self.q_e  # Conversion factor (MeV / J)
-
-        #  [Mass (kg), charge (C), rest energy (MeV)]
-        self.PARTICLES = {"electron": [self.m_e, self.q_e, (self.m_e * self.C ** 2) * self.k_MeV],
-                          "proton": [self.m_p, self.q_e, (self.m_p * self.C ** 2) * self.k_MeV]}
+        a = {'first order decay': (self._frontModel, self._endModel)} # must work on later 
         self.FRINGEDELTAZ = 0.01
 
         self.beamline = line
@@ -396,33 +485,6 @@ class beamline:
             self.totalLen += seg.length
             seg.endPos = self.totalLen
 
-
-    def changeBeamType(self, beamSegments, particleType, kineticE):
-        newBeamline = beamSegments
-        try:
-            particleData = self.PARTICLES[particleType]
-            for seg in newBeamline:
-                seg.setMQE(particleData[0],particleData[1],particleData[2])
-                seg.setE(kineticE)
-            return newBeamline
-        except KeyError:
-            #  Try look for isotope particle format, format = "(isotope number),(ion charge)"
-            #  ex. C12+5 (carbon 12, 5+ charge) = "12,5"
-            try:
-                isotopeData = particleType.split(",")
-                A = int(isotopeData[0])
-                Z = int(isotopeData[1])
-                m_i = A * self.m_amu
-                q_i = Z * self.q_e
-                meV = (m_i * self.C ** 2) * self.k_MeV
-
-                for seg in newBeamline:
-                    seg.setMQE(m_i, q_i, meV)
-                    seg.setE(kineticE)
-                return newBeamline
-            except:
-                raise TypeError("Invalid particle type/isotope")
-            
      #  may use other interpolation methods (cubic, spline, etc)  
      # x = 0 = start of end of segment     
     def interpolateData(self, xData, yData, interval):
@@ -439,17 +501,30 @@ class beamline:
     #     endParams, _ = optimize.curve_fit(self._model, xData, yData, p0= [1,1, pos])
     #     return endParams
     
+    def _testModeOrder2end(self, x, origin, B0, a1, a2):
+        return B0/(1+np.exp((a1*(x - origin)) + (a2*(x-origin)**2)))
+    
+    def testFrontFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._testModeOrder2front, xData, yData, p0= [pos, 1, 1, 1], maxfev=50000)
+        return endParams
+    
+    def testendFit(self, xData, yData, pos):
+        endParams, _ = optimize.curve_fit(self._testModeOrder2end, xData, yData, p0= [pos, 1, 1, 1], maxfev=50000)
+        print(endParams)
+        return endParams
+    
+    def _testModeOrder2front(self, x, origin, B0, a1, a2):
+        return B0/(1+np.exp((a1*(-x - origin)) + (a2*(-x-origin)**2)))
 
     
-    def _endModel(self, x, origin, strength, B0):
-        return (1/(1+np.exp((x-origin)*strength))) * B0
+    def _endModel(self, x, origin, B0, strength):
+        return (B0/(1+np.exp((x-origin)*strength)))
     
-    def _frontModel(self, x, origin, strength, B0):
-        return 1/(1+np.exp((-x+origin)*strength)) * B0
+    def _frontModel(self, x, origin, B0, strength):
+        return (B0/(1+np.exp((-x+origin)*strength)))
     
     def frontFit(self, xData, yData, pos):
         endParams, _ = optimize.curve_fit(self._frontModel, xData, yData, p0= [pos, 1, 1], maxfev=50000)
-        print(endParams)
         return endParams
     
     def endFit(self, xData, yData, pos):
@@ -507,11 +582,23 @@ class beamline:
         beamline = self.beamline
         totalLen = self.totalLen
 
-        zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
+        # zLine = np.linspace(0,totalLen,math.ceil(totalLen/interval)+1)
+        # y_values = np.zeros_like(zLine)
+
+        zLine = []
+        i = 0
+        while i <= totalLen:
+            zLine.append(i)
+            i += interval
+        if not interval == (i - totalLen):
+            zLine.append(totalLen)
+        zLine = np.array(zLine)
+
         y_values = np.zeros_like(zLine)
         
         #  add to end of beam segments
         for segment in reversed(beamline):
+            #  custom fringe field
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
                 yData = segment.fringeType[1].copy()
@@ -520,7 +607,10 @@ class beamline:
                
                 params = self.endFit(xData,yData, segment.endPos)
                 yfield = self._endModel(zLine, *params)
-                
+
+                # params = self.testendFit(xData, yData, segment.endPos)
+                # yfield = self._testModeOrder2end(zLine, *params)
+
                 zeroTracker = 0
                 while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
                     yfield[zeroTracker] = 0
@@ -528,8 +618,23 @@ class beamline:
 
                 y_values += yfield
 
+            elif (segment.fringeType == 'first order decay'):
+                B0 = 1 # temporary
+                strength = 1 # temporary, must let user choose this
+                yfield = self._endModel(zLine,
+                                        segment.endPos-(np.log((1-self.ORIGINFACTOR)/self.ORIGINFACTOR)/strength), 
+                                        B0, strength)
+                zeroTracker = 0
+                while (zLine[zeroTracker] < segment.endPos and zeroTracker < zLine.size):
+                    yfield[zeroTracker] = 0
+                    zeroTracker += 1
+
+                y_values += yfield
+
+
         #  add to the front of beam segments
         for segment in beamline:
+            #  custom fringe field
             if isinstance(segment.fringeType, list):
                 xData = segment.fringeType[0].copy()
                 yData = segment.fringeType[1].copy()
@@ -538,7 +643,24 @@ class beamline:
                 for i in range(len(xData)): xData[i] += segment.startPos
                 params = self.frontFit(xData,yData, segment.startPos)
                 yfield = self._frontModel(zLine, *params)
+
+                # params = self.testFrontFit(xData, yData, segment.startPos)
+                # yfield = self._testModeOrder2front(zLine, *params)
                 
+                zeroTracker = len(zLine)-1
+                while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
+                    yfield[zeroTracker] = 0
+                    zeroTracker -= 1
+
+                y_values += yfield
+            
+            elif (segment.fringeType == 'first order decay'):
+                B0 = 1 # temporary?
+                strength = 5 # temporary, must let user choose this
+                yfield = self._frontModel(zLine,
+                                        segment.startPos+(np.log((1-self.ORIGINFACTOR)/self.ORIGINFACTOR)/strength), 
+                                        B0, strength)
+
                 zeroTracker = len(zLine)-1
                 while (zLine[zeroTracker] > segment.startPos and zeroTracker >= 0):
                     yfield[zeroTracker] = 0

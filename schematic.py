@@ -12,6 +12,8 @@ from ebeam import beam
 import datetime
 from tqdm import tqdm
 from matplotlib.widgets import Button
+from scipy.stats import gaussian_kde
+
 
 #Note: plotBeamTransform may show rounded interval values slightly innacurate to actual lengths, but calculations are made with exact values, (rounded values only used for visualization)
 
@@ -197,7 +199,8 @@ class draw_beamline:
             minVals[1] = minVals[3]
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
-                                   saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True):
+                                   saveData = False, shape = {}, plot = True, spacing = True, matchScaling = True,
+                                   showIndice = False, scatter=False):
         '''
         Simulates movement of particles through an accelerator beamline
 
@@ -223,6 +226,8 @@ class draw_beamline:
         matchScaling: bool, optional
             Whether to have same x' vs x and y' vs y axis scaling or not.
             defineLim must be True for same scaling setting to work
+        showIndice: bool, optional
+            Option to display each segment's indice visually
 
 
 
@@ -332,7 +337,7 @@ class draw_beamline:
             
             #  Plot inital 6d scatter data
             matrix = plot6dValues.get(0)
-            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+            ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, scatter=scatter)
 
             #  Plot and configure line graph data
             ax5 = plt.subplot(gs[2, :])
@@ -369,8 +374,8 @@ class draw_beamline:
                 ax5.set_xticklabels(x_axis,rotation=45,ha='right')
 
             plt.tick_params(labelsize = 9)
-            plt.xlabel("Distance from start of beam (m)")
-            plt.ylabel("Envelope $E$ (mm)")
+            plt.xlabel(r"Distance from start of beam (m)")
+            plt.ylabel(r"Envelope $E$ (mm)")
             ax5.legend(loc='upper left')
             line = None
             lineList = []
@@ -388,7 +393,7 @@ class draw_beamline:
             #    ax5.plot(x_axis, dispersion,
             #                 color=colors[i], linestyle='-',
             #                 label=twiss_aggregated_df.keys()[i])
-            ax6.set_ylabel('Dispersion $D$ (mm)')
+            ax6.set_ylabel(r'Dispersion $D$ (mm)')
 
             ax6.legend(loc='upper right')
 
@@ -397,9 +402,18 @@ class draw_beamline:
             ax5.set_ylim(ymin-(ymax*0.05), ymax)
             ymin, ymax = ax5.get_ylim()
             blockstart = 0
-            for seg in beamSegments:
+            moveUp = True
+            for i, seg in enumerate(beamSegments):
                 rectangle = patches.Rectangle((blockstart, ymin), seg.length, ymax*0.05, linewidth=1, edgecolor=seg.color, facecolor= seg.color)
                 ax5.add_patch(rectangle)
+                if showIndice:
+                    moveUp = not moveUp
+                    recx = rectangle.get_x()
+                    recy = rectangle.get_y()
+                    if moveUp:
+                        ax5.text(recx, recy/2, str(i), size = 'small')
+                    else:
+                        ax5.text(recx, recy, str(i), size = 'small')
                 blockstart += seg.length
 
             #  Important to leave tight_layout before scrollbar creation
@@ -418,7 +432,8 @@ class draw_beamline:
                 ax3.clear()
                 ax4.clear()
                 scrollbar.label.set_text("z: " + str(val))
-                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape)
+                ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1, ax2, ax3, ax4, maxVals, minVals,
+                              defineLim, shape, scatter=scatter)
                 fig.canvas.draw_idle()
             scrollbar.on_changed(update_scroll)
 
