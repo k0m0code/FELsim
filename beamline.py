@@ -16,19 +16,15 @@ import math
 #      getSymbolicMatrice() must use all sympy methods and functions, NOT numpy
         
 class lattice:
-    #  NOTE: default fringe fields for now is noted as [[x list], [y list]],
-    #  ASSUMES that the measurement begins at 0
-    #  ex. [[0.01,0.02,0.03,0.95,1],[1.6,0.7,0.2,0.01,1]]
     def __init__(self, length, fringeType = None):
         '''
-        parent class for beamline segment object
+        parent class for accelerator beamline segment object
 
         Parameters
         ----------
-        length: float
-            sets length of beamline element
-        E: float, optional
-            Kinetic energy value (MeV/c^2)
+        length : float
+            Sets the physical length of the beamline element in meters.
+        fringeType : 
         '''
         self.E = 45  # Kinetic energy (MeV/c^2)
         ## this should be passed from ebeam
@@ -41,20 +37,22 @@ class lattice:
         self.M_AMU = 1.66053906892E-27  # Atomic mass unit (kg)
         self.k_MeV = 1e-6 / self.Q  # Conversion factor (MeV / J)
         self.m_p = 1.67262192595e-27  # Proton Mass (kg)
-        #  [Mass (kg), charge (C), rest energy (MeV)]
+
+        #  Dictionary of predefined particle properties [Mass (kg), Charge (C), Rest Energy (MeV)]
         self.PARTICLES = {"electron": [self.M, self.Q, (self.M * self.C ** 2) * self.k_MeV],
                           "proton": [self.m_p, self.Q, (self.m_p * self.C ** 2) * self.k_MeV]}
 
+        # Relativistic gamma and beta factors, calculated based on current kinetic energy and rest energy
         self.gamma = (1 + (self.E / self.E0))
         self.beta = np.sqrt(1 - (1 / (self.gamma ** 2)))
+
         self.unitsF = 10 ** 6 # Units factor used for conversions from (keV) to (ns)
         self.color = 'none'  #Color of beamline element when graphed
         self.fringeType = fringeType  # Each segment has no magnetic fringe by default
         self.startPos = None
         self.endPos = None
 
-        
-
+        # Validate and set the length of the beamline segment
         if not length <= 0:
             self.length = length
         else:
@@ -62,18 +60,31 @@ class lattice:
         
     def setE(self, E):
         '''
-        Set value of E and its subsequent dependent formulas
+        Sets the kinetic energy (E) of the particle and updates dependent relativistic factors.
 
         Parameters
         ----------
-        E: float
-            New value of E
+        E : float
+            New kinetic energy value (MeV/c^2).
         '''
         self.E = E
         self.gamma = (1 + (self.E/self.E0))
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
     def setMQE(self, mass, charge, restE):
+        '''
+        Sets the mass, charge, and rest energy of the particle, and updates
+        dependent relativistic factors.
+
+        Parameters
+        ----------
+        mass : float
+            The new mass of the particle in kg.
+        charge : float
+            The new charge of the particle in Coulombs.
+        restE : float
+            The new rest energy of the particle in MeV.
+        '''
         self.M = mass
         self.Q = charge
         self.E0 = restE
@@ -81,6 +92,33 @@ class lattice:
         self.beta = np.sqrt(1-(1/(self.gamma**2)))
 
     def changeBeamType(self, particleType, kineticE, beamSegments = None):
+        '''
+        Changes the type of particle being simulated (e.g., "electron", "proton", or isotope).
+        Updates the mass, charge, rest energy, and kinetic energy for the current segment
+        and optionally for a list of other beamline segments.
+
+        Parameters
+        ----------
+        particleType : str
+            The type of particle. Either a predefined string ("electron", "proton")
+            or an isotope string in the format "(isotope number),(ion charge)" (e.g., "12,5" for C12 5+).
+        kineticE : float
+            The kinetic energy for the new particle type in MeV/c^2.
+        beamSegments : list[lattice], optional
+            A list of other beamline segment objects whose particle properties
+            should also be updated. 
+
+        Returns
+        -------
+        list[lattice] or None
+            If `beamSegments` is provided, returns the updated list of beam segments.
+            Otherwise, returns None.
+
+        Raises
+        ------
+        TypeError
+            If the `particleType` is not recognized or in an invalid isotope format.
+        '''
         try:
             particleData = self.PARTICLES[particleType]
             self.setMQE(particleData[0], particleData[1], particleData[2])
@@ -112,20 +150,43 @@ class lattice:
                 raise TypeError("Invalid particle type/isotope")
     
     def getSymbolicMatrice(self, **kwargs):
+        '''
+        Abstract method to be implemented by child classes. This method should
+        return the symbolic transfer matrix for the beamline element.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional parameters specific to the child class's matrix calculation.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented in the child class.
+        '''
         raise NotImplementedError("getSymbolicMatrice not defined in child class")
     
     #unfortuately, cannot check whether the kwargs exist in the segments function or not already
     def useMatrice(self, val, **kwargs):
         ''''
-        Simulates the movement of given particles through its child segment with the 
-        given numeric parameters for its segment
+        Simulates the movement of given particles through its child segment by
+        applying the segment's transfer matrix with numeric parameters.
 
         Parameters
         ----------
-        val: np.array(list[float][float])
-            2D numPy list of particle elements from which to simulate data
-        **kwargs: 
-            other segment specific parameters.
+        val : np.ndarray
+            A 2D NumPy array representing the particle states. Each row is a particle,
+            and columns correspond to phase space coordinates (e.g., [x, x', y, y', z, z']).
+        **kwargs : dict
+            Other segment-specific numeric parameters (e.g., `length`, `current`)
+            that might override the segment's default properties for this specific simulation.
+
+        Returns
+        -------
+        list
+            A 2D list where each inner list represents the transformed state of a particle
+            after passing through the segment.
+
         '''
         mat = self.getSymbolicMatrice(numeric = True, **kwargs)
         npMat = np.array(mat).astype(np.float64)
@@ -139,10 +200,12 @@ class lattice:
 class driftLattice(lattice):
     def __init__(self, length: float):
         '''
-        drift lattice segment
+        Represents a drift space (empty section) in the beamline.
 
-        length: float
-            length of drift segment
+        Parameters
+        ----------
+        length : float
+            The length of the drift segment in meters.
         '''
         super().__init__(length)
         self.color = "white"
@@ -151,6 +214,22 @@ class driftLattice(lattice):
     # Nor if length is actually the dtype numeric specifies
     # implement both useMatrice and symbolic matrice in this, have to delete both later
     def getSymbolicMatrice(self, numeric = False, length = None):
+        '''
+        Returns the 6x6 transfer matrix for a drift space.
+
+        Parameters
+        ----------
+        numeric : bool, optional
+            If True, returns a numerical matrix. If False, returns a symbolic matrix.
+        length : float or str, optional
+            If `numeric` is True, this should be a float representing the length. If false, symbolic string length
+            If None, uses segment's length.
+
+        Returns
+        -------
+        sympy.Matrix or np.ndarray
+            The 6x6 transfer matrix for the drift segment.
+        '''
         l = None
         if length is None:
             l = self.length
@@ -169,17 +248,57 @@ class driftLattice(lattice):
         return mat
 
     def __str__(self):
+        '''
+        Returns a string representation of the drift lattice segment.
+
+        Returns
+        -------
+        str
+            A descriptive string
+        '''
         return f"Drift beamline segment {self.length} m long"
 
 
 class qpfLattice(lattice):
     def __init__(self, current: float, length: float = 0.0889, fringeType = 'decay'):
+        '''
+        Represents a quadrupole focusing magnet. This magnet focuses in the x plane
+        and defocuses in the y plane
+
+        Parameters
+        ----------
+        current : float
+            The current supplied to the quadrupole in Amps.
+        length : float, optional
+            The effective length of the quadrupole magnet in meters.
+        fringeType : 
+            
+        '''
         super().__init__(length, fringeType)
-        self.current = current # Amps
+        self.current = current #  Amps
         self.color = "cornflowerblue"
-        self.G = 2.694  # Quadruple focusing strength (T/A/m)
+        self.G = 2.694  #  Quadruple focusing strength (T/A/m)
 
     def getSymbolicMatrice(self, numeric = False, length = None, current = None):
+        '''
+        Returns the 6x6 transfer matrix for a quadrupole focusing magnet.
+
+        Parameters
+        ----------
+        numeric : bool, optional
+            If True, returns a numerical matrix. If False, returns a symbolic matrix.
+        length : float or str, optional
+            If `numeric` is True, this is the numerical length, if False, string symbolic length.
+            If None, uses segment's length.
+        current : float or str, optional
+            If `numeric` is True, this is the numerical current, if False, string symbolic current.
+            If None, uses segment's current.
+
+        Returns
+        -------
+        sympy.Matrix or np.ndarray
+            The 6x6 transfer matrix for the quadrupole focusing magnet.
+        '''
         l = None
         I = None
 
@@ -223,17 +342,56 @@ class qpfLattice(lattice):
         return mat
     
     def __str__(self):
+        '''
+        Returns a string representation of the quadrupole focusing lattice segment.
+
+        Returns
+        -------
+        str
+            A descriptive string
+        '''
         return f"QPF beamline segment {self.length} m long and a current of {self.current} amps"
 
 
 class qpdLattice(lattice):
     def __init__(self, current: float, length: float = 0.0889, fringeType = 'decay'):
+        '''
+        Represents a quadrupole defocusing magnet. This magnet defocuses in the x plane 
+        and focuses in the y plane
+
+        Parameters
+        ----------
+        current : float
+            The current supplied to the quadrupole in Amps.
+        length : float, optional
+            The effective length of the quadrupole magnet in meters.
+        fringeType : 
+        '''
         super().__init__(length, fringeType)
         self.current = current # Amps
         self.G = 2.694  # Quadruple focusing strength (T/A/m)
         self.color = "lightcoral"
     
     def getSymbolicMatrice(self, numeric = False, length = None, current = None):
+        '''
+        Returns the 6x6 transfer matrix for a quadrupole defocusing magnet.
+
+        Parameters
+        ----------
+        numeric : bool, optional
+            If True, returns a numerical matrix. If False, returns a symbolic matrix.
+        length : float or str, optional
+            If `numeric` is True, this is the numerical length, if False, string symbolic length.
+            If None, uses segment's length.
+        current : float or str, optional
+            If `numeric` is True, this is the numerical current, if False, string symbolic current.
+            If None, uses segment's current.
+
+        Returns
+        -------
+        sympy.Matrix or np.ndarray
+            The 6x6 transfer matrix for the quadrupole defocusing magnet.
+        '''
         l = None
         I = None
 
@@ -277,15 +435,55 @@ class qpdLattice(lattice):
         return mat
 
     def __str__(self):
+        '''
+        Returns a string representation of the quadrupole defocusing lattice segment.
+
+        Returns
+        -------
+        str
+            A descriptive string
+        '''
         return f"QPD beamline segment {self.length} m long and a current of {self.current} amps"
 
 class dipole(lattice):
     def __init__(self, length: float = 0.0889, angle: float = 1.5, fringeType = 'decay'):
+        '''
+        Represents a dipole bending magnet, which bends the beam horizontally.
+
+        Parameters
+        ----------
+        length : float, optional
+            The effective length of the dipole magnet in meters
+        angle : float, optional
+            The bending angle of the dipole magnet in degrees. 
+        fringeType : 
+        '''
         super().__init__(length, fringeType)
         self.color = "forestgreen"
         self.angle = angle  # degrees
     
     def getSymbolicMatrice(self, numeric = False, length = None, angle = None):
+        '''
+        Returns the 6x6 transfer matrix for a horizontal dipole bending magnet.
+
+        Parameters
+        ----------
+        numeric : bool, optional
+            If True, returns a numerical matrix. If False, returns a symbolic matrix.
+        length : float or str, optional
+            If `numeric` is True, this is the numerical length, i
+            f False, string symbolic length.
+            If None, uses segment's length.
+        angle : float or str, optional
+            If `numeric` is True, this is the numerical bending angle in degrees,
+            if False, string symbolic angle. 
+            If None, uses segment's angle.
+
+        Returns
+        -------
+        sympy.Matrix or np.ndarray
+            The 6x6 transfer matrix for the dipole magnet.
+        '''
         l = None
         a = None
 
@@ -323,19 +521,74 @@ class dipole(lattice):
         return mat
 
     def __str__(self):
+        '''
+        Returns a string representation of the dipole magnet segment.
+
+        Returns
+        -------
+        str
+            A descriptive string
+        '''
         return f"Horizontal dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
 
 class dipole_wedge(lattice):
     def __init__(self, length, angle: float = 1, dipole_length: float = 0.0889, dipole_angle: float = 1.5,
-                 pole_gap = 0.0127, enge_fct = 0, fringeType = 'decay'):
+                 pole_gap = 0.014478, enge_fct = 0, fringeType = 'decay'):
+        '''
+        Represents a dipole magnet with wedge-shaped pole faces at its entrance and/or exit,
+        which introduces a vertical focusing or defocusing effect. This class models the
+        effect of these wedge angles, often found in spectrometer dipoles.
+
+        Parameters
+        ----------
+        length : float
+            The effective length of the wedge magnet segment in meters.
+        angle : float, optional
+            The wedge angle (half-angle) of the pole face in degrees. This angle
+            contributes to the vertical focusing/defocusing.
+        dipole_length : float, optional
+            The physical length of the main dipole field region in meters.
+            This is used to calculate the magnetic field strength based on the dipole_angle.
+        dipole_angle : float, optional
+            The total bending angle of the main dipole field region in degrees.
+            Used to calculate the magnetic field strength.
+        pole_gap : float, optional
+            The gap between the dipole poles in meters. Used in the fringe field calculation.
+        enge_fct : float, optional
+            Placeholder for Enge function parameter, related to fringe field modeling.
+        fringeType : 
+        '''
         super().__init__(length, fringeType)
         self.color = "lightgreen"
         self.angle = angle
         self.dipole_length = dipole_length
         self.dipole_angle = dipole_angle
-        self.pole_gap = 0.014478
+        #  self.pole_gap = 0.0127
+        self.pole_gap = pole_gap
 
     def getSymbolicMatrice(self, numeric = False, length = None, angle = None):
+        '''
+        Returns the 6x6 transfer matrix for a dipole magnet with wedge pole faces.
+        This matrix includes the effects of the wedge angle on transverse focusing.
+
+        Parameters
+        ----------
+        numeric : bool, optional
+            If True, returns a numerical matrix. If False, returns a symbolic matrix.
+        length : float or str, optional
+            If `numeric` is True, this is the numerical effective length of the wedge segment,
+            if False, string symbolic length.
+            If None, uses segment's length.
+        angle : float or str, optional
+            If `numeric` is True, this is the numerical wedge angle in degrees.
+            if False, string symbolic angle.
+            If None, uses segment's angle.
+
+        Returns
+        -------
+        sympy.Matrix or np.ndarray
+            The 6x6 transfer matrix for the wedge dipole magnet.
+        '''
         l = None
         a = None
 
@@ -395,6 +648,14 @@ class dipole_wedge(lattice):
         return mat
 
     def __str__(self):
+        '''
+        Returns a string representation of the horizontal wedge dipole magnet segment.
+
+        Returns
+        -------
+        str
+            A descriptive string
+        '''
         return f"Horizontal wedge dipole magnet segment {self.length} m long (curvature) with an angle of {self.angle} degrees"
     
 

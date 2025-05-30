@@ -181,7 +181,7 @@ class draw_beamline:
                             data.append(list[i])
                 csvwriter.writerow(data)
                       
-    def setEqualAxisScaling(self, maxVals, minVals):
+    def _setEqualAxisScaling(self, maxVals, minVals):
         if maxVals[0] > maxVals[2]:
             maxVals[2] = maxVals[0]
         else:
@@ -198,6 +198,46 @@ class draw_beamline:
             minVals[3] = minVals[1]
         else:
             minVals[1] = minVals[3]
+    
+    def _saveEPS(self, ax1,ax2,ax3,ax4,ax5, fig, scrollbar):
+            #  Saving bottom plot, beam dynamics simulations versus z
+            bbox = ax5.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            x0, y0, x1, y1 = bbox.extents
+            pad_left = 0.55
+            pad_right = 0.7
+            pad_bottom = 0.7
+            pad_top = 0.1
+            new_bbox = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
+            scrollbar.ax.set_visible(False)
+            fig.savefig(f"dynamics_plot_z_{scrollbar.val}.eps", format='eps', bbox_inches=new_bbox)
+            scrollbar.ax.set_visible(True)
+
+            #  Saving top plots, phase space
+            bbox1 = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            bbox2 = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            bbox3 = ax3.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            bbox4 = ax4.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            bbox_quadrants = Bbox.union([bbox1, bbox2, bbox3, bbox4])
+            x0, y0, x1, y1 = bbox_quadrants.extents
+            pad_left = 0.7
+            pad_right = 0.1
+            pad_bottom = 0.5
+            pad_top = 0.3
+            bbox_quadrants_asym = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
+            fig.savefig(f"phase_space_z_{scrollbar.val}.eps", format='eps', bbox_inches=bbox_quadrants_asym)
+
+    def _getClosestZ(self, plot6dValues, val):
+        '''
+        Returns closest z distance from val and associated 6d matrix
+
+        Parameters
+        ----------
+        plot6dValues
+        '''
+        z_values = np.array(list(plot6dValues.keys()))
+        closest_z = z_values[np.argmin(np.abs(z_values - val))]
+        matrix = plot6dValues[closest_z]
+        return closest_z, matrix
 
     def plotBeamPositionTransform(self, matrixVariables, beamSegments, interval = -1, defineLim = True,
                                    saveData = False, saveFig = False, shape = {}, plot = True, spacing = True,
@@ -217,6 +257,8 @@ class draw_beamline:
             If plot should change dynamically with the points or stay static.
         saveData: boolean, optional
             Boolean value specifying whether to save data into a csv file or not
+        saveFig: bool, float, optional
+            Boolean or float value specifying what z position to save eps figure at (default z pos of 0)
         shape: dict{}, optional
             dictionary storing info about the acceptance boundary
             ex. shape, width, radius, length, origin
@@ -229,6 +271,9 @@ class draw_beamline:
             defineLim must be True for same scaling setting to work
         showIndice: bool, optional
             Option to display each segment's indice visually
+        scatter: bool, optional
+            Option to display particle data as hexbins or a scatter color plot
+        
 
 
 
@@ -329,7 +374,7 @@ class draw_beamline:
         self.sixdValues = plot6dValues
 
         if matchScaling and defineLim:
-            self.setEqualAxisScaling(maxVals, minVals)
+            self._setEqualAxisScaling(maxVals, minVals)
 
         #  Configure graph shape
         fig = plt.figure(figsize=self.figsize)
@@ -343,6 +388,7 @@ class draw_beamline:
         #matrix = plot6dValues.get(0)
         #ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1,ax2,ax3,ax4, maxVals, minVals, defineLim, shape, scatter=scatter)
 
+        # Make sure saveFig is of a valid datatype
         if isinstance(saveFig, bool):
             savePhaseSpace = saveFig
             saveZ = 0  # or a default like 'last' or x_axis[0]
@@ -352,18 +398,18 @@ class draw_beamline:
         else:
             raise ValueError("saveFig must be either False, True, or a float (z value)")
 
-        z_values = np.array(list(plot6dValues.keys()))
-        closest_z = z_values[np.argmin(np.abs(z_values - saveZ))]
-        matrix = plot6dValues[closest_z]
+        # Find closest z value to saveFig
+        closest_initial_z, matrix = self._getClosestZ(plot6dValues, saveZ)
 
-        # Update the phase space plots to match that z
+        # Update the phase space plots to match that closest z coordinate
         ebeam.plotXYZ(matrix[2], matrix[0], matrix[1], matrix[3], ax1, ax2, ax3, ax4, maxVals, minVals, defineLim,
                         shape, scatter=scatter)
 
         #  Plot and configure line graph data
         ax5 = plt.subplot(gs[2, :])
-        # for item in twiss_aggregated_df:print(twiss_aggregated_df[item])
         colors = ['dodgerblue', 'crimson','yellow','green']
+
+        # Calculate and plot x and y envelope
         for i in range(0,2):
             axis = twiss_aggregated_df.index[i]
             emittance = (10 ** -6) * np.array(twiss_aggregated_df.at[axis, twiss_aggregated_df.keys()[0]])
@@ -372,11 +418,9 @@ class draw_beamline:
             ax5.plot(x_axis, envelope,
                         color=colors[i], linestyle='-',
                         label=r'$E_' + axis + '$ (mm)')
-            
-
         ax5.set_ylabel('Dispersion $D$ (m)')
         ax5.set_xticks(x_axis)
-        plt.xlim(0,x_axis[-1])
+        ax5.set_xlim(0,x_axis[-1])
 
         #  Auto space x tick labels for readibility
         if spacing:
@@ -399,11 +443,12 @@ class draw_beamline:
             '''no need below, as we have self.DEFAULTINTERVALROUND'''
             # xTicks_disp = [f"{x:.3f}" for x in x_axis]
             # ax5.set_xticklabels(xTicks_disp, rotation=45, ha='right')
-
-        plt.tick_params(labelsize = 9)
-        plt.xlabel(r"Distance from start of beam (m)")
-        plt.ylabel(r"Envelope $E$ (mm)")
+        ax5.tick_params(labelsize = 9)
+        ax5.set_xlabel(r"Distance from start of beam (m)")
+        ax5.set_ylabel(r"Envelope $E$ (mm)")
         ax5.legend(loc='upper left')
+
+        # Plot dispersion as a twin axis to envelope axes
         line = None
         lineList = []
         ax6 = ax5.twinx()
@@ -414,14 +459,7 @@ class draw_beamline:
                             color=colors[i], linestyle='--',
                             label=r'$D_' + axis + '$ (mm)')
             lineList.append(line)
-            
-            #for i in range(0, 4):
-        #    dispersion = np.array(twiss_aggregated_df.at[twiss_aggregated_df.index[2], twiss_aggregated_df.keys()[i]])
-        #    ax5.plot(x_axis, dispersion,
-        #                 color=colors[i], linestyle='-',
-        #                 label=twiss_aggregated_df.keys()[i])
         ax6.set_ylabel(r'Dispersion $D$ (mm)')
-
         ax6.legend(loc='upper right')
 
         #  Create visual representation of beamline segments
@@ -447,43 +485,17 @@ class draw_beamline:
         plt.suptitle("Beamline Simulation")
         plt.tight_layout()
 
-        if savePhaseSpace:
-            #  Saving bottom plot, beam dynamics simulations versus z
-            bbox = ax5.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            x0, y0, x1, y1 = bbox.extents
-            pad_left = 0.55
-            pad_right = 0.7
-            pad_bottom = 0.7
-            pad_top = 0.1
-            new_bbox = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
-            fig.savefig(f"dynamics_plot_z_{closest_z}.eps", format='eps', bbox_inches=new_bbox)
-
-            #  Saving top plots, phase space
-            bbox1 = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox2 = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox3 = ax3.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox4 = ax4.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox_quadrants = Bbox.union([bbox1, bbox2, bbox3, bbox4])
-            x0, y0, x1, y1 = bbox_quadrants.extents
-            pad_left = 0.7
-            pad_right = 0.1
-            pad_bottom = 0.5
-            pad_top = 0.3
-            bbox_quadrants_asym = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
-            fig.savefig(f"phase_space_z_{closest_z}.eps", format='eps', bbox_inches=bbox_quadrants_asym)
-
         #   Scroll bar creation and function
         dimensions = ax5.get_position().bounds
         scrollax = plt.axes([dimensions[0],0.01,dimensions[2],0.01], facecolor = 'lightgoldenrodyellow')
-        scrollbar = Slider(scrollax, 'z: 0', 0, x_axis[-1], valinit = 0, valstep=np.array(x_axis))
+        scrollbar = Slider(scrollax, f'z: {closest_initial_z}', 0, x_axis[-1], valinit = closest_initial_z, valstep=np.array(x_axis))
         scrollbar.valtext.set_visible(False)
+
+        #  Scrollbar function
         def update_scroll(val):
             matrix = plot6dValues.get(scrollbar.val)
             if matrix is None:
-                z_values = np.array(list(plot6dValues.keys()))
-                closest_z = z_values[np.argmin(np.abs(z_values - val))]
-                matrix = plot6dValues[closest_z]
-                val = closest_z
+                val, matrix = self._getClosestZ(plot6dValues, val)
             ax1.clear()
             ax2.clear()
             ax3.clear()
@@ -494,12 +506,18 @@ class draw_beamline:
             fig.canvas.draw_idle()
         scrollbar.on_changed(update_scroll)
 
+        #  Saving bottom plot, beam dynamics simulations versus z
+        if savePhaseSpace:
+            self._saveEPS(ax1, ax2, ax3, ax4, ax5, fig, scrollbar)
+
+        #  Data for next and prev buttons
         lineTwissData = []
         twissDataNames = []
         for key in twiss_aggregated_df.keys():
                 lineTwissData.append([twiss_aggregated_df.at['x', key],twiss_aggregated_df.at['y', key]])
                 twissDataNames.append(key)
 
+        #  Circular linked list for next and prev buttons
         class CircularList:
             index = 0
 
@@ -527,9 +545,9 @@ class draw_beamline:
                 self.index -= 1
                 self.drawNewLines(self.index)
 
+        #  Create next and prev buttons
         axprev = fig.add_axes([dimensions[0]+dimensions[2]+0.02, dimensions[1]-0.04, 0.03, 0.03])
         axnext = fig.add_axes([dimensions[0]+dimensions[2]+0.05, dimensions[1]-0.04, 0.03, 0.03])
-
         bnext = Button(axnext, 'Next', hovercolor="lightblue")
         bprev = Button(axprev, 'Prev', hovercolor="lightblue")
         circList = CircularList()
@@ -547,43 +565,22 @@ class draw_beamline:
         topRightDim = ax2.get_position().bounds
         textBoxHeight = 0.03
         textAx = fig.add_axes([topRightDim[0]+topRightDim[2]+0.02, topRightDim[1]+topRightDim[3]-textBoxHeight, 0.05, textBoxHeight])
-        textBox = TextBox(textAx, label = "Input Z", hovercolor="lightblue", initial = "0")
+        textBox = TextBox(textAx, label = "Input Z", hovercolor="lightblue", initial = str(saveZ))
         textBox.on_submit(goToZ)
         textBox.label.set_verticalalignment('top') 
         textBox.label.set_horizontalalignment('center')
         textBox.label.set_position((0.5, -0.2)) 
         
-        def saveEPS(event):
-            #  Saving bottom plot, beam dynamics simulations versus z
-            bbox = ax5.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            x0, y0, x1, y1 = bbox.extents
-            pad_left = 0.55
-            pad_right = 0.7
-            pad_bottom = 0.7
-            pad_top = 0.1
-            new_bbox = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
-            fig.savefig(f"dynamics_plot_z_{scrollbar.val}.eps", format='eps', bbox_inches=new_bbox)
+        #  Button function to save eps snapshot of simulation
+        def _saveEPS(event):
+            self._saveEPS(ax1, ax2, ax3, ax4, ax5, fig, scrollbar)
 
-            #  Saving top plots, phase space
-            bbox1 = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox2 = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox3 = ax3.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox4 = ax4.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            bbox_quadrants = Bbox.union([bbox1, bbox2, bbox3, bbox4])
-            x0, y0, x1, y1 = bbox_quadrants.extents
-            pad_left = 0.7
-            pad_right = 0.1
-            pad_bottom = 0.5
-            pad_top = 0.3
-            bbox_quadrants_asym = Bbox.from_extents(x0 - pad_left, y0 - pad_bottom, x1 + pad_right, y1 + pad_top)
-            fig.savefig(f"phase_space_z_{scrollbar.val}.eps", format='eps', bbox_inches=bbox_quadrants_asym)
-
+        #  Create eps save button
         textBoxDim = textAx.get_position().bounds
         axSave = fig.add_axes([textBoxDim[0], textBoxDim[1]-0.07, 0.05, 0.03])
         saveButton = Button(axSave, 'Save .eps', hovercolor="lightblue")
-        saveButton.on_clicked(saveEPS)
+        saveButton.on_clicked(_saveEPS)
 
         if plot:
-            #  Ploting
             plt.show()
         return twiss_aggregated_df
