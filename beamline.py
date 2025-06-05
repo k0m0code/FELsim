@@ -5,6 +5,7 @@ import numpy as np
 from scipy import interpolate
 from scipy import optimize
 import math
+import csv
 
 #IMPORTANT NOTES:
     #  by default every beam type is an electron beam type
@@ -728,6 +729,11 @@ class beamline:
         def __str__(self) -> str:
             return f"Fringe field segment {self.length} m long with a magnetic field of {self.B} teslas"
     
+    def csvToBeamline(self, csv):
+        with open(csv, newline='') as file:
+            reader = csv.reader(file)
+            
+
     def __init__(self, line = []):
         self.ORIGINFACTOR = 0.99
         
