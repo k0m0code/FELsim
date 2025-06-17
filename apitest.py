@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from ebeam import beam
 from fastapi.middleware.cors import CORSMiddleware
 
-ORIGINS = ["http://localhost:3000"]
+ORIGINS = ["*", "http://localhost:3000"]
 
 app = FastAPI()
 ebeam = beam()
