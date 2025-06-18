@@ -1,7 +1,6 @@
 import React from 'react';
 import './App.css';
 import Dropdown from './components/Dropdown/Dropdown';
-
 function App()
 {
     return (
@@ -9,8 +8,7 @@ function App()
         <div className="layout">
           <div className="sidebar">
             <h2>Menu</h2>
-            <Dropdown />
-        
+            <Dropdown buttonText="test" contentText = <p>123</p>/>
           </div>
           <div className="main-content">
               <h1>FEL simulation</h1>

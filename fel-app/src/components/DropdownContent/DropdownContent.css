@@ -1,0 +1,22 @@
+.dropdownContent {
+    position: relative;
+    //min-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: rgba(149, 157, 165, 0.2)
+    0px 8px 24px;
+    max-height: 40vh;
+    overflow-y: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.dropdown-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
