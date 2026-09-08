@@ -46,7 +46,7 @@ def main():
         )
     vec_env = make_vec_env(
             Tuning_env,
-            n_envs=15,
+            n_envs=12,
             env_kwargs=env_kwargs,
             vec_env_cls=SubprocVecEnv,
     )

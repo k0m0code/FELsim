@@ -27,7 +27,8 @@ class Tuning_env(gym.Env):
         self.PARTICLE_STD_SCALE_STDEV_NOISE_PERCENTAGE = 0.04
         self.ebeam = beam()
         self._current_step = 0
-        self._max_step = 20
+        self._max_step = 0.0 # Mistake
+        self.reward = 0.0
 
         if not beamline:
             raise ValueError("The beamline array cannot be empty.")
@@ -113,8 +114,12 @@ class Tuning_env(gym.Env):
             "target_sigma_y": self.target_sigma_y,
         }
 
-    def _get_info(self):
-        return {"particles": self.particles}
+    def _get_info(self, relative_err_x=None, relative_err_y=None):
+        return {"particles": self.particles,
+                "reward": self.reward,
+                "current_step": self._current_step,
+                "relative_error_x": relative_err_x,
+                "relative_error_y": relative_err_y,}
 
     def reset(self, seed=None, options=None):
         # FIXED BUG 1: Properly pass the seed up to Gym's built-in generator
@@ -171,7 +176,7 @@ class Tuning_env(gym.Env):
             reward -= 10.0
             terminated = True
         
-        reward += 1/((relative_err_x**2 + relative_err_y**2 + 1e-8)**1.5)
+        reward += 1/((relative_err_x + relative_err_y + 1e-8)**0.8)
             
         return float(reward), relative_err_x, relative_err_y, terminated
 
@@ -193,9 +198,8 @@ class Tuning_env(gym.Env):
             terminated = True
 
         truncated = self._current_step >= self._max_step
-        
-        info = self._get_info()
-        info['is_success'] = reward > 0
+        self.reward = reward
+        info = self._get_info(relative_err_x, relative_err_y)
         
         return obs, reward, terminated, truncated, info
 
