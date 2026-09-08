@@ -156,22 +156,24 @@ class Tuning_env(gym.Env):
         #  Add 1e-8 to avoid division by zero
         relative_err_x = abs(curr_sx - targ_sx) / (abs(targ_sx) + 1e-8)
         relative_err_y = abs(curr_sy - targ_sy) / (abs(targ_sy) + 1e-8)
-
-        # print("err_x:", err_x, "err_y:", err_y)
         
         reward = -(relative_err_x + relative_err_y)
+        terminated = False
         if relative_err_x > 2 or relative_err_y > 2:
-            reward -= 50.0
+            reward -= 100.0
+            terminated = True
 
         if relative_err_x > 1.5 or relative_err_y > 1.5:
-            reward -= 25.0
+            reward -= 50.0
+            terminated = True
 
         if relative_err_x > 1.0 or relative_err_y > 1.0:
             reward -= 10.0
+            terminated = True
         
         reward += 1/((relative_err_x**2 + relative_err_y**2 + 1e-8)**1.5)
             
-        return float(reward), relative_err_x, relative_err_y
+        return float(reward), relative_err_x, relative_err_y, terminated
 
     def step(self, action):
         self._current_step += 1
@@ -184,10 +186,11 @@ class Tuning_env(gym.Env):
             self._beamline[q_idx].current = float(new_current)
 
         obs = self._get_obs()
-        reward, relative_err_x, relative_err_y = self._calculate_reward(obs)
+        reward, relative_err_x, relative_err_y, terminated = self._calculate_reward(obs)
 
-        terminated = relative_err_x < 0.1 and relative_err_y < 0.1
-        if terminated: reward += 10.0 
+        if relative_err_x < 0.1 and relative_err_y < 0.1:
+            reward += 100.0
+            terminated = True
 
         truncated = self._current_step >= self._max_step
         
