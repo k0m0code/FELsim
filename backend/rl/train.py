@@ -46,7 +46,7 @@ def main():
         )
     vec_env = make_vec_env(
             Tuning_env,
-            n_envs=12,
+            n_envs=10,
             env_kwargs=env_kwargs,
             vec_env_cls=SubprocVecEnv,
     )
@@ -59,7 +59,7 @@ def main():
     # "MultiInputPolicy" is still required because observation_space is a gym.spaces.Dict
     model = PPO("MultiInputPolicy", vec_env, ent_coef=0.05, verbose=1)
 
-    model.learn(total_timesteps=2000000)
+    model.learn(total_timesteps=3000000)
 
     # Save the trained brain to a file
     model.save("beamline_sigma_tuning_model")
