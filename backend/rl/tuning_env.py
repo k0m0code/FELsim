@@ -27,7 +27,7 @@ class Tuning_env(gym.Env):
         self.PARTICLE_STD_SCALE_STDEV_NOISE_PERCENTAGE = 0.04
         self.ebeam = beam()
         self._current_step = 0
-        self._max_step = 0.0 # Mistake
+        self._max_step = 20.0 
         self.reward = 0.0
 
         if not beamline:

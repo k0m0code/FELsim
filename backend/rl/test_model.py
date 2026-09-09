@@ -17,6 +17,8 @@ import torch
 
 print("\n--- Running the Trained Agent ---")
 
+# 1. Recreate the environment configuration used during training
+# (Make sure setup matches the training environment exactly)
 dummy_target_sigma = {
     "sigma_x": 4.5,
     "sigma_y": 5.6
