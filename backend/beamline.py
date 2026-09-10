@@ -1452,6 +1452,13 @@ class beamline:
                 beamline[ind - 1].length -= fringeTotalLen
                 fringeTotalLen -= fringeTotalLen
 
+    def findSegmentAtPos(self, pos):
+        for i in range(len(self.beamline)):
+            seg = self.beamline[i]
+            if (pos >= seg.startPos and pos <= seg.endPos):
+                return i
+        return -1
+
     def reconfigureLine(self, interval=None):
         if interval is None:
             interval = self.FRINGEDELTAZ
