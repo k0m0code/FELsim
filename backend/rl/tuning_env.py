@@ -167,17 +167,23 @@ class Tuning_env(gym.Env):
         if relative_err_x > 2 or relative_err_y > 2:
             reward -= 100.0
             terminated = True
-
-        if relative_err_x > 1.5 or relative_err_y > 1.5:
+        elif relative_err_x > 1.5 or relative_err_y > 1.5:
             reward -= 50.0
             terminated = True
 
-        if relative_err_x > 1.0 or relative_err_y > 1.0:
+        elif relative_err_x > 1.0 or relative_err_y > 1.0:
             reward -= 10.0
             terminated = True
         
-        reward += 1/((relative_err_x + relative_err_y + 1e-8)**0.8)
-            
+        elif relative_err_x < 0.1 and relative_err_y < 0.1:
+            reward += 100.0
+            terminated = True
+        else:
+            # This type of reward feedback for the model may be necessary only in 
+            # Multistep environments to help guide agent
+            # Could possibly remove this going back to single step gym.
+            reward += 1/((relative_err_x + relative_err_y + 1e-8)**0.8)
+
         return float(reward), relative_err_x, relative_err_y, terminated
 
     def step(self, action):
@@ -192,10 +198,6 @@ class Tuning_env(gym.Env):
 
         obs = self._get_obs()
         reward, relative_err_x, relative_err_y, terminated = self._calculate_reward(obs)
-
-        if relative_err_x < 0.1 and relative_err_y < 0.1:
-            reward += 100.0
-            terminated = True
 
         truncated = self._current_step >= self._max_step
         self.reward = reward
