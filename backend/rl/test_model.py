@@ -70,7 +70,8 @@ for ep in range(episodes_to_test):
         obs, reward, terminated, truncated, info = env.step(action)
 
         print(f"  Step {step}:")
-        print(f"    Actions chosen (Amps for each Quad): {np.round(action, 4)}")
+        print(f"    Actions chosen (Normalized current): {np.round(action, 4)}")
+        print(f"    Amperages: {((np.round(action, 4) + 1.0) / 2.0) * 10}")
         print(f"    Resulting Last Monitor Noisy Sigma X: {obs['sigma_x'][-1][0]:.4f}")
         print(f"    Resulting Last Monitor Noisy Sigma Y: {obs['sigma_y'][-1][0]:.4f}")
         print(f"    Reward received: {reward:.4f}")

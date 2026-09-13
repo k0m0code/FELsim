@@ -20,12 +20,12 @@ def main():
     # 1. SETUP THE ENVIRONMENT WITH SIGMA TARGETS
     # ==========================================
     dummy_target_sigma = {
-        "sigma_x": 4.5,  # Targeted horizontal standard deviation size
-        "sigma_y": 5.6   # Targeted vertical standard deviation size
+        "sigma_x": 8.5,  # Targeted horizontal standard deviation size
+        "sigma_y": 5.4,   # Targeted vertical standard deviation size
     }
     # ------- GOALS -----------------------------
-    # beamline[1]: -0.1
-    # beamline[3]: -0.5
+    # beamline[1]: 0.1
+    # beamline[3]: -0.9
 
     dummy_beamline = [
         driftLattice(length = 0.5),
@@ -59,7 +59,7 @@ def main():
     # "MultiInputPolicy" is still required because observation_space is a gym.spaces.Dict
     model = PPO("MultiInputPolicy", vec_env, ent_coef=0.05, verbose=1)
 
-    model.learn(total_timesteps=2000000)
+    model.learn(total_timesteps=3000000)
 
     # Save the trained brain to a file
     model.save("beamline_sigma_tuning_model")
