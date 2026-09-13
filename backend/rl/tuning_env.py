@@ -167,22 +167,22 @@ class Tuning_env(gym.Env):
         if relative_err_x > 2 or relative_err_y > 2:
             reward -= 100.0
             terminated = True
-        elif relative_err_x > 1.5 or relative_err_y > 1.5:
+        if relative_err_x > 1.5 or relative_err_y > 1.5:
             reward -= 50.0
             terminated = True
 
-        elif relative_err_x > 1.0 or relative_err_y > 1.0:
+        if relative_err_x > 1.0 or relative_err_y > 1.0:
             reward -= 10.0
             terminated = True
         
-        elif relative_err_x < 0.1 and relative_err_y < 0.1:
+        if relative_err_x < 0.1 and relative_err_y < 0.1:
             reward += 100.0
             terminated = True
-        else:
-            # This type of reward feedback for the model may be necessary only in 
-            # Multistep environments to help guide agent
-            # Could possibly remove this going back to single step gym.
-            reward += 1/((relative_err_x + relative_err_y + 1e-8)**0.8)
+        
+        # This type of reward feedback for the model may be necessary only in 
+        # Multistep environments to help guide agent
+        # Could possibly remove this going back to single step gym.
+        reward += 1/((relative_err_x + relative_err_y + 1e-8)**0.8)
 
         return float(reward), relative_err_x, relative_err_y, terminated
 
