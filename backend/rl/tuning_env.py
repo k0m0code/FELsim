@@ -182,7 +182,7 @@ class Tuning_env(gym.Env):
         # This type of reward feedback for the model may be necessary only in 
         # Multistep environments to help guide agent
         # Could possibly remove this going back to single step gym.
-        reward += 1/((relative_err_x + relative_err_y + 1e-8)**0.8)
+        reward += 100*np.exp(-10*(relative_err_x + relative_err_y))
 
         return float(reward), relative_err_x, relative_err_y, terminated
 
